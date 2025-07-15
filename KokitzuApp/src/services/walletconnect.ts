@@ -81,24 +81,45 @@ export const getWalletConnectSessions = () => {
 };
 
 // Disconnect wallet
-export const disconnectWalletConnect = async (topic: string) => {
+export const disconnectWalletConnect = async (topic?: string) => {
   try {
-    if (signClient) {
-      await signClient.disconnect({
-        topic,
-        reason: {
-          code: 6000,
-          message: "User disconnected",
-        },
-      });
+    if (!signClient) {
+      console.log("No SignClient to disconnect");
+      return;
     }
+
+    // If no topic provided, try to disconnect current session
+    if (!topic && currentSession?.topic) {
+      topic = currentSession.topic;
+    }
+
+    // If we have a valid topic, try to disconnect
+    if (topic && topic !== "0" && topic !== "mock-topic") {
+      try {
+        await signClient.disconnect({
+          topic,
+          reason: {
+            code: 6000,
+            message: "User disconnected",
+          },
+        });
+        console.log("Successfully disconnected session:", topic);
+      } catch (disconnectError) {
+        console.log("Session already disconnected or doesn't exist:", topic);
+      }
+    }
+
+    // Clear local state regardless of disconnect success
     isConnected = false;
     currentAddress = null;
     currentSession = null;
-    console.log("Wallet disconnected");
+    console.log("Wallet disconnected and local state cleared");
   } catch (error) {
-    console.error("Error disconnecting wallet:", error);
-    throw error;
+    console.error("Error in disconnect process:", error);
+    // Still clear local state even if there's an error
+    isConnected = false;
+    currentAddress = null;
+    currentSession = null;
   }
 };
 
@@ -217,6 +238,12 @@ export const setCurrentSession = (session: any) => {
   currentSession = session;
   currentAddress = getWalletAddress(session);
   isConnected = !!currentAddress;
+  console.log(
+    "Current session set:",
+    session?.topic,
+    "Address:",
+    currentAddress
+  );
 };
 
 // Get current session
@@ -227,3 +254,42 @@ export const getConnectionStatus = () => ({
   isConnected,
   currentAddress,
 });
+
+// Force disconnect all sessions
+export const forceDisconnectAll = async () => {
+  try {
+    if (!signClient) {
+      return;
+    }
+
+    const sessions = signClient.session.getAll();
+    const disconnectPromises = Object.keys(sessions).map(async (topic) => {
+      try {
+        await signClient.disconnect({
+          topic,
+          reason: {
+            code: 6000,
+            message: "User disconnected",
+          },
+        });
+        console.log("Disconnected session:", topic);
+      } catch (error) {
+        console.log("Failed to disconnect session:", topic, error);
+      }
+    });
+
+    await Promise.all(disconnectPromises);
+
+    // Clear local state
+    isConnected = false;
+    currentAddress = null;
+    currentSession = null;
+    console.log("All sessions disconnected and local state cleared");
+  } catch (error) {
+    console.error("Error force disconnecting all sessions:", error);
+    // Still clear local state
+    isConnected = false;
+    currentAddress = null;
+    currentSession = null;
+  }
+};

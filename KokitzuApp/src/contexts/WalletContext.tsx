@@ -14,6 +14,7 @@ import {
   setCurrentSession,
   getCurrentSession,
   getConnectionStatus,
+  forceDisconnectAll,
 } from "../services/walletconnect";
 import { Linking, Alert, Platform } from "react-native";
 
@@ -220,14 +221,33 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const disconnectWallet = async () => {
     try {
-      if (walletSession) {
-        // Disconnect WalletConnect session
-        const sessions = getWalletConnectSessions();
-        for (const [topic, session] of Object.entries(sessions)) {
-          await disconnectWalletConnect(topic);
-        }
+      console.log("Disconnecting wallet...");
+
+      // Use the improved disconnect function
+      if (walletSession?.topic) {
+        console.log("Disconnecting session with topic:", walletSession.topic);
+        await disconnectWalletConnect(walletSession.topic);
+      } else {
+        console.log("No session topic found, using force disconnect");
+        await forceDisconnectAll();
       }
 
+      // Clear local state
+      setWalletAddress(null);
+      setIsConnected(false);
+      setBalance(null);
+      setProvider(null);
+      setWalletSession(null);
+      setWalletConnectUri(null);
+
+      // Clear stored data
+      await AsyncStorage.removeItem("walletAddress");
+      await AsyncStorage.removeItem("walletSession");
+
+      console.log("Wallet disconnected successfully");
+    } catch (error) {
+      console.error("Error disconnecting wallet:", error);
+      // Still clear local state even if there's an error
       setWalletAddress(null);
       setIsConnected(false);
       setBalance(null);
@@ -236,8 +256,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setWalletConnectUri(null);
       await AsyncStorage.removeItem("walletAddress");
       await AsyncStorage.removeItem("walletSession");
-    } catch (error) {
-      console.error("Error disconnecting wallet:", error);
     }
   };
 
