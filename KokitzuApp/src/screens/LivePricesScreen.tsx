@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,20 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  interpolate,
+  Extrapolate,
+} from "react-native-reanimated";
+
 import { useQuery } from "@apollo/client";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { GET_CRYPTO_PRICES, GET_COINS } from "../graphql/queries";
 import { CryptoPrice, Coin } from "../types";
 import CryptoCard from "../components/CryptoCard";
@@ -24,17 +35,105 @@ const LivePricesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { setDefaultBet } = useTrading();
 
+  // Animation values for entrance animations
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-20);
+  const searchOpacity = useSharedValue(0);
+  const searchTranslateY = useSharedValue(30);
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(50);
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const searchAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: searchOpacity.value,
+    transform: [{ translateY: searchTranslateY.value }],
+  }));
+
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
+
+  // Animation function
+  const startEntranceAnimations = () => {
+    // Reset animation values
+    headerOpacity.value = 0;
+    headerTranslateY.value = -20;
+    searchOpacity.value = 0;
+    searchTranslateY.value = 30;
+    contentOpacity.value = 0;
+    contentTranslateY.value = 50;
+
+    // Staggered entrance animations
+    headerOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
+    headerTranslateY.value = withDelay(
+      100,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    searchOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
+    searchTranslateY.value = withDelay(
+      300,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    contentOpacity.value = withDelay(500, withTiming(1, { duration: 600 }));
+    contentTranslateY.value = withDelay(
+      500,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+  };
+
+  // Start entrance animations on mount
+  useEffect(() => {
+    startEntranceAnimations();
+  }, []);
+
+  // Trigger animations on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      startEntranceAnimations();
+    }, [])
+  );
+
   const { loading, error, data, refetch } = useQuery(GET_CRYPTO_PRICES, {
     pollInterval: 30000,
     notifyOnNetworkStatusChange: true,
     errorPolicy: "all",
+    onCompleted: (data) => {
+      console.log(
+        "✅ Crypto prices loaded:",
+        data?.cryptoPrices?.length || 0,
+        "coins"
+      );
+    },
+    onError: (error) => {
+      console.error("❌ Error loading crypto prices:", error.message);
+    },
   });
 
   const { data: coinsData } = useQuery(GET_COINS, {
     errorPolicy: "all",
+    onCompleted: (data) => {
+      console.log("✅ Coins data loaded:", data?.coins?.length || 0, "coins");
+    },
+    onError: (error) => {
+      console.error("❌ Error loading coins:", error.message);
+    },
   });
 
   const filteredCryptoData = useMemo(() => {
+    console.log("🔄 Filtering crypto data:", {
+      hasData: !!data?.cryptoPrices,
+      dataLength: data?.cryptoPrices?.length || 0,
+      searchQuery,
+    });
+
     if (!data?.cryptoPrices) return [];
     return data.cryptoPrices.filter(
       (crypto: CryptoPrice) =>
@@ -75,21 +174,23 @@ const LivePricesScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Live Prices</Text>
-        <View style={styles.headerButtons}>
-          <WalletConnectButton />
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={handleRefresh}
-          >
-            <Text style={styles.refreshButtonText}>Refresh</Text>
-          </TouchableOpacity>
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require("../../assets/Koketsu.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
-      </View>
+        <View style={styles.headerRight}>
+          <View style={styles.headerButtons}>
+            <WalletConnectButton />
+          </View>
+        </View>
+      </Animated.View>
 
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      <Animated.View style={[styles.searchContainer, searchAnimatedStyle]}>
         <TextInput
           style={styles.searchInput}
           placeholder="Search cryptocurrencies..."
@@ -97,42 +198,44 @@ const LivePricesScreen: React.FC = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-      </View>
+      </Animated.View>
 
       {/* Content */}
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        {loading && !data ? (
-          // Loading skeleton
-          <View style={styles.cardsContainer}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <SkeletonCryptoCard key={i} />
-            ))}
-          </View>
-        ) : (
-          // Crypto cards
-          <View style={styles.cardsContainer}>
-            {filteredCryptoData.map((crypto: CryptoPrice) => (
-              <CryptoCard
-                key={crypto.id}
-                crypto={crypto}
-                onPress={() => handleCryptoPress(crypto)}
-              />
-            ))}
-            {filteredCryptoData.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  No cryptocurrencies found
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
+      <Animated.View style={[styles.scrollView, contentAnimatedStyle]}>
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          {loading && !data ? (
+            // Loading skeleton
+            <View style={styles.cardsContainer}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonCryptoCard key={i} />
+              ))}
+            </View>
+          ) : (
+            // Crypto cards
+            <View style={styles.cardsContainer}>
+              {filteredCryptoData.map((crypto: CryptoPrice, index: number) => (
+                <CryptoCard
+                  key={crypto.id}
+                  crypto={crypto}
+                  onPress={() => handleCryptoPress(crypto)}
+                  index={index}
+                />
+              ))}
+              {filteredCryptoData.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    No cryptocurrencies found
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 };
@@ -146,10 +249,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 24,
     backgroundColor: "#1a1a2e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2a3e",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  headerLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+    marginLeft: -40,
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  logo: {
+    width: 160,
+    height: 50,
   },
   headerButtons: {
     flexDirection: "row",
@@ -172,7 +298,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   searchContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     paddingBottom: 20,
   },
   searchInput: {
@@ -189,7 +316,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardsContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 20,
   },
   errorContainer: {
@@ -229,6 +356,24 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     color: "#666666",
+  },
+  debugContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#1a1a2e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2a3e",
+  },
+  debugText: {
+    fontSize: 12,
+    color: "#00ff00",
+    fontFamily: "monospace",
+  },
+  debugError: {
+    fontSize: 12,
+    color: "#ff0000",
+    fontFamily: "monospace",
+    marginTop: 5,
   },
 });
 

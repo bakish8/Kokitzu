@@ -172,6 +172,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const connectWalletConnect = async () => {
     try {
+      console.log("WalletContext: Starting WalletConnect connection...");
+
       // Check if API keys are configured
       const errors = validateApiKeys();
       if (errors.length > 0) {
@@ -180,32 +182,51 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // Use real WalletConnect v2
       const { uri, approval } = await connectWC();
+      console.log("WalletContext: Got WalletConnect URI and approval function");
 
       if (uri) {
         setWalletConnectUri(uri);
-        console.log("WalletConnect URI generated:", uri);
+        console.log(
+          "WalletContext: WalletConnect URI generated:",
+          uri.substring(0, 50) + "..."
+        );
 
         // Wait for approval
+        console.log("WalletContext: Waiting for wallet approval...");
         const session = await approval();
-        console.log("WalletConnect session approved:", session);
+        console.log("WalletContext: WalletConnect session approved:", session);
 
         // Set current session
         setCurrentSession(session);
+        console.log("WalletContext: Current session set");
 
         // Extract wallet address from session
         const address = getWalletAddress(session);
+        console.log("WalletContext: Extracted address from session:", address);
+
         if (address) {
+          console.log("WalletContext: Setting wallet state...");
           setWalletAddress(address);
           setIsConnected(true);
           setWalletSession(session);
           setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+
+          console.log("WalletContext: Saving to AsyncStorage...");
           await AsyncStorage.setItem("walletAddress", address);
           await AsyncStorage.setItem("walletSession", JSON.stringify(session));
 
           // Get real balance
+          console.log("WalletContext: Fetching balance...");
           const realBalance = await getWalletBalance(address);
           setBalance(realBalance);
-          console.log("Connected to wallet:", address, "Balance:", realBalance);
+          console.log(
+            "WalletContext: Connected to wallet:",
+            address,
+            "Balance:",
+            realBalance
+          );
+        } else {
+          throw new Error("Failed to extract wallet address from session");
         }
 
         return { uri, approval };
@@ -213,6 +234,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       throw new Error("Failed to generate WalletConnect URI");
     } catch (error: any) {
+      console.error("WalletContext: WalletConnect connection failed:", error);
       throw new Error(
         `WalletConnect connection failed: ${error?.message || "Unknown error"}`
       );

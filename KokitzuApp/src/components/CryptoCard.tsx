@@ -1,14 +1,71 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CryptoPrice } from "../types";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  interpolate,
+  Extrapolate,
+} from "react-native-reanimated";
 
 interface CryptoCardProps {
   crypto: CryptoPrice;
   onPress?: () => void;
+  index?: number;
 }
 
-const CryptoCard: React.FC<CryptoCardProps> = ({ crypto, onPress }) => {
+const CryptoCard: React.FC<CryptoCardProps> = ({
+  crypto,
+  onPress,
+  index = 0,
+}) => {
+  // Animation values
+  const scale = useSharedValue(0.9);
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(50);
+  const shadowOpacity = useSharedValue(0.1);
+  const hoverScale = useSharedValue(1);
+  const hoverTranslateY = useSharedValue(0);
+
+  // Animated styles
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value * hoverScale.value },
+      { translateY: translateY.value + hoverTranslateY.value },
+    ],
+    opacity: opacity.value,
+    shadowOpacity: shadowOpacity.value,
+  }));
+
+  // Entrance animation
+  useEffect(() => {
+    const delay = index * 100;
+    scale.value = withDelay(
+      delay,
+      withSpring(1, { damping: 15, stiffness: 150 })
+    );
+    opacity.value = withDelay(delay, withTiming(1, { duration: 600 }));
+    translateY.value = withDelay(
+      delay,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+  }, []);
+
+  const handlePressIn = () => {
+    hoverScale.value = withSpring(1.02, { damping: 15, stiffness: 150 });
+    hoverTranslateY.value = withSpring(-2, { damping: 15, stiffness: 150 });
+    shadowOpacity.value = withTiming(0.3, { duration: 200 });
+  };
+
+  const handlePressOut = () => {
+    hoverScale.value = withSpring(1, { damping: 15, stiffness: 150 });
+    hoverTranslateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+    shadowOpacity.value = withTiming(0.1, { duration: 200 });
+  };
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -28,52 +85,69 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ crypto, onPress }) => {
   const isPositive = priceChange >= 0;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cryptoInfo}>
-          <Text style={styles.cryptoName}>{crypto.name}</Text>
-          <Text style={styles.cryptoSymbol}>{crypto.symbol}</Text>
-        </View>
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>{formatPrice(crypto.price)}</Text>
-          <View
-            style={[
-              styles.changeContainer,
-              isPositive ? styles.positive : styles.negative,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={isPositive ? "trending-up" : "trending-down"}
-              size={16}
-              color={isPositive ? "#10b981" : "#ef4444"}
-            />
-            <Text
+    <Animated.View style={[styles.cardContainer, animatedStyle]}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.cryptoInfo}>
+            <Text style={styles.cryptoName}>{crypto.name}</Text>
+            <Text style={styles.cryptoSymbol}>{crypto.symbol}</Text>
+          </View>
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>{formatPrice(crypto.price)}</Text>
+            <View
               style={[
-                styles.changeText,
-                isPositive ? styles.positiveText : styles.negativeText,
+                styles.changeContainer,
+                isPositive ? styles.positive : styles.negative,
               ]}
             >
-              {formatPercentage(priceChange)}
-            </Text>
+              <MaterialCommunityIcons
+                name={isPositive ? "trending-up" : "trending-down"}
+                size={16}
+                color={isPositive ? "#10b981" : "#ef4444"}
+              />
+              <Text
+                style={[
+                  styles.changeText,
+                  isPositive ? styles.positiveText : styles.negativeText,
+                ]}
+              >
+                {formatPercentage(priceChange)}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.cardFooter}>
-        <View style={styles.footerRow}>
-          <Text style={styles.lastUpdated}>
-            Last updated: {new Date(crypto.lastUpdated).toLocaleTimeString()}
-          </Text>
-          <TouchableOpacity style={styles.tradeButton} onPress={onPress}>
-            <Text style={styles.tradeButtonText}>Trade</Text>
-          </TouchableOpacity>
+        <View style={styles.cardFooter}>
+          <View style={styles.footerRow}>
+            <Text style={styles.lastUpdated}>
+              Last updated: {new Date(crypto.lastUpdated).toLocaleTimeString()}
+            </Text>
+            <TouchableOpacity style={styles.tradeButton} onPress={onPress}>
+              <Text style={styles.tradeButtonText}>Trade</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
+  cardContainer: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowRadius: 8,
+    elevation: 8,
+  },
   card: {
     backgroundColor: "#1a1a2e",
     borderRadius: 12,

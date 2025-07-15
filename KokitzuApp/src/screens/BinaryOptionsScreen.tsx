@@ -7,8 +7,17 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Image,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+} from "react-native-reanimated";
 import { useQuery, useMutation } from "@apollo/client";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   GET_COINS,
   GET_CRYPTO_PRICES,
@@ -34,6 +43,123 @@ const BinaryOptionsScreen: React.FC = () => {
     betType,
     setBetType,
   } = useTrading();
+
+  // Animation values for entrance animations
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-20);
+  const cryptoSelectionOpacity = useSharedValue(0);
+  const cryptoSelectionTranslateY = useSharedValue(30);
+  const priceSectionOpacity = useSharedValue(0);
+  const priceSectionTranslateY = useSharedValue(30);
+  const timeframeOpacity = useSharedValue(0);
+  const timeframeTranslateY = useSharedValue(30);
+  const betSectionOpacity = useSharedValue(0);
+  const betSectionTranslateY = useSharedValue(30);
+  const activeBetsOpacity = useSharedValue(0);
+  const activeBetsTranslateY = useSharedValue(30);
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const cryptoSelectionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: cryptoSelectionOpacity.value,
+    transform: [{ translateY: cryptoSelectionTranslateY.value }],
+  }));
+
+  const priceSectionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: priceSectionOpacity.value,
+    transform: [{ translateY: priceSectionTranslateY.value }],
+  }));
+
+  const timeframeAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: timeframeOpacity.value,
+    transform: [{ translateY: timeframeTranslateY.value }],
+  }));
+
+  const betSectionAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: betSectionOpacity.value,
+    transform: [{ translateY: betSectionTranslateY.value }],
+  }));
+
+  const activeBetsAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: activeBetsOpacity.value,
+    transform: [{ translateY: activeBetsTranslateY.value }],
+  }));
+
+  // Animation function
+  const startEntranceAnimations = () => {
+    // Reset animation values
+    headerOpacity.value = 0;
+    headerTranslateY.value = -20;
+    cryptoSelectionOpacity.value = 0;
+    cryptoSelectionTranslateY.value = 30;
+    priceSectionOpacity.value = 0;
+    priceSectionTranslateY.value = 30;
+    timeframeOpacity.value = 0;
+    timeframeTranslateY.value = 30;
+    betSectionOpacity.value = 0;
+    betSectionTranslateY.value = 30;
+    activeBetsOpacity.value = 0;
+    activeBetsTranslateY.value = 30;
+
+    // Staggered entrance animations
+    headerOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
+    headerTranslateY.value = withDelay(
+      100,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    cryptoSelectionOpacity.value = withDelay(
+      200,
+      withTiming(1, { duration: 600 })
+    );
+    cryptoSelectionTranslateY.value = withDelay(
+      200,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    priceSectionOpacity.value = withDelay(
+      300,
+      withTiming(1, { duration: 600 })
+    );
+    priceSectionTranslateY.value = withDelay(
+      300,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    timeframeOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
+    timeframeTranslateY.value = withDelay(
+      400,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    betSectionOpacity.value = withDelay(500, withTiming(1, { duration: 600 }));
+    betSectionTranslateY.value = withDelay(
+      500,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    activeBetsOpacity.value = withDelay(600, withTiming(1, { duration: 600 }));
+    activeBetsTranslateY.value = withDelay(
+      600,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+  };
+
+  // Start entrance animations on mount
+  useEffect(() => {
+    startEntranceAnimations();
+  }, []);
+
+  // Trigger animations on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      startEntranceAnimations();
+    }, [])
+  );
 
   const { data: coinsData } = useQuery(GET_COINS);
   const { data: cryptoData } = useQuery(GET_CRYPTO_PRICES);
@@ -109,13 +235,21 @@ const BinaryOptionsScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Binary Options</Text>
-        <WalletConnectButton />
-      </View>
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require("../../assets/Koketsu.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.headerRight}>
+          <WalletConnectButton />
+        </View>
+      </Animated.View>
 
       {/* Crypto Selection */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, cryptoSelectionAnimatedStyle]}>
         <Text style={styles.sectionTitle}>
           Select Cryptocurrency
           {selectedCrypto && (
@@ -150,22 +284,22 @@ const BinaryOptionsScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+      </Animated.View>
 
       {/* Current Price */}
       {currentCrypto && (
-        <View style={styles.section}>
+        <Animated.View style={[styles.section, priceSectionAnimatedStyle]}>
           <Text style={styles.sectionTitle}>Current Price</Text>
           <View style={styles.priceContainer}>
             <Text style={styles.price}>
               ${currentCrypto.price.toLocaleString()}
             </Text>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* Timeframe Selection */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, timeframeAnimatedStyle]}>
         <Text style={styles.sectionTitle}>Select Timeframe</Text>
         <ScrollView
           horizontal
@@ -203,10 +337,10 @@ const BinaryOptionsScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </View>
+      </Animated.View>
 
       {/* Bet Amount */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
         <Text style={styles.sectionTitle}>Bet Amount ($)</Text>
         <TextInput
           style={styles.betInput}
@@ -216,10 +350,10 @@ const BinaryOptionsScreen: React.FC = () => {
           placeholder="Enter amount"
           placeholderTextColor="#666"
         />
-      </View>
+      </Animated.View>
 
       {/* Bet Type */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
         <Text style={styles.sectionTitle}>Bet Direction</Text>
         <View style={styles.betTypeContainer}>
           <TouchableOpacity
@@ -262,7 +396,7 @@ const BinaryOptionsScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Place Bet Button */}
       <TouchableOpacity style={styles.placeBetButton} onPress={handlePlaceBet}>
@@ -273,7 +407,7 @@ const BinaryOptionsScreen: React.FC = () => {
       <SmartContractInfo />
 
       {/* Active Bets */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, activeBetsAnimatedStyle]}>
         <Text style={styles.sectionTitle}>Active Bets</Text>
         {activeBetsData?.activeBets?.map((bet: Bet) => (
           <View key={bet.id} style={styles.activeBetCard}>
@@ -303,7 +437,7 @@ const BinaryOptionsScreen: React.FC = () => {
           activeBetsData.activeBets.length === 0) && (
           <Text style={styles.noBetsText}>No active bets</Text>
         )}
-      </View>
+      </Animated.View>
     </ScrollView>
   );
 };
@@ -314,10 +448,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f0f23",
   },
   header: {
-    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 24,
     backgroundColor: "#1a1a2e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2a3e",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  headerLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+    marginLeft: -40,
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  logo: {
+    width: 160,
+    height: 50,
   },
   title: {
     fontSize: 24,
@@ -325,7 +485,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
   },
   sectionTitle: {

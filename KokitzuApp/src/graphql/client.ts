@@ -1,14 +1,14 @@
 import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getGraphQLUrl, refreshNetworkUrls } from "../config/network";
+import { getGraphQLUrl } from "../config/network";
 
-// Create Apollo Client with dynamic URL initialization
+// Create Apollo Client with constant URL initialization
 let apolloClient: ApolloClient<any> | null = null;
 
 export const initializeApolloClient = async () => {
   try {
-    // Get dynamic URL
+    // Get constant URL
     const graphqlUrl = await getGraphQLUrl();
     console.log("🔗 Initializing Apollo Client with:", graphqlUrl);
 
@@ -48,11 +48,10 @@ export const getApolloClient = () => {
   return apolloClient;
 };
 
-// Refresh the client with new network URLs
+// Simplified refresh function (no longer needed but kept for compatibility)
 export const refreshApolloClient = async () => {
   try {
     console.log("🔄 Refreshing Apollo Client...");
-    await refreshNetworkUrls();
     apolloClient = await initializeApolloClient();
     return apolloClient;
   } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
+import { useShake } from "../utils/animations";
 
 interface AuthModalProps {
   visible: boolean;
@@ -23,6 +24,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ visible, onClose }) => {
   const [loading, setLoading] = useState(false);
 
   const { login, register, error } = useAuth();
+
+  // Animation hooks
+  const { animatedStyle: shakeStyle, shake } = useShake();
+
+  // Shake animation for errors
+  useEffect(() => {
+    if (error) {
+      shake();
+    }
+  }, [error]);
 
   const handleSubmit = async () => {
     if (!username.trim() || !password.trim()) {
@@ -53,15 +64,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ visible, onClose }) => {
     setPassword("");
   };
 
+  if (!visible) return null;
+
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
+    <View style={styles.modalContainer}>
+      <TouchableOpacity
+        style={styles.overlay}
+        onPress={onClose}
+        activeOpacity={1}
+      >
+        <TouchableOpacity
+          style={styles.modal}
+          onPress={() => {}}
+          activeOpacity={1}
+        >
           <View style={styles.header}>
             <Text style={styles.title}>
               {mode === "login" ? "Welcome Back" : "Create Account"}
@@ -124,13 +140,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ visible, onClose }) => {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
-    </Modal>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.8)",

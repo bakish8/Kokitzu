@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "KokitzuApp",
-    "slug": "KokitzuApp",
+    "name": "Koketsu",
+    "slug": "koketsu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,19 +10,19 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kokitzuapp.mobile"
+      "bundleIdentifier": "com.koketsu.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.kokitzuapp.mobile"
+      "package": "com.koketsu.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"

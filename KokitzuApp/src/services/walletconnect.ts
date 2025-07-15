@@ -9,6 +9,12 @@ let currentSession: any = null;
 // Initialize WalletConnect SignClient
 export const initializeWalletConnect = async () => {
   try {
+    // Check if already initialized
+    if (signClient) {
+      console.log("WalletConnect SignClient already initialized");
+      return true;
+    }
+
     // Check if API keys are configured
     const errors = validateApiKeys();
     if (errors.length > 0) {
@@ -42,7 +48,11 @@ export const initializeWalletConnect = async () => {
 // Connect to wallet using WalletConnect
 export const connectWalletConnect = async () => {
   try {
+    console.log("Starting WalletConnect connection...");
+
+    // Initialize if not already done
     if (!signClient) {
+      console.log("Initializing WalletConnect SignClient...");
       await initializeWalletConnect();
     }
 
@@ -50,9 +60,11 @@ export const connectWalletConnect = async () => {
       throw new Error("Failed to initialize WalletConnect");
     }
 
+    console.log("Creating WalletConnect connection...");
+
     // Create connection URI
     const { uri, approval } = await signClient.connect({
-      requiredNamespaces: {
+      optionalNamespaces: {
         eip155: {
           methods: ["eth_sendTransaction", "eth_sign", "personal_sign"],
           chains: ["eip155:1"],
@@ -64,6 +76,12 @@ export const connectWalletConnect = async () => {
     if (!uri) {
       throw new Error("Failed to generate connection URI");
     }
+
+    console.log(
+      "WalletConnect URI generated successfully:",
+      uri.substring(0, 50) + "..."
+    );
+    console.log("Waiting for wallet approval...");
 
     return { uri, approval };
   } catch (error) {

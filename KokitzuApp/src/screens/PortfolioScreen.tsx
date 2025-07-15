@@ -6,8 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+} from "react-native-reanimated";
 import { useQuery } from "@apollo/client";
+import { useFocusEffect } from "@react-navigation/native";
 import { GET_USER_STATS, GET_BET_HISTORY } from "../graphql/queries";
 import { UserStats, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -16,6 +25,87 @@ import WalletConnectButton from "../components/WalletConnectButton";
 const PortfolioScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [timerTick, setTimerTick] = useState(0);
+
+  // Animation values for entrance animations
+  const headerOpacity = useSharedValue(0);
+  const headerTranslateY = useSharedValue(-20);
+  const statsCardsOpacity = useSharedValue(0);
+  const statsCardsTranslateY = useSharedValue(30);
+  const performanceOpacity = useSharedValue(0);
+  const performanceTranslateY = useSharedValue(30);
+  const historyOpacity = useSharedValue(0);
+  const historyTranslateY = useSharedValue(30);
+
+  // Animated styles
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: headerOpacity.value,
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const statsCardsAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: statsCardsOpacity.value,
+    transform: [{ translateY: statsCardsTranslateY.value }],
+  }));
+
+  const performanceAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: performanceOpacity.value,
+    transform: [{ translateY: performanceTranslateY.value }],
+  }));
+
+  const historyAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: historyOpacity.value,
+    transform: [{ translateY: historyTranslateY.value }],
+  }));
+
+  // Animation function
+  const startEntranceAnimations = () => {
+    // Reset animation values
+    headerOpacity.value = 0;
+    headerTranslateY.value = -20;
+    statsCardsOpacity.value = 0;
+    statsCardsTranslateY.value = 30;
+    performanceOpacity.value = 0;
+    performanceTranslateY.value = 30;
+    historyOpacity.value = 0;
+    historyTranslateY.value = 30;
+
+    // Staggered entrance animations
+    headerOpacity.value = withDelay(100, withTiming(1, { duration: 600 }));
+    headerTranslateY.value = withDelay(
+      100,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    statsCardsOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+    statsCardsTranslateY.value = withDelay(
+      200,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    performanceOpacity.value = withDelay(300, withTiming(1, { duration: 600 }));
+    performanceTranslateY.value = withDelay(
+      300,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    historyOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
+    historyTranslateY.value = withDelay(
+      400,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+  };
+
+  // Start entrance animations on mount
+  useEffect(() => {
+    startEntranceAnimations();
+  }, []);
+
+  // Trigger animations on screen focus
+  useFocusEffect(
+    React.useCallback(() => {
+      startEntranceAnimations();
+    }, [])
+  );
 
   const { data: userStats, refetch: refetchStats } = useQuery(GET_USER_STATS, {
     variables: { userId: "user-1" },
@@ -91,13 +181,21 @@ const PortfolioScreen: React.FC = () => {
       }
     >
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Portfolio</Text>
-        <WalletConnectButton />
-      </View>
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require("../../assets/Koketsu.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.headerRight}>
+          <WalletConnectButton />
+        </View>
+      </Animated.View>
 
       {/* Stats Cards */}
-      <View style={styles.statsContainer}>
+      <Animated.View style={[styles.statsContainer, statsCardsAnimatedStyle]}>
         <View style={styles.statCard}>
           <MaterialCommunityIcons name="wallet" size={24} color="#3b82f6" />
           <Text style={styles.statValue}>
@@ -117,10 +215,10 @@ const PortfolioScreen: React.FC = () => {
           <Text style={styles.statValue}>{stats.totalBets}</Text>
           <Text style={styles.statLabel}>Total Bets</Text>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Detailed Stats */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, performanceAnimatedStyle]}>
         <Text style={styles.sectionTitle}>Performance Overview</Text>
         <View style={styles.detailedStats}>
           <View style={styles.statRow}>
@@ -148,10 +246,10 @@ const PortfolioScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Bet History */}
-      <View style={styles.section}>
+      <Animated.View style={[styles.section, historyAnimatedStyle]}>
         <Text style={styles.sectionTitle}>Bet History</Text>
         {betHistoryLoading ? (
           <View style={styles.loadingContainer}>
@@ -246,7 +344,7 @@ const PortfolioScreen: React.FC = () => {
             )}
           </View>
         )}
-      </View>
+      </Animated.View>
     </ScrollView>
   );
 };
@@ -257,10 +355,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f0f23",
   },
   header: {
-    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 24,
     backgroundColor: "#1a1a2e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2a3e",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  headerLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+    marginLeft: -40,
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
+  logo: {
+    width: 160,
+    height: 50,
   },
   title: {
     fontSize: 24,
@@ -269,7 +393,7 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: "row",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
     justifyContent: "space-between",
   },
@@ -296,7 +420,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
   },
   sectionTitle: {

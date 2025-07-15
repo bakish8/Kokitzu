@@ -1,5 +1,3 @@
-import { detectLocalIP, forceRefreshIP } from "../utils/networkUtils";
-
 // Network Configuration for different environments
 export const NETWORK_CONFIG = {
   // Production - Your actual server URL
@@ -13,34 +11,22 @@ export const NETWORK_CONFIG = {
     GRAPHQL_URL: "http://localhost:4000/graphql",
     WEBSOCKET_URL: "ws://localhost:4000/graphql",
   },
+
+  // Development with constant IP (update this IP when needed)
+  DEVELOPMENT: {
+    GRAPHQL_URL: "http://192.168.1.173:4000/graphql",
+    WEBSOCKET_URL: "ws://192.168.1.173:4000/graphql",
+  },
 };
 
-// Dynamic URL generation based on detected IP
-let dynamicGraphQLUrl: string | null = null;
-let dynamicWebSocketUrl: string | null = null;
-
-// Helper function to get the correct URL based on environment
+// Simple URL getters without dynamic IP detection
 export const getGraphQLUrl = async (): Promise<string> => {
   if (!__DEV__) {
     return NETWORK_CONFIG.PRODUCTION.GRAPHQL_URL;
   }
 
-  // Use cached dynamic URL if available
-  if (dynamicGraphQLUrl) {
-    return dynamicGraphQLUrl;
-  }
-
-  try {
-    // Detect local IP address dynamically
-    const localIP = await detectLocalIP();
-    dynamicGraphQLUrl = `http://${localIP}:4000/graphql`;
-    console.log("🌐 Dynamic GraphQL URL:", dynamicGraphQLUrl);
-    return dynamicGraphQLUrl;
-  } catch (error) {
-    console.error("Error getting dynamic GraphQL URL:", error);
-    // Fallback to localhost
-    return NETWORK_CONFIG.LOCAL.GRAPHQL_URL;
-  }
+  // Use constant development IP
+  return NETWORK_CONFIG.DEVELOPMENT.GRAPHQL_URL;
 };
 
 export const getWebSocketUrl = async (): Promise<string> => {
@@ -48,37 +34,19 @@ export const getWebSocketUrl = async (): Promise<string> => {
     return NETWORK_CONFIG.PRODUCTION.WEBSOCKET_URL;
   }
 
-  // Use cached dynamic URL if available
-  if (dynamicWebSocketUrl) {
-    return dynamicWebSocketUrl;
-  }
-
-  try {
-    // Detect local IP address dynamically
-    const localIP = await detectLocalIP();
-    dynamicWebSocketUrl = `ws://${localIP}:4000/graphql`;
-    console.log("🌐 Dynamic WebSocket URL:", dynamicWebSocketUrl);
-    return dynamicWebSocketUrl;
-  } catch (error) {
-    console.error("Error getting dynamic WebSocket URL:", error);
-    // Fallback to localhost
-    return NETWORK_CONFIG.LOCAL.WEBSOCKET_URL;
-  }
+  // Use constant development IP
+  return NETWORK_CONFIG.DEVELOPMENT.WEBSOCKET_URL;
 };
 
-// Force refresh the dynamic URLs
+// Simplified refresh function (no longer needed but kept for compatibility)
 export const refreshNetworkUrls = async () => {
-  dynamicGraphQLUrl = null;
-  dynamicWebSocketUrl = null;
-  await forceRefreshIP();
-  await getGraphQLUrl();
-  await getWebSocketUrl();
+  console.log("🔄 Network URLs refreshed (using constant IP)");
 };
 
 // Network troubleshooting helpers
 export const NETWORK_TROUBLESHOOTING = {
   // Check if your computer's IP is correct
-  CHECK_IP: "Run 'ifconfig | grep inet' in terminal to get your IP",
+  CHECK_IP: "Update the IP in NETWORK_CONFIG.DEVELOPMENT if your IP changes",
 
   // Check if server is running
   CHECK_SERVER: "Make sure your GraphQL server is running on port 4000",

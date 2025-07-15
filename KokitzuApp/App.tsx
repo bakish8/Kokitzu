@@ -1,9 +1,12 @@
 import "react-native-get-random-values";
+import "react-native-reanimated";
 import React, { useState, useEffect } from "react";
 import { ApolloProvider } from "@apollo/client";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
 import { initializeApolloClient, getApolloClient } from "./src/graphql/client";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import LivePricesScreen from "./src/screens/LivePricesScreen";
@@ -122,7 +125,7 @@ export default function App() {
   useEffect(() => {
     const initClient = async () => {
       try {
-        console.log("🚀 Initializing app with dynamic IP detection...");
+        console.log("🚀 Initializing app with constant IP configuration...");
         const client = await initializeApolloClient();
         setApolloClient(client);
       } catch (error) {
@@ -146,21 +149,23 @@ export default function App() {
         }}
       >
         <Text style={{ color: "#ffffff", fontSize: 18 }}>
-          Initializing network connection...
+          Initializing app...
         </Text>
       </View>
     );
   }
 
   return (
-    <ApolloProvider client={apolloClient}>
-      <AuthProvider>
-        <TradingProvider>
-          <WalletProvider>
-            <AppContent />
-          </WalletProvider>
-        </TradingProvider>
-      </AuthProvider>
-    </ApolloProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ApolloProvider client={apolloClient}>
+        <AuthProvider>
+          <TradingProvider>
+            <WalletProvider>
+              <AppContent />
+            </WalletProvider>
+          </TradingProvider>
+        </AuthProvider>
+      </ApolloProvider>
+    </GestureHandlerRootView>
   );
 }
