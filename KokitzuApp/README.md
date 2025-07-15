@@ -1,324 +1,249 @@
-# KokitzuApp (React Native)
+# 🚀 KokitzuApp - Crypto Binary Options Trading
 
-A cross-platform cryptocurrency options trading app built with React Native and Expo.
+A React Native (Expo) cryptocurrency binary options trading app with real wallet connections.
 
-## Prerequisites
+## ✨ Features
 
-- [Node.js](https://nodejs.org/)
-- [Expo CLI](https://docs.expo.dev/get-started/installation/):
-  ```sh
-  npm install -g expo-cli
-  ```
-- [Yarn](https://classic.yarnpkg.com/en/docs/install/) (optional, you can use npm)
-- For iOS: Xcode (Mac only)
-- For Android: Android Studio or a device/emulator
+- **Real Wallet Connections**: Connect with MetaMask and WalletConnect (no mock wallets)
+- **Live Crypto Prices**: Real-time cryptocurrency prices from CoinGecko API
+- **Binary Options Trading**: Bet on price direction (UP/DOWN) with multiple timeframes
+- **Real Wallet Integration**: Sign messages and send transactions with actual wallets
+- **Modern UI**: Futuristic design with glassmorphism and smooth animations
+- **GraphQL API**: Modern GraphQL server with Apollo Server
+- **Responsive Design**: Beautiful interface optimized for mobile devices
 
-## Setup
-
-1. Clone the repository and navigate to the project directory:
-   ```sh
-   cd KokitzuApp
-   ```
-2. Install dependencies:
-   ```sh
-   npm install
-   # or
-   yarn install
-   ```
-
-## Running the App
-
-### iOS
-
-- Run on iOS simulator or device:
-  ```sh
-  npx expo start --ios
-  ```
-  Or open Expo Go on your iPhone and scan the QR code.
-
-### Android
-
-- Run on Android emulator or device:
-  ```sh
-  npx expo start --android
-  ```
-  Or open Expo Go on your Android device and scan the QR code.
-
-### Web
-
-- Run in your browser:
-  ```sh
-  npx expo start --web
-  ```
-
-## Deployment
-
-### iOS (App Store)
-
-1. Build the app for iOS:
-   ```sh
-   npx expo build:ios
-   # or (new Expo EAS Build)
-   npx eas build -p ios
-   ```
-2. Follow Expo's instructions to upload to the App Store.
-   - See: https://docs.expo.dev/distribution/uploading-apps/
-
-### Android (Google Play)
-
-1. Build the app for Android:
-   ```sh
-   npx expo build:android
-   # or (new Expo EAS Build)
-   npx eas build -p android
-   ```
-2. Follow Expo's instructions to upload to Google Play.
-   - See: https://docs.expo.dev/distribution/uploading-apps/
-
-## Environment Variables
-
-- Update the GraphQL endpoint in `src/graphql/client.ts` if your server is not running locally.
-- Add your Infura API key in `src/contexts/WalletContext.tsx` for Ethereum network access.
-
-## Wallet Integration Guide
-
-### Overview
-
-KokitzuApp integrates with blockchain wallets to enable secure cryptocurrency trading. Users can connect their wallets to place binary options trades directly on the blockchain.
+## 🔐 Wallet Integration
 
 ### Supported Wallets
 
-#### MetaMask
+- **MetaMask**: Direct connection via WalletConnect
+- **WalletConnect**: QR code connection for any WalletConnect-compatible wallet
 
-- **Mobile App**: Download MetaMask from App Store/Google Play
-- **Browser Extension**: Works on web version
-- **Features**:
-  - Secure private key storage
-  - Multi-chain support
-  - Transaction history
-  - Built-in DApp browser
+### Real Wallet Features
 
-#### WalletConnect
+- ✅ Real wallet addresses (no mock addresses)
+- ✅ Real ETH balance from Infura
+- ✅ Real message signing
+- ✅ Real transaction sending
+- ✅ Session management and persistence
+- ✅ Automatic reconnection
 
-- **Universal Protocol**: Connect any wallet via QR code
-- **Supported Wallets**:
-  - Trust Wallet
-  - Rainbow
-  - Argent
-  - Coinbase Wallet
-  - And 100+ more
-- **Features**:
-  - Cross-platform compatibility
-  - No app installation required
-  - Secure peer-to-peer connection
+### API Keys Required
 
-### Wallet Setup Instructions
+1. **Infura Project ID**: Get from [https://infura.io/](https://infura.io/)
+2. **WalletConnect Project ID**: Get from [https://cloud.walletconnect.com/](https://cloud.walletconnect.com/)
 
-#### For Users
+Update these in `src/config/api.ts`:
 
-1. **Install a Wallet**:
+```typescript
+export const API_CONFIG = {
+  INFURA_PROJECT_ID: "your_infura_project_id",
+  WALLETCONNECT_PROJECT_ID: "your_walletconnect_project_id",
+  // ...
+};
+```
 
-   - **MetaMask**: Download from [metamask.io](https://metamask.io)
-   - **Trust Wallet**: Download from App Store/Google Play
-   - **Rainbow**: Download from App Store/Google Play
+## 🚀 Quick Start
 
-2. **Create or Import Wallet**:
+### Prerequisites
 
-   - Create new wallet (write down seed phrase securely)
-   - Or import existing wallet using private key/seed phrase
+- Node.js (version 16 or higher)
+- npm or yarn
+- Expo CLI
+- MetaMask mobile app or WalletConnect-compatible wallet
 
-3. **Add Funds**:
+### Installation
 
-   - Purchase ETH/USDC from exchanges
-   - Transfer to your wallet address
-   - Ensure sufficient balance for trading + gas fees
-
-4. **Connect to App**:
-   - Open KokitzuApp
-   - Tap "Connect Wallet" button
-   - Choose connection method:
-     - **MetaMask**: App will redirect to MetaMask
-     - **WalletConnect**: Scan QR code with your wallet
-
-#### For Developers
-
-1. **Install Dependencies**:
+1. **Clone the repository**
 
    ```bash
-   npm install ethers @walletconnect/react-native-compat
+   git clone <repository-url>
+   cd KokitzuApp
    ```
 
-2. **Configure Network Settings**:
-   Edit `src/contexts/WalletContext.tsx`:
-
-   ```typescript
-   const NETWORKS = {
-     ethereum: {
-       chainId: 1,
-       name: "Ethereum Mainnet",
-       rpcUrl: "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
-       blockExplorer: "https://etherscan.io",
-     },
-     polygon: {
-       chainId: 137,
-       name: "Polygon",
-       rpcUrl: "https://polygon-rpc.com",
-       blockExplorer: "https://polygonscan.com",
-     },
-   };
-   ```
-
-3. **Deploy Smart Contracts**:
+2. **Install dependencies**
 
    ```bash
-   # Deploy to testnet first
-   npx hardhat deploy --network sepolia
-
-   # Deploy to mainnet
-   npx hardhat deploy --network mainnet
+   npm install
    ```
 
-### Using Wallets in the App
+3. **Configure API keys**
 
-#### Connecting Your Wallet
+   - Edit `src/config/api.ts`
+   - Add your Infura and WalletConnect project IDs
 
-1. **From Any Screen**:
+4. **Start the development server**
 
-   - Tap the "Connect Wallet" button
-   - Choose your preferred wallet
-   - Approve the connection in your wallet app
+   ```bash
+   npm start
+   ```
 
-2. **Connection Status**:
-   - Green indicator = Connected
-   - Red indicator = Disconnected
-   - Shows wallet address (shortened format)
+5. **Run on device/simulator**
 
-#### Placing Trades
+   ```bash
+   # iOS
+   npm run ios
 
-1. **Select Trading Pair**:
+   # Android
+   npm run android
 
-   - Choose cryptocurrency (BTC, ETH, etc.)
-   - Select timeframe (1m, 5m, 15m, 1h)
+   # Web
+   npm run web
+   ```
 
-2. **Set Bet Parameters**:
+## 📱 Testing Real Wallet Connections
 
-   - Enter bet amount (minimum $10)
-   - Choose direction (UP/DOWN)
-   - Review potential payout
+### MetaMask Connection
 
-3. **Confirm Transaction**:
-   - Tap "Place Bet"
-   - Review transaction details in wallet
-   - Approve transaction
-   - Wait for blockchain confirmation
+1. **Install MetaMask mobile app** on your device
+2. **Open KokitzuApp** and tap "Connect Wallet"
+3. **Select MetaMask** from the options
+4. **Approve connection** in MetaMask
+5. **Verify real address and balance** are displayed
 
-#### Managing Active Bets
+### WalletConnect Connection
 
-- **View Active Bets**: Portfolio screen shows all open positions
-- **Track Performance**: Real-time updates on bet status
-- **Claim Winnings**: Automatic payout when bet expires
+1. **Open KokitzuApp** and tap "Connect Wallet"
+2. **Select WalletConnect** from the options
+3. **Scan QR code** with any WalletConnect-compatible wallet
+4. **Approve connection** in your wallet
+5. **Verify real address and balance** are displayed
 
-### Security Best Practices
+### Testing Real Transactions
 
-#### For Users
+1. **Connect a wallet** with some test ETH
+2. **Try signing a message** (if implemented in UI)
+3. **Try sending a transaction** (if implemented in UI)
+4. **Verify transactions** appear in your wallet history
 
-1. **Wallet Security**:
+## 🏗️ Architecture
 
-   - Never share private keys or seed phrases
-   - Use hardware wallets for large amounts
-   - Enable biometric authentication
-   - Keep wallet apps updated
+```
+KokitzuApp/
+├── src/
+│   ├── components/          # React Native components
+│   ├── contexts/           # React contexts (WalletContext)
+│   ├── services/           # Wallet connection services
+│   ├── config/             # API configuration
+│   ├── types/              # TypeScript type definitions
+│   └── utils/              # Utility functions
+├── server/                 # GraphQL backend
+└── package.json
+```
 
-2. **Transaction Safety**:
+## 🔧 Wallet Service Architecture
 
-   - Always review transaction details
-   - Verify contract addresses
-   - Check gas fees before confirming
-   - Start with small amounts
+### Real Wallet Implementation
 
-3. **Network Security**:
-   - Only connect to official app
-   - Verify SSL certificates
-   - Use secure networks (avoid public WiFi)
+- **WalletConnect v2**: Uses `@walletconnect/sign-client`
+- **Infura Integration**: Real balance fetching
+- **Session Management**: Persistent wallet connections
+- **Error Handling**: Proper error handling for real wallet operations
 
-#### For Developers
+### Key Files
 
-1. **Smart Contract Security**:
+- `src/services/walletconnect.ts`: Real wallet connection logic
+- `src/contexts/WalletContext.tsx`: Wallet state management
+- `src/components/WalletConnectButton.tsx`: UI for wallet connections
+- `src/config/api.ts`: API key configuration
 
-   - Audit contracts before deployment
-   - Use OpenZeppelin libraries
-   - Implement access controls
-   - Add emergency pause functions
+## 🎯 Trading Features
 
-2. **App Security**:
-   - Secure API endpoints
-   - Implement rate limiting
-   - Use HTTPS everywhere
-   - Regular security updates
+### Binary Options Trading
 
-### Troubleshooting
+- **Bet Direction**: Choose UP or DOWN for price movement
+- **Timeframes**: 1 min, 5 min, 15 min, 30 min, 1 hour, 4 hours, 1 day
+- **Payout Multipliers**: 1.8x to 3.0x based on timeframe
+- **Real-time Settlement**: Automatic bet resolution at expiry
 
-#### Common Issues
+### Available Timeframes & Payouts
 
-1. **Wallet Won't Connect**:
+| Timeframe  | Duration | Payout Multiplier |
+| ---------- | -------- | ----------------- |
+| 1 Minute   | 60s      | 1.8x              |
+| 5 Minutes  | 5m       | 1.9x              |
+| 15 Minutes | 15m      | 2.0x              |
+| 30 Minutes | 30m      | 2.1x              |
+| 1 Hour     | 1h       | 2.2x              |
+| 4 Hours    | 4h       | 2.5x              |
+| 1 Day      | 24h      | 3.0x              |
+
+## 🔍 Troubleshooting
+
+### Wallet Connection Issues
+
+1. **"API Keys not configured"**
+
+   - Check `src/config/api.ts`
+   - Ensure Infura and WalletConnect project IDs are set
+
+2. **"MetaMask not found"**
+
+   - Install MetaMask mobile app
+   - Ensure app is up to date
+
+3. **"Connection failed"**
 
    - Check internet connection
-   - Restart wallet app
-   - Clear app cache
-   - Try different wallet
+   - Verify API keys are valid
+   - Try reconnecting
 
-2. **Transaction Fails**:
+4. **"Balance fetch failed"**
+   - Check Infura project ID
+   - Verify wallet has transactions on mainnet
 
-   - Insufficient gas fees
-   - Network congestion
-   - Insufficient balance
-   - Contract interaction error
+### Network Issues
 
-3. **Wrong Network**:
-   - Switch to correct network in wallet
-   - Add custom network if needed
-   - Check RPC URL configuration
+1. **GraphQL connection errors**
 
-#### Error Messages
+   - Ensure server is running
+   - Check network configuration
 
-- **"User rejected transaction"**: User cancelled in wallet
-- **"Insufficient funds"**: Add more ETH/USDC to wallet
-- **"Network error"**: Check internet/RPC connection
-- **"Contract not found"**: Verify contract deployment
+2. **Price data not loading**
+   - Check CoinGecko API status
+   - Verify internet connection
 
-### Advanced Features
+## 🚀 Deployment
 
-#### Multi-Chain Support
+### Building for Production
 
-- Ethereum Mainnet (default)
-- Polygon (lower fees)
-- Arbitrum (fast transactions)
-- BSC (alternative)
+```bash
+# Build for iOS
+expo build:ios
 
-#### Gas Optimization
+# Build for Android
+expo build:android
 
-- Automatic gas estimation
-- Gas price recommendations
-- Batch transactions
-- EIP-1559 support
+# Build for web
+expo build:web
+```
 
-#### Analytics & Monitoring
+### Environment Variables
 
-- Transaction history
-- Performance tracking
-- Profit/loss analysis
-- Risk management tools
+- `EXPO_PUBLIC_INFURA_PROJECT_ID`: Infura project ID
+- `EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID`: WalletConnect project ID
 
-### Support
+## ⚠️ Security Notes
 
-- **Documentation**: Check this README first
-- **Issues**: Report bugs on GitHub
-- **Community**: Join Discord/Telegram
-- **Security**: Report vulnerabilities privately
+- **Real Wallets**: This app connects to real wallets with real funds
+- **Test First**: Always test with small amounts first
+- **Secure Keys**: Keep your API keys secure and never commit them to version control
+- **Backup**: Always backup your wallet seed phrases
 
-## Notes
+## 📝 License
 
-- This app uses Expo, so you do **not** need to install or link native dependencies manually for most features.
-- For advanced native features, consider [EAS Build](https://docs.expo.dev/build/introduction/).
-- Wallet integration requires proper network configuration and smart contract deployment.
-- Always test on testnets before using real funds.
+MIT License - feel free to use this project for learning and development!
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly with real wallets
+5. Submit a pull request
+
+---
+
+**Experience real crypto trading with KokitzuApp! 🚀**
+
+_Remember: This app connects to real wallets with real funds. Always trade responsibly and never risk more than you can afford to lose._

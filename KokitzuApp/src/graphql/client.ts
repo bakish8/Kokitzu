@@ -1,22 +1,65 @@
 import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getGraphQLUrl, refreshNetworkUrls } from "../config/network";
 
-const httpLink = createHttpLink({
-  uri: "http://localhost:4000/graphql", // Update this to your server URL
-});
+// Create Apollo Client with dynamic URL initialization
+let apolloClient: ApolloClient<any> | null = null;
 
-const authLink = setContext(async (_, { headers }) => {
-  const token = await AsyncStorage.getItem("token");
-  return {
-    headers: {
-      ...headers,
-      authorization: token ? `Bearer ${token}` : "",
-    },
-  };
-});
+export const initializeApolloClient = async () => {
+  try {
+    // Get dynamic URL
+    const graphqlUrl = await getGraphQLUrl();
+    console.log("🔗 Initializing Apollo Client with:", graphqlUrl);
 
-export const apolloClient = new ApolloClient({
-  link: authLink.concat(httpLink),
-  cache: new InMemoryCache(),
-});
+    const httpLink = createHttpLink({
+      uri: graphqlUrl,
+    });
+
+    const authLink = setContext(async (_, { headers }) => {
+      const token = await AsyncStorage.getItem("token");
+      return {
+        headers: {
+          ...headers,
+          authorization: token ? `Bearer ${token}` : "",
+        },
+      };
+    });
+
+    apolloClient = new ApolloClient({
+      link: authLink.concat(httpLink),
+      cache: new InMemoryCache(),
+    });
+
+    return apolloClient;
+  } catch (error) {
+    console.error("❌ Error initializing Apollo Client:", error);
+    throw error;
+  }
+};
+
+// Get the initialized client
+export const getApolloClient = () => {
+  if (!apolloClient) {
+    throw new Error(
+      "Apollo Client not initialized. Call initializeApolloClient() first."
+    );
+  }
+  return apolloClient;
+};
+
+// Refresh the client with new network URLs
+export const refreshApolloClient = async () => {
+  try {
+    console.log("🔄 Refreshing Apollo Client...");
+    await refreshNetworkUrls();
+    apolloClient = await initializeApolloClient();
+    return apolloClient;
+  } catch (error) {
+    console.error("❌ Error refreshing Apollo Client:", error);
+    throw error;
+  }
+};
+
+// Legacy export for backward compatibility
+export { apolloClient };

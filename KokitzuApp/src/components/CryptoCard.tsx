@@ -23,8 +23,8 @@ const CryptoCard: React.FC<CryptoCardProps> = ({ crypto, onPress }) => {
     return `${sign}${percentage.toFixed(2)}%`;
   };
 
-  // Mock price change for demo (in real app, this would come from API)
-  const priceChange = Math.random() * 10 - 5; // Random change between -5% and +5%
+  // Use real price change data if available, otherwise show 0%
+  const priceChange = crypto.priceChange || 0;
   const isPositive = priceChange >= 0;
 
   return (

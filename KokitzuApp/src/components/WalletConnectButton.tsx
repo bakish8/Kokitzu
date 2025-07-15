@@ -36,17 +36,19 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   const handleConnect = async (method: "metamask" | "walletconnect") => {
     setConnecting(true);
     try {
-      const result = await connectWallet(method);
-
-      if (method === "walletconnect" && result?.uri) {
-        // Show QR code modal for WalletConnect
-        setShowModal(false);
-        setShowQRModal(true);
-      } else {
-        // MetaMask or other direct connections
+      if (method === "metamask") {
+        // For MetaMask, directly connect without showing modal
+        await connectWallet(method);
         setShowModal(false);
         if (onConnected && walletAddress) {
           onConnected(walletAddress, null);
+        }
+      } else {
+        // For WalletConnect, show QR code modal
+        const result = await connectWallet(method);
+        if (result?.uri) {
+          setShowModal(false);
+          setShowQRModal(true);
         }
       }
     } catch (error: any) {

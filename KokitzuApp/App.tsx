@@ -4,7 +4,7 @@ import { ApolloProvider } from "@apollo/client";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text } from "react-native";
-import { apolloClient } from "./src/graphql/client";
+import { initializeApolloClient, getApolloClient } from "./src/graphql/client";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import LivePricesScreen from "./src/screens/LivePricesScreen";
 import BinaryOptionsScreen from "./src/screens/BinaryOptionsScreen";
@@ -116,6 +116,42 @@ function AppContent() {
 }
 
 export default function App() {
+  const [apolloClient, setApolloClient] = useState<any>(null);
+  const [initializing, setInitializing] = useState(true);
+
+  useEffect(() => {
+    const initClient = async () => {
+      try {
+        console.log("🚀 Initializing app with dynamic IP detection...");
+        const client = await initializeApolloClient();
+        setApolloClient(client);
+      } catch (error) {
+        console.error("❌ Failed to initialize Apollo Client:", error);
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    initClient();
+  }, []);
+
+  if (initializing || !apolloClient) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#0f0f23",
+        }}
+      >
+        <Text style={{ color: "#ffffff", fontSize: 18 }}>
+          Initializing network connection...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <ApolloProvider client={apolloClient}>
       <AuthProvider>

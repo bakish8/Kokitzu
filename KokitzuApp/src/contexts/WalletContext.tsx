@@ -6,6 +6,14 @@ import { getInfuraUrl, validateApiKeys } from "../config/api";
 import {
   connectWalletConnect as connectWC,
   getWalletConnectSessions,
+  getWalletAddress,
+  getWalletBalance,
+  signMessage as signMessageWC,
+  sendTransaction as sendTransactionWC,
+  disconnectWalletConnect,
+  setCurrentSession,
+  getCurrentSession,
+  getConnectionStatus,
 } from "../services/walletconnect";
 import { Linking, Alert, Platform } from "react-native";
 
@@ -42,6 +50,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [provider, setProvider] = useState<any>(null);
   const [walletConnectUri, setWalletConnectUri] = useState<string | null>(null);
+  const [walletSession, setWalletSession] = useState<any>(null);
 
   useEffect(() => {
     loadStoredWallet();
@@ -50,35 +59,37 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const loadStoredWallet = async () => {
     try {
       const storedAddress = await AsyncStorage.getItem("walletAddress");
-      if (storedAddress) {
+      const storedSession = await AsyncStorage.getItem("walletSession");
+
+      if (storedAddress && storedSession) {
+        const session = JSON.parse(storedSession);
         setWalletAddress(storedAddress);
         setIsConnected(true);
-        // Initialize provider for stored wallet
-        initializeProvider();
+        setWalletSession(session);
+        setCurrentSession(session);
+        setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+
+        // Get real balance
+        const realBalance = await getWalletBalance(storedAddress);
+        setBalance(realBalance);
+        console.log(
+          "Loaded stored wallet:",
+          storedAddress,
+          "Balance:",
+          realBalance
+        );
       }
     } catch (error) {
       console.error("Error loading stored wallet:", error);
     }
   };
 
-  const initializeProvider = () => {
-    // Check if API keys are configured
-    const errors = validateApiKeys();
-    if (errors.length > 0) {
-      console.warn("API Keys not configured:", errors.join(", "));
-      return;
-    }
-
-    const infuraUrl = getInfuraUrl();
-    const newProvider = new ethers.providers.JsonRpcProvider(infuraUrl);
-    setProvider(newProvider);
-  };
-
   const connectWallet = async (method: "metamask" | "walletconnect") => {
     setLoading(true);
     try {
       if (method === "metamask") {
-        await connectMetaMask();
+        // For MetaMask, use WalletConnect to connect
+        await connectMetaMaskViaWalletConnect();
         return null;
       } else if (method === "walletconnect") {
         return await connectWalletConnect();
@@ -93,69 +104,63 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  const connectMetaMask = async () => {
+  const connectMetaMaskViaWalletConnect = async () => {
     try {
-      // Try to open MetaMask app using deep linking
-      const metamaskUrl = "metamask://";
-      const canOpen = await Linking.canOpenURL(metamaskUrl);
+      // Check if API keys are configured
+      const errors = validateApiKeys();
+      if (errors.length > 0) {
+        throw new Error(`API Keys not configured: ${errors.join(", ")}`);
+      }
 
-      if (canOpen) {
-        // Show user instructions
-        Alert.alert(
-          "Connect MetaMask",
-          "Opening MetaMask app... Please approve the connection in your MetaMask app.",
-          [
-            {
-              text: "Open MetaMask",
-              onPress: async () => {
-                try {
-                  await Linking.openURL(metamaskUrl);
+      // Use WalletConnect to connect to MetaMask
+      const { uri, approval } = await connectWC();
 
-                  // For now, simulate connection after a delay
-                  // In a real app, you'd wait for the actual connection callback
-                  setTimeout(async () => {
-                    const mockAddress =
-                      "0x" +
-                      Array.from({ length: 40 }, () =>
-                        Math.floor(Math.random() * 16).toString(16)
-                      ).join("");
+      if (uri) {
+        console.log("MetaMask connection URI generated:", uri);
 
-                    setWalletAddress(mockAddress);
-                    setIsConnected(true);
-                    setProvider(
-                      new ethers.providers.JsonRpcProvider(getInfuraUrl())
-                    );
-                    await AsyncStorage.setItem("walletAddress", mockAddress);
-                    setBalance("0.1234");
-                    console.log("Connected to MetaMask:", mockAddress);
-                  }, 2000);
-                } catch (error) {
-                  console.error("Failed to open MetaMask:", error);
-                }
-              },
-            },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
+        // Try to open MetaMask directly with the URI
+        const metamaskUrl = `metamask://wc?uri=${encodeURIComponent(uri)}`;
+
+        try {
+          await Linking.openURL(metamaskUrl);
+          console.log("Opened MetaMask with connection URI");
+        } catch (error) {
+          console.log(
+            "Could not open MetaMask directly, trying alternative method"
+          );
+          // Fallback: try to open MetaMask app
+          await Linking.openURL("metamask://");
+        }
+
+        // Wait for approval
+        const session = await approval();
+        console.log("MetaMask session approved:", session);
+
+        // Set current session
+        setCurrentSession(session);
+
+        // Extract wallet address from session
+        const address = getWalletAddress(session);
+        if (address) {
+          setWalletAddress(address);
+          setIsConnected(true);
+          setWalletSession(session);
+          setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+          await AsyncStorage.setItem("walletAddress", address);
+          await AsyncStorage.setItem("walletSession", JSON.stringify(session));
+
+          // Get real balance
+          const realBalance = await getWalletBalance(address);
+          setBalance(realBalance);
+          console.log(
+            "Connected to MetaMask:",
+            address,
+            "Balance:",
+            realBalance
+          );
+        }
       } else {
-        // MetaMask not installed, show instructions
-        Alert.alert(
-          "MetaMask Not Found",
-          "MetaMask app is not installed on your device. Please install MetaMask Mobile from the App Store or Google Play Store.",
-          [
-            {
-              text: "Install MetaMask",
-              onPress: () => {
-                const storeUrl =
-                  Platform.OS === "ios"
-                    ? "https://apps.apple.com/app/metamask/id1438144202"
-                    : "https://play.google.com/store/apps/details?id=io.metamask";
-                Linking.openURL(storeUrl);
-              },
-            },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
+        throw new Error("Failed to generate MetaMask connection URI");
       }
     } catch (error: any) {
       throw new Error(
@@ -179,8 +184,29 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setWalletConnectUri(uri);
         console.log("WalletConnect URI generated:", uri);
 
-        // Wait for user to connect via QR code
-        // In a real app, you'd show the QR code and wait for approval
+        // Wait for approval
+        const session = await approval();
+        console.log("WalletConnect session approved:", session);
+
+        // Set current session
+        setCurrentSession(session);
+
+        // Extract wallet address from session
+        const address = getWalletAddress(session);
+        if (address) {
+          setWalletAddress(address);
+          setIsConnected(true);
+          setWalletSession(session);
+          setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+          await AsyncStorage.setItem("walletAddress", address);
+          await AsyncStorage.setItem("walletSession", JSON.stringify(session));
+
+          // Get real balance
+          const realBalance = await getWalletBalance(address);
+          setBalance(realBalance);
+          console.log("Connected to wallet:", address, "Balance:", realBalance);
+        }
+
         return { uri, approval };
       }
 
@@ -194,11 +220,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const disconnectWallet = async () => {
     try {
+      if (walletSession) {
+        // Disconnect WalletConnect session
+        const sessions = getWalletConnectSessions();
+        for (const [topic, session] of Object.entries(sessions)) {
+          await disconnectWalletConnect(topic);
+        }
+      }
+
       setWalletAddress(null);
       setIsConnected(false);
       setBalance(null);
       setProvider(null);
+      setWalletSession(null);
+      setWalletConnectUri(null);
       await AsyncStorage.removeItem("walletAddress");
+      await AsyncStorage.removeItem("walletSession");
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
     }
@@ -206,19 +243,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const signMessage = async (message: string): Promise<string | null> => {
     try {
-      if (!isConnected) {
+      if (!isConnected || !walletSession) {
         throw new Error("Wallet not connected");
       }
 
-      // For demo purposes, return a mock signature
-      // In production, you'd call the actual wallet's sign method
-      const mockSignature =
-        "0x" +
-        Array.from({ length: 130 }, () =>
-          Math.floor(Math.random() * 16).toString(16)
-        ).join("");
-
-      return mockSignature;
+      // Use real wallet signing
+      const signature = await signMessageWC(message, walletSession);
+      return signature;
     } catch (error) {
       console.error("Error signing message:", error);
       return null;
@@ -230,19 +261,20 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     amount: string
   ): Promise<string | null> => {
     try {
-      if (!isConnected) {
+      if (!isConnected || !walletSession) {
         throw new Error("Wallet not connected");
       }
 
-      // For demo purposes, return a mock transaction hash
-      // In production, you'd call the actual wallet's sendTransaction method
-      const mockTxHash =
-        "0x" +
-        Array.from({ length: 64 }, () =>
-          Math.floor(Math.random() * 16).toString(16)
-        ).join("");
+      // Prepare transaction
+      const transaction = {
+        to: to,
+        value: ethers.utils.parseEther(amount).toHexString(),
+        gas: "0x5208", // 21000 gas
+      };
 
-      return mockTxHash;
+      // Use real wallet transaction
+      const txHash = await sendTransactionWC(transaction, walletSession);
+      return txHash;
     } catch (error) {
       console.error("Error sending transaction:", error);
       return null;

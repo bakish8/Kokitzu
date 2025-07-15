@@ -4,6 +4,7 @@ export interface CryptoPrice {
   name: string;
   price: number;
   lastUpdated: string;
+  priceChange?: number;
 }
 
 export interface Coin {
