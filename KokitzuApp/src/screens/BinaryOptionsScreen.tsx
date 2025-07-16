@@ -28,6 +28,9 @@ import { TIMEFRAMES } from "../constants/timeframes";
 import { Coin, CryptoPrice, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTrading } from "../contexts/TradingContext";
+import { useWallet } from "../contexts/WalletContext";
+import { useWalletConnectModal } from "@walletconnect/modal-react-native";
+import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
 import WalletConnectButton from "../components/WalletConnectButton";
 import SmartContractInfo from "../components/SmartContractInfo";
 
@@ -43,6 +46,20 @@ const BinaryOptionsScreen: React.FC = () => {
     betType,
     setBetType,
   } = useTrading();
+
+  // Get wallet balance for verification
+  const { balance, isConnected, provider } = useWallet();
+
+  // WalletConnect balance state (same as header)
+  const [localBalance, setLocalBalance] = useState<string | null>(null);
+  const [currentChain, setCurrentChain] = useState<string>("1");
+
+  // Use the WalletConnect modal hook (same as header)
+  const {
+    isConnected: wcConnected,
+    address: wcAddress,
+    provider: wcProvider,
+  } = useWalletConnectModal();
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -184,6 +201,133 @@ const BinaryOptionsScreen: React.FC = () => {
     return TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
   }, [selectedTimeframe]);
 
+  // Balance verification helpers (same logic as header)
+  const displayBalance = localBalance || balance;
+  const currentBalance = useMemo(() => {
+    return parseFloat(displayBalance || "0");
+  }, [displayBalance]);
+
+  // Debug connection status (same logic as header)
+  const isWalletConnected = wcConnected || isConnected;
+
+  // Debug log to help troubleshoot
+  useEffect(() => {
+    console.log("🔗 BinaryOptions: Connection status:", {
+      wcConnected,
+      isConnected,
+      isWalletConnected,
+      wcAddress,
+      walletAddress: balance ? "has balance" : "no balance",
+      displayBalance,
+    });
+  }, [wcConnected, isConnected, wcAddress, displayBalance]);
+
+  const betAmountValue = useMemo(() => {
+    return parseFloat(betAmount || "0");
+  }, [betAmount]);
+
+  const hasInsufficientBalance = useMemo(() => {
+    return betAmountValue > currentBalance;
+  }, [betAmountValue, currentBalance]);
+
+  const maxSafeBet = useMemo(() => {
+    // Suggest 90% of balance to leave room for gas fees
+    return Math.max(0, currentBalance * 0.9);
+  }, [currentBalance]);
+
+  const formatBalance = (amount: number) => {
+    return amount.toFixed(4);
+  };
+
+  const getChainName = (chainId: string) => {
+    switch (chainId) {
+      case "1":
+        return "ETH";
+      case "137":
+        return "MATIC";
+      case "56":
+        return "BNB";
+      case "42161":
+        return "ARB";
+      case "10":
+        return "OP";
+      default:
+        return "ETH";
+    }
+  };
+
+  // Effect to detect chain changes (same as header)
+  useEffect(() => {
+    if (wcConnected && wcProvider) {
+      const checkChain = async () => {
+        try {
+          const chainId = await wcProvider.request({ method: "eth_chainId" });
+          const chainIdDecimal = parseInt(chainId as string, 16).toString();
+          if (chainIdDecimal !== currentChain) {
+            setCurrentChain(chainIdDecimal);
+            console.log("🔗 Chain changed to:", chainIdDecimal);
+          }
+        } catch (error) {
+          console.log("🔗 Could not detect chain, using default");
+        }
+      };
+
+      checkChain();
+      const interval = setInterval(checkChain, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [wcConnected, wcProvider, currentChain]);
+
+  // Effect to fetch balance when WalletConnect connects or chain changes (same as header)
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (wcConnected && wcAddress) {
+        try {
+          console.log(
+            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain}`
+          );
+          const balance = await getWalletBalance(wcAddress, currentChain);
+          setLocalBalance(balance);
+          console.log("💰 Balance fetched:", balance);
+        } catch (error) {
+          console.error("❌ Error fetching balance:", error);
+          setLocalBalance("0.0000");
+        }
+      }
+    };
+
+    fetchBalance();
+  }, [wcConnected, wcAddress, currentChain]);
+
+  // Effect to clear balance when disconnecting (same as header)
+  useEffect(() => {
+    if (!wcConnected && !isConnected) {
+      setLocalBalance(null);
+      setCurrentChain("1");
+    }
+  }, [wcConnected, isConnected]);
+
+  // Refresh balance function
+  const refreshBalance = async () => {
+    if (wcConnected && wcAddress) {
+      try {
+        console.log("🔄 Refreshing balance...");
+        const balance = await getWalletBalance(wcAddress, currentChain);
+        setLocalBalance(balance);
+        console.log("💰 Balance refreshed:", balance);
+      } catch (error) {
+        console.error("Error refreshing balance:", error);
+      }
+    } else if (isConnected && provider) {
+      try {
+        console.log("🔄 Refreshing wallet context balance...");
+        // The wallet context will automatically update the balance
+      } catch (error) {
+        console.error("Error refreshing balance:", error);
+      }
+    }
+  };
+
   // Timer update for Active Bets - updates every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -193,13 +337,50 @@ const BinaryOptionsScreen: React.FC = () => {
   }, []);
 
   const handlePlaceBet = async () => {
+    // Check if wallet is connected (same logic as header)
+    const isWalletConnected = wcConnected || isConnected;
+    if (!isWalletConnected) {
+      Alert.alert(
+        "Wallet Not Connected",
+        "Please connect your wallet to place bets"
+      );
+      return;
+    }
+
     if (!selectedCrypto) {
       Alert.alert("Error", "Please select a cryptocurrency");
       return;
     }
 
-    if (!betAmount || parseFloat(betAmount) <= 0) {
+    if (!betAmount || betAmountValue <= 0) {
       Alert.alert("Error", "Please enter a valid bet amount");
+      return;
+    }
+
+    // Check if user has sufficient balance
+    if (hasInsufficientBalance) {
+      Alert.alert(
+        "Insufficient Balance",
+        `You only have ${formatBalance(currentBalance)} ${getChainName(
+          currentChain
+        )}. Please reduce your bet amount.`
+      );
+      return;
+    }
+
+    // Add a small buffer for gas fees (0.001 ETH)
+    const gasBuffer = 0.001;
+    if (betAmountValue + gasBuffer > currentBalance) {
+      Alert.alert(
+        "Insufficient Balance for Gas",
+        `You need at least ${formatBalance(
+          betAmountValue + gasBuffer
+        )} ${getChainName(
+          currentChain
+        )} (including gas fees). Current balance: ${formatBalance(
+          currentBalance
+        )} ${getChainName(currentChain)}`
+      );
       return;
     }
 
@@ -209,7 +390,7 @@ const BinaryOptionsScreen: React.FC = () => {
           input: {
             cryptoSymbol: selectedCrypto,
             betType: betType,
-            amount: parseFloat(betAmount),
+            amount: betAmountValue,
             timeframe: selectedTimeframe,
           },
         },
@@ -341,15 +522,93 @@ const BinaryOptionsScreen: React.FC = () => {
 
       {/* Bet Amount */}
       <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Bet Amount ($)</Text>
-        <TextInput
-          style={styles.betInput}
-          value={betAmount}
-          onChangeText={setBetAmount}
-          keyboardType="numeric"
-          placeholder="Enter amount"
-          placeholderTextColor="#666"
-        />
+        <Text style={styles.sectionTitle}>Bet Amount (ETH)</Text>
+
+        {/* Balance Display */}
+        <View style={styles.balanceContainer}>
+          <MaterialCommunityIcons name="wallet" size={16} color="#666" />
+          <Text style={styles.balanceText}>
+            {isWalletConnected
+              ? `Available: ${formatBalance(currentBalance)} ${getChainName(
+                  currentChain
+                )}`
+              : "Connect wallet to see balance"}
+          </Text>
+          {isWalletConnected && (
+            <TouchableOpacity
+              onPress={refreshBalance}
+              style={styles.refreshButton}
+            >
+              <MaterialCommunityIcons
+                name="refresh"
+                size={14}
+                color="#3b82f6"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.betInputContainer}>
+          <TextInput
+            style={[
+              styles.betInput,
+              hasInsufficientBalance && styles.betInputError,
+            ]}
+            value={betAmount}
+            onChangeText={setBetAmount}
+            keyboardType="numeric"
+            placeholder="Enter amount in ETH"
+            placeholderTextColor="#666"
+          />
+          <TouchableOpacity
+            style={styles.maxButton}
+            onPress={() => setBetAmount(maxSafeBet.toFixed(4))}
+            disabled={maxSafeBet <= 0}
+          >
+            <Text style={styles.maxButtonText}>Max</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Balance Warning */}
+        {isWalletConnected && hasInsufficientBalance && (
+          <View style={styles.balanceWarning}>
+            <MaterialCommunityIcons
+              name="alert-circle"
+              size={16}
+              color="#ef4444"
+            />
+            <Text style={styles.balanceWarningText}>
+              Insufficient balance. You only have{" "}
+              {formatBalance(currentBalance)} {getChainName(currentChain)}
+            </Text>
+          </View>
+        )}
+
+        {/* Gas Fee Info */}
+        {isWalletConnected && (
+          <View style={styles.gasInfo}>
+            <MaterialCommunityIcons name="gas-station" size={14} color="#666" />
+            <Text style={styles.gasInfoText}>
+              Gas fees (~0.001 {getChainName(currentChain)}) will be added to
+              your bet amount
+            </Text>
+          </View>
+        )}
+
+        {/* Max Safe Bet Info */}
+        {isWalletConnected && currentBalance > 0 && (
+          <View style={styles.maxBetInfo}>
+            <MaterialCommunityIcons
+              name="lightbulb-outline"
+              size={14}
+              color="#10b981"
+            />
+            <Text style={styles.maxBetInfoText}>
+              Max safe bet: {formatBalance(maxSafeBet)}{" "}
+              {getChainName(currentChain)} (90% of balance)
+            </Text>
+          </View>
+        )}
       </Animated.View>
 
       {/* Bet Type */}
@@ -399,12 +658,32 @@ const BinaryOptionsScreen: React.FC = () => {
       </Animated.View>
 
       {/* Place Bet Button */}
-      <TouchableOpacity style={styles.placeBetButton} onPress={handlePlaceBet}>
-        <Text style={styles.placeBetButtonText}>Place Bet</Text>
+      <TouchableOpacity
+        style={[
+          styles.placeBetButton,
+          ((!wcConnected && !isConnected) || hasInsufficientBalance) &&
+            styles.placeBetButtonDisabled,
+        ]}
+        onPress={handlePlaceBet}
+        disabled={(!wcConnected && !isConnected) || hasInsufficientBalance}
+      >
+        <Text
+          style={[
+            styles.placeBetButtonText,
+            ((!wcConnected && !isConnected) || hasInsufficientBalance) &&
+              styles.placeBetButtonTextDisabled,
+          ]}
+        >
+          {!wcConnected && !isConnected
+            ? "Connect Wallet to Bet"
+            : hasInsufficientBalance
+            ? "Insufficient Balance"
+            : "Place Bet"}
+        </Text>
       </TouchableOpacity>
 
       {/* Smart Contract Info */}
-      <SmartContractInfo />
+      {/* <SmartContractInfo /> */}
 
       {/* Active Bets */}
       <Animated.View style={[styles.section, activeBetsAnimatedStyle]}>
@@ -676,6 +955,77 @@ const styles = StyleSheet.create({
     color: "#666666",
     fontSize: 16,
     fontStyle: "italic",
+  },
+  // Balance verification styles
+  balanceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 6,
+  },
+  balanceText: {
+    color: "#666666",
+    fontSize: 14,
+  },
+  betInputError: {
+    borderColor: "#ef4444",
+    borderWidth: 2,
+  },
+  balanceWarning: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 6,
+  },
+  balanceWarningText: {
+    color: "#ef4444",
+    fontSize: 12,
+  },
+  gasInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 6,
+  },
+  gasInfoText: {
+    color: "#666666",
+    fontSize: 12,
+  },
+  placeBetButtonDisabled: {
+    backgroundColor: "#666666",
+    opacity: 0.6,
+  },
+  placeBetButtonTextDisabled: {
+    color: "#cccccc",
+  },
+  refreshButton: {
+    padding: 4,
+  },
+  betInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  maxButton: {
+    backgroundColor: "#3b82f6",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  maxButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  maxBetInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 6,
+  },
+  maxBetInfoText: {
+    color: "#10b981",
+    fontSize: 12,
   },
 });
 

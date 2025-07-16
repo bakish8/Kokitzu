@@ -29,6 +29,7 @@ interface WalletContextType {
   loading: boolean;
   walletConnectUri: string | null;
   connectionStatus: "waiting" | "connecting" | "connected" | "failed";
+  provider: any;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -345,6 +346,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         loading,
         walletConnectUri,
         connectionStatus,
+        provider,
       }}
     >
       {children}

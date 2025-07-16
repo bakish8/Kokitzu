@@ -149,6 +149,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   };
 
   const formatAddress = (address: string) => {
+    if (!address) return "Unknown";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
@@ -173,9 +174,9 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   const connectedAddress = wcAddress || walletAddress;
   const isWalletConnected = wcConnected || isConnected;
   const displayBalance = localBalance || balance;
-  const chainName = getChainName(currentChain);
+  const chainName = getChainName(currentChain || "1");
 
-  if (isWalletConnected && connectedAddress) {
+  if (isWalletConnected && connectedAddress && connectedAddress !== "Unknown") {
     return (
       <TouchableOpacity
         style={styles.connectedButton}
@@ -188,7 +189,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           </Text>
           {displayBalance && (
             <Text style={styles.balanceText}>
-              {parseFloat(displayBalance).toFixed(4)} {chainName}
+              {parseFloat(displayBalance || "0").toFixed(4)} {chainName}
             </Text>
           )}
         </View>
