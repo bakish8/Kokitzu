@@ -20,5 +20,15 @@
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@wagmi/core": "^2.17.3",
+    "@walletconnect/modal-react-native": "^1.1.0",
+    "@web3modal/ethereum": "^2.7.1",
+    "@web3modal/wagmi": "^5.1.11",
+    "react-native-modal": "^14.0.0-rc.1",
+    "react-native-svg": "^15.12.0",
+    "viem": "^2.31.7",
+    "wagmi": "^2.15.6"
   }
 }

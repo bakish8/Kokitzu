@@ -6,6 +6,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { WalletConnectModal } from "@walletconnect/modal-react-native";
 
 import { initializeApolloClient, getApolloClient } from "./src/graphql/client";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -34,6 +35,19 @@ if (typeof global.crypto === "undefined") {
 }
 
 const Tab = createBottomTabNavigator();
+
+// WalletConnect configuration
+const projectId = "7f511967202c5d90747168fd9f2e8c3c";
+const providerMetadata = {
+  name: "KokitzuApp",
+  description: "Crypto Binary Options Trading App",
+  url: "https://kokitzu.app",
+  icons: ["https://kokitzu.app/icon.png"],
+  redirect: {
+    native: "kokitzuapp://",
+    universal: "https://kokitzu.app",
+  },
+};
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -162,6 +176,10 @@ export default function App() {
           <TradingProvider>
             <WalletProvider>
               <AppContent />
+              <WalletConnectModal
+                projectId={projectId}
+                providerMetadata={providerMetadata}
+              />
             </WalletProvider>
           </TradingProvider>
         </AuthProvider>

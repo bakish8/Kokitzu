@@ -28,6 +28,7 @@ interface WalletContextType {
   balance: string | null;
   loading: boolean;
   walletConnectUri: string | null;
+  connectionStatus: "waiting" | "connecting" | "connected" | "failed";
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -52,6 +53,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [provider, setProvider] = useState<any>(null);
   const [walletConnectUri, setWalletConnectUri] = useState<string | null>(null);
   const [walletSession, setWalletSession] = useState<any>(null);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "waiting" | "connecting" | "connected" | "failed"
+  >("waiting");
 
   useEffect(() => {
     loadStoredWallet();
@@ -87,6 +91,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const connectWallet = async (method: "metamask" | "walletconnect") => {
     setLoading(true);
+    setConnectionStatus("connecting");
     try {
       if (method === "metamask") {
         // For MetaMask, use WalletConnect to connect
@@ -97,6 +102,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
     } catch (error: any) {
       console.error("Error connecting wallet:", error);
+      setConnectionStatus("failed");
       throw new Error(
         `Failed to connect ${method}: ${error?.message || "Unknown error"}`
       );
@@ -153,6 +159,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           // Get real balance
           const realBalance = await getWalletBalance(address);
           setBalance(realBalance);
+          setConnectionStatus("connected");
           console.log(
             "Connected to MetaMask:",
             address,
@@ -164,6 +171,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         throw new Error("Failed to generate MetaMask connection URI");
       }
     } catch (error: any) {
+      setConnectionStatus("failed");
       throw new Error(
         `MetaMask connection failed: ${error?.message || "Unknown error"}`
       );
@@ -186,6 +194,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       if (uri) {
         setWalletConnectUri(uri);
+        setConnectionStatus("waiting");
+        console.log(
+          "🔗 WalletContext: Setting walletConnectUri:",
+          uri.substring(0, 50) + "..."
+        );
+        console.log(
+          "🔗 WalletContext: walletConnectUri state should now be available"
+        );
         console.log(
           "WalletContext: WalletConnect URI generated:",
           uri.substring(0, 50) + "..."
@@ -210,6 +226,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           setIsConnected(true);
           setWalletSession(session);
           setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+          setConnectionStatus("connected");
 
           console.log("WalletContext: Saving to AsyncStorage...");
           await AsyncStorage.setItem("walletAddress", address);
@@ -235,6 +252,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       throw new Error("Failed to generate WalletConnect URI");
     } catch (error: any) {
       console.error("WalletContext: WalletConnect connection failed:", error);
+      setConnectionStatus("failed");
       throw new Error(
         `WalletConnect connection failed: ${error?.message || "Unknown error"}`
       );
@@ -249,9 +267,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (walletSession?.topic) {
         console.log("Disconnecting session with topic:", walletSession.topic);
         await disconnectWalletConnect(walletSession.topic);
-      } else {
-        console.log("No session topic found, using force disconnect");
-        await forceDisconnectAll();
       }
 
       // Clear local state
@@ -261,6 +276,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setProvider(null);
       setWalletSession(null);
       setWalletConnectUri(null);
+      setConnectionStatus("waiting");
 
       // Clear stored data
       await AsyncStorage.removeItem("walletAddress");
@@ -276,23 +292,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setProvider(null);
       setWalletSession(null);
       setWalletConnectUri(null);
-      await AsyncStorage.removeItem("walletAddress");
-      await AsyncStorage.removeItem("walletSession");
+      setConnectionStatus("waiting");
     }
   };
 
   const signMessage = async (message: string): Promise<string | null> => {
     try {
-      if (!isConnected || !walletSession) {
-        throw new Error("Wallet not connected");
+      if (!walletSession) {
+        throw new Error("No wallet session found");
       }
 
-      // Use real wallet signing
       const signature = await signMessageWC(message, walletSession);
       return signature;
     } catch (error) {
       console.error("Error signing message:", error);
-      return null;
+      throw error;
     }
   };
 
@@ -301,39 +315,39 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     amount: string
   ): Promise<string | null> => {
     try {
-      if (!isConnected || !walletSession) {
-        throw new Error("Wallet not connected");
+      if (!walletSession) {
+        throw new Error("No wallet session found");
       }
 
-      // Prepare transaction
       const transaction = {
-        to: to,
+        to,
         value: ethers.utils.parseEther(amount).toHexString(),
-        gas: "0x5208", // 21000 gas
       };
 
-      // Use real wallet transaction
       const txHash = await sendTransactionWC(transaction, walletSession);
       return txHash;
     } catch (error) {
       console.error("Error sending transaction:", error);
-      return null;
+      throw error;
     }
   };
 
-  const value: WalletContextType = {
-    walletAddress,
-    isConnected,
-    connectWallet,
-    disconnectWallet,
-    signMessage,
-    sendTransaction,
-    balance,
-    loading,
-    walletConnectUri,
-  };
-
   return (
-    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+    <WalletContext.Provider
+      value={{
+        walletAddress,
+        isConnected,
+        connectWallet,
+        disconnectWallet,
+        signMessage,
+        sendTransaction,
+        balance,
+        loading,
+        walletConnectUri,
+        connectionStatus,
+      }}
+    >
+      {children}
+    </WalletContext.Provider>
   );
 };
