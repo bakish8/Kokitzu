@@ -11,6 +11,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
+import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
 
 interface WalletConnectButtonProps {
   onConnected?: (address: string, signer: any) => void;
@@ -29,6 +30,8 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     connectionStatus,
   } = useWallet();
   const [showModal, setShowModal] = useState(false);
+  const [localBalance, setLocalBalance] = useState<string | null>(null);
+  const [currentChain, setCurrentChain] = useState<string>("1");
 
   // Use the WalletConnect modal hook
   const {
@@ -45,8 +48,62 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       wcAddress,
       isConnected,
       walletAddress,
+      currentChain,
     });
-  }, [wcConnected, wcAddress, isConnected, walletAddress]);
+  }, [wcConnected, wcAddress, isConnected, walletAddress, currentChain]);
+
+  // Effect to detect chain changes - we'll use a polling approach
+  useEffect(() => {
+    if (wcConnected && provider) {
+      const checkChain = async () => {
+        try {
+          // Try to get the current chain from the provider
+          const chainId = await provider.request({ method: "eth_chainId" });
+          const chainIdDecimal = parseInt(chainId as string, 16).toString();
+          if (chainIdDecimal !== currentChain) {
+            setCurrentChain(chainIdDecimal);
+            console.log("🔗 Chain changed to:", chainIdDecimal);
+          }
+        } catch (error) {
+          console.log("🔗 Could not detect chain, using default");
+        }
+      };
+
+      checkChain();
+      // Poll for chain changes every 5 seconds
+      const interval = setInterval(checkChain, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [wcConnected, provider, currentChain]);
+
+  // Effect to fetch balance when WalletConnect connects or chain changes
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (wcConnected && wcAddress) {
+        try {
+          console.log(
+            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain}`
+          );
+          const balance = await getWalletBalance(wcAddress, currentChain);
+          setLocalBalance(balance);
+          console.log("💰 Balance fetched:", balance);
+        } catch (error) {
+          console.error("❌ Error fetching balance:", error);
+          setLocalBalance("0.0000");
+        }
+      }
+    };
+
+    fetchBalance();
+  }, [wcConnected, wcAddress, currentChain]);
+
+  // Effect to clear balance when disconnecting
+  useEffect(() => {
+    if (!wcConnected && !isConnected) {
+      setLocalBalance(null);
+      setCurrentChain("1");
+    }
+  }, [wcConnected, isConnected]);
 
   const handleConnect = async (method: "metamask" | "walletconnect") => {
     try {
@@ -81,9 +138,13 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
         await provider.disconnect();
       }
       disconnectWallet();
+      setLocalBalance(null);
+      setCurrentChain("1");
     } catch (error) {
       console.error("❌ Error disconnecting:", error);
       disconnectWallet();
+      setLocalBalance(null);
+      setCurrentChain("1");
     }
   };
 
@@ -91,9 +152,28 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const getChainName = (chainId: string) => {
+    switch (chainId) {
+      case "1":
+        return "ETH";
+      case "137":
+        return "MATIC";
+      case "56":
+        return "BNB";
+      case "42161":
+        return "ARB";
+      case "10":
+        return "OP";
+      default:
+        return "ETH";
+    }
+  };
+
   // Use WalletConnect connection status if available
   const connectedAddress = wcAddress || walletAddress;
   const isWalletConnected = wcConnected || isConnected;
+  const displayBalance = localBalance || balance;
+  const chainName = getChainName(currentChain);
 
   if (isWalletConnected && connectedAddress) {
     return (
@@ -106,9 +186,9 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           <Text style={styles.connectedButtonText}>
             {formatAddress(connectedAddress)}
           </Text>
-          {balance && (
+          {displayBalance && (
             <Text style={styles.balanceText}>
-              {parseFloat(balance).toFixed(4)} ETH
+              {parseFloat(displayBalance).toFixed(4)} {chainName}
             </Text>
           )}
         </View>

@@ -141,6 +141,28 @@ export const disconnectWalletConnect = async (topic?: string) => {
   }
 };
 
+// Get current chain ID from session
+export const getCurrentChainId = (session: any): string => {
+  try {
+    if (session?.namespaces?.eip155?.chains) {
+      const chains = session.namespaces.eip155.chains;
+      if (chains.length > 0) {
+        // Extract chain ID from chain string (format: eip155:1)
+        const chain = chains[0];
+        const chainId = chain.split(":")[1];
+        console.log("🔗 Current chain ID:", chainId);
+        return chainId;
+      }
+    }
+    // Default to Ethereum mainnet
+    console.log("🔗 Using default chain ID: 1");
+    return "1";
+  } catch (error) {
+    console.error("Error getting current chain ID:", error);
+    return "1";
+  }
+};
+
 // Get wallet address from session
 export const getWalletAddress = (session: any): string | null => {
   try {
@@ -161,10 +183,38 @@ export const getWalletAddress = (session: any): string | null => {
 };
 
 // Get wallet balance (real balance from Infura)
-export const getWalletBalance = async (address: string): Promise<string> => {
+export const getWalletBalance = async (
+  address: string,
+  chainId: string = "1"
+): Promise<string> => {
   try {
-    const infuraUrl = getInfuraUrl();
-    const response = await fetch(infuraUrl, {
+    console.log(
+      `💰 Fetching balance for address ${address} on chain ${chainId}`
+    );
+
+    // Get the appropriate RPC URL based on chain
+    let rpcUrl: string;
+    switch (chainId) {
+      case "1": // Ethereum Mainnet
+        rpcUrl = getInfuraUrl();
+        break;
+      case "137": // Polygon
+        rpcUrl = "https://polygon-rpc.com";
+        break;
+      case "56": // BSC
+        rpcUrl = "https://bsc-dataseed.binance.org";
+        break;
+      case "42161": // Arbitrum
+        rpcUrl = "https://arb1.arbitrum.io/rpc";
+        break;
+      case "10": // Optimism
+        rpcUrl = "https://mainnet.optimism.io";
+        break;
+      default:
+        rpcUrl = getInfuraUrl(); // Default to Ethereum
+    }
+
+    const response = await fetch(rpcUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -179,16 +229,22 @@ export const getWalletBalance = async (address: string): Promise<string> => {
 
     const data = await response.json();
     if (data.error) {
+      console.error("❌ RPC Error:", data.error);
       throw new Error(data.error.message);
     }
 
-    // Convert from wei to ETH
+    // Convert from wei to ETH (or appropriate token)
     const balanceWei = data.result;
     const balanceEth = parseInt(balanceWei, 16) / Math.pow(10, 18);
+
+    console.log(
+      `💰 Balance fetched: ${balanceEth.toFixed(4)} on chain ${chainId}`
+    );
     return balanceEth.toFixed(4);
   } catch (error) {
-    console.error("Error getting wallet balance:", error);
-    throw new Error("Failed to fetch wallet balance");
+    console.error("❌ Error getting wallet balance:", error);
+    // Return 0 instead of throwing to prevent app crashes
+    return "0.0000";
   }
 };
 

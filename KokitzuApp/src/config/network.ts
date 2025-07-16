@@ -14,8 +14,8 @@ export const NETWORK_CONFIG = {
 
   // Development with constant IP (update this IP when needed)
   DEVELOPMENT: {
-    GRAPHQL_URL: "http://192.168.10.116:4000/graphql",
-    WEBSOCKET_URL: "ws://192.168.10.116:4000/graphql",
+    GRAPHQL_URL: "http://172.20.10.6:4000/graphql",
+    WEBSOCKET_URL: "ws://172.20.10.6:4000/graphql",
   },
 };
 
