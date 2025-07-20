@@ -41,6 +41,8 @@ import {
   ethToUsd,
   usdToEth,
 } from "../utils/currencyUtils";
+import PriceChart from "../components/PriceChart";
+import priceDataService from "../services/priceDataService";
 
 const BinaryOptionsScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
@@ -66,6 +68,8 @@ const BinaryOptionsScreen: React.FC = () => {
     networkConfig.chainId
   );
   const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+  const [priceHistory, setPriceHistory] = useState<number[]>([]);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
   // USD-only betting - no currency toggle needed
   const inputInUsd = true;
 
@@ -233,6 +237,28 @@ const BinaryOptionsScreen: React.FC = () => {
   useEffect(() => {
     startEntranceAnimations();
   }, []);
+
+  // Fetch price history for selected crypto
+  useEffect(() => {
+    const fetchPriceHistory = async () => {
+      if (selectedCrypto) {
+        setIsLoadingChart(true);
+        try {
+          const data = await priceDataService.getPriceHistory(
+            selectedCrypto,
+            1
+          );
+          setPriceHistory(data);
+        } catch (error) {
+          console.error("Error fetching price history:", error);
+        } finally {
+          setIsLoadingChart(false);
+        }
+      }
+    };
+
+    fetchPriceHistory();
+  }, [selectedCrypto]);
 
   // Trigger animations on screen focus
   useFocusEffect(
@@ -691,6 +717,19 @@ const BinaryOptionsScreen: React.FC = () => {
               ${currentCrypto.price.toLocaleString()}
             </Text>
           </View>
+
+          {/* Price Chart */}
+          {priceHistory.length > 0 && (
+            <View style={styles.chartContainer}>
+              <Text style={styles.chartTitle}>24h Price Chart</Text>
+              <PriceChart
+                data={priceHistory}
+                color="#3b82f6"
+                height={120}
+                isMini={false}
+              />
+            </View>
+          )}
         </Animated.View>
       )}
 
@@ -1536,6 +1575,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#ef4444",
     marginTop: 2,
+  },
+  chartContainer: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  chartTitle: {
+    fontSize: 14,
+    color: "#cccccc",
+    marginBottom: 8,
+    fontWeight: "500",
   },
 });
 

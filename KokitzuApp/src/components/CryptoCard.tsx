@@ -9,6 +9,8 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CryptoPrice } from "../types";
 import { TIMEFRAMES } from "../constants/timeframes";
+import PriceChart from "./PriceChart";
+import priceDataService from "../services/priceDataService";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -35,6 +37,8 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
   index = 0,
 }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_MINUTE");
+  const [priceHistory, setPriceHistory] = useState<number[]>([]);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
   // Animation values
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
@@ -66,6 +70,25 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
       withSpring(0, { damping: 15, stiffness: 150 })
     );
   }, []);
+
+  // Fetch price history for chart
+  useEffect(() => {
+    const fetchPriceHistory = async () => {
+      if (crypto.symbol) {
+        setIsLoadingChart(true);
+        try {
+          const data = await priceDataService.getPriceHistory(crypto.symbol, 1);
+          setPriceHistory(data);
+        } catch (error) {
+          console.error("Error fetching price history:", error);
+        } finally {
+          setIsLoadingChart(false);
+        }
+      }
+    };
+
+    fetchPriceHistory();
+  }, [crypto.symbol]);
 
   const handlePressIn = () => {
     hoverScale.value = withSpring(1.02, { damping: 15, stiffness: 150 });
@@ -151,6 +174,15 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
               >
                 {formatPercentage(priceChange)}
               </Text>
+            </View>
+            {/* Mini Price Chart */}
+            <View style={styles.chartContainer}>
+              <PriceChart
+                data={priceHistory}
+                color={isPositive ? "#10b981" : "#ef4444"}
+                height={40}
+                isMini={true}
+              />
             </View>
           </View>
         </View>
@@ -430,6 +462,10 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
     shadowOpacity: 0.4,
     shadowRadius: 12,
+  },
+  chartContainer: {
+    marginTop: 8,
+    alignItems: "center",
   },
 });
 
