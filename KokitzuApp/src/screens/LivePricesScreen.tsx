@@ -31,12 +31,19 @@ import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
 import WalletConnectButton from "../components/WalletConnectButton";
 import { useEthPrice } from "../utils/currencyUtils";
+import { FONTS } from "../constants/fonts";
+import { TIMEFRAMES } from "../constants/timeframes";
 
 const LivePricesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_HOUR"); // Default to 1 hour
   const navigation = useNavigation();
-  const { setDefaultBet, setBetType, setSelectedTimeframe } = useTrading();
+  const {
+    setDefaultBet,
+    setBetType,
+    setSelectedTimeframe: setTradingTimeframe,
+  } = useTrading();
 
   // Add wallet context usage to ensure proper header updates
   const { isConnected, balance } = useWallet();
@@ -176,14 +183,14 @@ const LivePricesScreen: React.FC = () => {
   const handleTradeUp = (crypto: CryptoPrice, timeframe: string) => {
     setDefaultBet(crypto.symbol);
     setBetType("UP");
-    setSelectedTimeframe(timeframe);
+    setTradingTimeframe(timeframe);
     (navigation as any).navigate("BinaryOptions");
   };
 
   const handleTradeDown = (crypto: CryptoPrice, timeframe: string) => {
     setDefaultBet(crypto.symbol);
     setBetType("DOWN");
-    setSelectedTimeframe(timeframe);
+    setTradingTimeframe(timeframe);
     (navigation as any).navigate("BinaryOptions");
   };
 
@@ -228,6 +235,38 @@ const LivePricesScreen: React.FC = () => {
         />
       </Animated.View>
 
+      {/* Timeframe Selector */}
+      <Animated.View style={[styles.timeframeContainer, searchAnimatedStyle]}>
+        <Text style={styles.timeframeLabel}>Chart Timeframe:</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.timeframeScrollView}
+        >
+          {TIMEFRAMES.map((timeframe) => (
+            <TouchableOpacity
+              key={timeframe.value}
+              style={[
+                styles.timeframeOption,
+                selectedTimeframe === timeframe.value &&
+                  styles.selectedTimeframeOption,
+              ]}
+              onPress={() => setSelectedTimeframe(timeframe.value)}
+            >
+              <Text
+                style={[
+                  styles.timeframeOptionText,
+                  selectedTimeframe === timeframe.value &&
+                    styles.selectedTimeframeOptionText,
+                ]}
+              >
+                {timeframe.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Animated.View>
+
       {/* Content */}
       <Animated.View style={[styles.scrollView, contentAnimatedStyle]}>
         <ScrollView
@@ -252,6 +291,7 @@ const LivePricesScreen: React.FC = () => {
                   onTradeUp={handleTradeUp}
                   onTradeDown={handleTradeDown}
                   index={index}
+                  selectedTimeframe={selectedTimeframe}
                 />
               ))}
               {filteredCryptoData.length === 0 && (
@@ -313,7 +353,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   refreshButton: {
@@ -324,7 +364,7 @@ const styles = StyleSheet.create({
   },
   refreshButtonText: {
     color: "#ffffff",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
   },
   searchContainer: {
     paddingHorizontal: 24,
@@ -338,8 +378,44 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: "#ffffff",
     fontSize: 16,
+    fontFamily: FONTS.REGULAR,
     borderWidth: 1,
     borderColor: "#333",
+  },
+  timeframeContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  timeframeLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
+    color: "#cccccc",
+    marginBottom: 8,
+  },
+  timeframeScrollView: {
+    flexGrow: 0,
+  },
+  timeframeOption: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#444",
+    alignItems: "center",
+  },
+  selectedTimeframeOption: {
+    backgroundColor: "#3b82f6",
+    borderColor: "#3b82f6",
+  },
+  timeframeOptionText: {
+    fontSize: 12,
+    fontFamily: FONTS.MEDIUM,
+    color: "#999999",
+  },
+  selectedTimeframeOptionText: {
+    color: "#ffffff",
   },
   scrollView: {
     flex: 1,
@@ -357,12 +433,13 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginBottom: 10,
   },
   errorMessage: {
     fontSize: 16,
+    fontFamily: FONTS.REGULAR,
     color: "#cccccc",
     textAlign: "center",
     marginBottom: 20,
@@ -375,7 +452,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: "#ffffff",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
   },
   emptyState: {
     alignItems: "center",
@@ -384,6 +461,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
+    fontFamily: FONTS.REGULAR,
     color: "#666666",
   },
   debugContainer: {

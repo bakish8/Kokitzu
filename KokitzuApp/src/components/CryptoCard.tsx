@@ -11,6 +11,7 @@ import { CryptoPrice } from "../types";
 import { TIMEFRAMES } from "../constants/timeframes";
 import PriceChart from "./PriceChart";
 import priceDataService from "../services/priceDataService";
+import { FONTS } from "../constants/fonts";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -27,6 +28,7 @@ interface CryptoCardProps {
   onTradeUp?: (crypto: CryptoPrice, timeframe: string) => void;
   onTradeDown?: (crypto: CryptoPrice, timeframe: string) => void;
   index?: number;
+  selectedTimeframe?: string;
 }
 
 const CryptoCard: React.FC<CryptoCardProps> = ({
@@ -35,8 +37,11 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
   onTradeUp,
   onTradeDown,
   index = 0,
+  selectedTimeframe: propSelectedTimeframe = "ONE_HOUR",
 }) => {
-  const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_MINUTE");
+  const [selectedTimeframe, setSelectedTimeframe] = useState(
+    propSelectedTimeframe
+  );
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   // Animation values
@@ -71,13 +76,22 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
     );
   }, []);
 
+  // Update local selectedTimeframe when prop changes
+  useEffect(() => {
+    setSelectedTimeframe(propSelectedTimeframe);
+  }, [propSelectedTimeframe]);
+
   // Fetch price history for chart
   useEffect(() => {
     const fetchPriceHistory = async () => {
       if (crypto.symbol) {
         setIsLoadingChart(true);
         try {
-          const data = await priceDataService.getPriceHistory(crypto.symbol, 1);
+          // Use the selected timeframe for the chart
+          const data = await priceDataService.getPriceHistory(
+            crypto.symbol,
+            selectedTimeframe
+          );
           setPriceHistory(data);
         } catch (error) {
           console.error("Error fetching price history:", error);
@@ -88,7 +102,7 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
     };
 
     fetchPriceHistory();
-  }, [crypto.symbol]);
+  }, [crypto.symbol, selectedTimeframe]);
 
   const handlePressIn = () => {
     hoverScale.value = withSpring(1.02, { damping: 15, stiffness: 150 });
@@ -301,12 +315,13 @@ const styles = StyleSheet.create({
   },
   cryptoName: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginBottom: 4,
   },
   cryptoSymbol: {
     fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
     color: "#666666",
     textTransform: "uppercase",
   },
@@ -315,7 +330,7 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginBottom: 4,
   },
@@ -334,7 +349,7 @@ const styles = StyleSheet.create({
   },
   changeText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     marginLeft: 4,
   },
   positiveText: {
@@ -355,6 +370,7 @@ const styles = StyleSheet.create({
   },
   lastUpdated: {
     fontSize: 12,
+    fontFamily: FONTS.REGULAR,
     color: "#666666",
   },
   tradeButtonsContainer: {
@@ -400,8 +416,8 @@ const styles = StyleSheet.create({
   },
   timeframeLabel: {
     fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
     color: "#cccccc",
-    fontWeight: "500",
     marginBottom: 8,
   },
   timeframeScrollView: {
@@ -427,15 +443,16 @@ const styles = StyleSheet.create({
   },
   timeframeText: {
     fontSize: 11,
+    fontFamily: FONTS.MEDIUM,
     color: "#999999",
-    fontWeight: "500",
   },
   selectedTimeframeText: {
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
-    fontWeight: "600",
   },
   timeframePayout: {
     fontSize: 9,
+    fontFamily: FONTS.REGULAR,
     color: "#666666",
     marginTop: 1,
   },
@@ -445,7 +462,7 @@ const styles = StyleSheet.create({
   tradeButtonText: {
     color: "#ffffff",
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: FONTS.BOLD,
     marginLeft: 8,
     textShadowColor: "rgba(0, 0, 0, 0.3)",
     textShadowOffset: { width: 0, height: 1 },

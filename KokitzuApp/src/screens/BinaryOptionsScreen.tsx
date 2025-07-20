@@ -43,6 +43,7 @@ import {
 } from "../utils/currencyUtils";
 import PriceChart from "../components/PriceChart";
 import priceDataService from "../services/priceDataService";
+import { FONTS } from "../constants/fonts";
 
 const BinaryOptionsScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
@@ -246,11 +247,12 @@ const BinaryOptionsScreen: React.FC = () => {
         try {
           const data = await priceDataService.getPriceHistory(
             selectedCrypto,
-            1
+            selectedTimeframe
           );
           setPriceHistory(data);
         } catch (error) {
           console.error("Error fetching price history:", error);
+          setPriceHistory([]);
         } finally {
           setIsLoadingChart(false);
         }
@@ -258,7 +260,7 @@ const BinaryOptionsScreen: React.FC = () => {
     };
 
     fetchPriceHistory();
-  }, [selectedCrypto]);
+  }, [selectedCrypto, selectedTimeframe]);
 
   // Trigger animations on screen focus
   useFocusEffect(
@@ -721,7 +723,19 @@ const BinaryOptionsScreen: React.FC = () => {
           {/* Price Chart */}
           {priceHistory.length > 0 && (
             <View style={styles.chartContainer}>
-              <Text style={styles.chartTitle}>24h Price Chart</Text>
+              <Text style={styles.chartTitle}>
+                {(() => {
+                  const label =
+                    priceDataService.getTimeframeLabel(selectedTimeframe);
+                  console.log(
+                    "📊 Chart Title Update:",
+                    selectedTimeframe,
+                    "->",
+                    label
+                  );
+                  return label;
+                })()}
+              </Text>
               <PriceChart
                 data={priceHistory}
                 color="#3b82f6"
@@ -749,7 +763,10 @@ const BinaryOptionsScreen: React.FC = () => {
                 selectedTimeframe === timeframe.value &&
                   styles.selectedTimeframe,
               ]}
-              onPress={() => setSelectedTimeframe(timeframe.value)}
+              onPress={() => {
+                console.log("⏰ Timeframe Selected:", timeframe.value);
+                setSelectedTimeframe(timeframe.value);
+              }}
             >
               <Text
                 style={[
@@ -1168,7 +1185,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   section: {
@@ -1177,7 +1194,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
     marginBottom: 12,
   },
@@ -1203,10 +1220,11 @@ const styles = StyleSheet.create({
   },
   cryptoOptionText: {
     color: "#ffffff",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
   },
   selectedCryptoText: {
     color: "#ffffff",
+    fontFamily: FONTS.SEMI_BOLD,
   },
   priceContainer: {
     backgroundColor: "#1a1a2e",
@@ -1216,7 +1234,7 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   timeframeList: {
@@ -1238,7 +1256,7 @@ const styles = StyleSheet.create({
   },
   timeframeLabel: {
     color: "#ffffff",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     fontSize: 14,
   },
   timeframePayout: {
@@ -1283,7 +1301,7 @@ const styles = StyleSheet.create({
   },
   betTypeText: {
     color: "#ffffff",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     marginTop: 8,
   },
   upButtonText: {
@@ -1301,7 +1319,7 @@ const styles = StyleSheet.create({
   placeBetButtonText: {
     color: "#ffffff",
     fontSize: 18,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
   },
   activeBetCard: {
     backgroundColor: "#1a1a2e",
@@ -1319,12 +1337,12 @@ const styles = StyleSheet.create({
   },
   betSymbol: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   betType: {
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1344,7 +1362,7 @@ const styles = StyleSheet.create({
   },
   betAmount: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
   },
   betTimeframe: {
@@ -1354,7 +1372,7 @@ const styles = StyleSheet.create({
   betTimeLeft: {
     fontSize: 14,
     color: "#3b82f6",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
   },
   noBetsText: {
     textAlign: "center",
@@ -1421,7 +1439,7 @@ const styles = StyleSheet.create({
   maxButtonText: {
     color: "#ffffff",
     fontSize: 12,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
   },
   maxBetInfo: {
     flexDirection: "row",
@@ -1498,7 +1516,7 @@ const styles = StyleSheet.create({
   },
   profitSummaryTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginBottom: 16,
     textAlign: "center",
@@ -1511,8 +1529,8 @@ const styles = StyleSheet.create({
   },
   profitSummaryLabel: {
     fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
     color: "#cccccc",
-    fontWeight: "500",
   },
   profitSummaryValue: {
     alignItems: "flex-end",
@@ -1524,7 +1542,7 @@ const styles = StyleSheet.create({
   },
   profitSummaryAmount: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   profitSummaryEquivalent: {
@@ -1548,7 +1566,7 @@ const styles = StyleSheet.create({
   },
   directionText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
   },
   profitSummaryDivider: {
@@ -1558,7 +1576,7 @@ const styles = StyleSheet.create({
   },
   profitSummaryProfit: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#10b981",
   },
   profitSummaryProfitEquivalent: {
@@ -1568,7 +1586,7 @@ const styles = StyleSheet.create({
   },
   profitSummaryLoss: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ef4444",
   },
   profitSummaryLossEquivalent: {
@@ -1582,9 +1600,9 @@ const styles = StyleSheet.create({
   },
   chartTitle: {
     fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
     color: "#cccccc",
     marginBottom: 8,
-    fontWeight: "500",
   },
 });
 

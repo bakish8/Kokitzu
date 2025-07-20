@@ -15,6 +15,7 @@ import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
+import { FONTS } from "../constants/fonts";
 
 interface WalletConnectedModalProps {
   visible: boolean;
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   backButton: {
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: "#3b82f6",
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     fontSize: 14,
   },
   section: {
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
   },
   infoItem: {
@@ -562,13 +563,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
+    fontFamily: FONTS.MEDIUM,
     color: "#666",
-    fontWeight: "500",
   },
   infoValue: {
     fontSize: 14,
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
-    fontWeight: "600",
   },
   networkInfo: {
     flexDirection: "row",
@@ -590,12 +591,13 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
     marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 12,
+    fontFamily: FONTS.REGULAR,
     color: "#666",
   },
   networkSection: {
@@ -624,18 +626,19 @@ const styles = StyleSheet.create({
   },
   networkName: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
     marginBottom: 2,
   },
   networkChainId: {
     fontSize: 12,
+    fontFamily: FONTS.REGULAR,
     color: "#666",
   },
   testnetBadge: {
     fontSize: 10,
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#f59e0b",
-    fontWeight: "600",
     marginTop: 2,
   },
   spinning: {
@@ -649,6 +652,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
+    fontFamily: FONTS.REGULAR,
     color: "#666",
     textAlign: "center",
   },

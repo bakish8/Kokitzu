@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useShake } from "../utils/animations";
+import { FONTS } from "../constants/fonts";
 
 interface AuthModalProps {
   visible: boolean;
@@ -176,12 +177,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
+    fontFamily: FONTS.REGULAR,
     color: "#666666",
     textAlign: "center",
   },
@@ -195,6 +197,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: "#ffffff",
     fontSize: 16,
+    fontFamily: FONTS.REGULAR,
     borderWidth: 1,
     borderColor: "#333",
   },
@@ -208,6 +211,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#ef4444",
     fontSize: 14,
+    fontFamily: FONTS.REGULAR,
     textAlign: "center",
   },
   submitButton: {
@@ -223,7 +227,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     color: "#ffffff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
   },
   toggleButton: {
     alignItems: "center",
@@ -232,6 +236,7 @@ const styles = StyleSheet.create({
   toggleButtonText: {
     color: "#3b82f6",
     fontSize: 14,
+    fontFamily: FONTS.REGULAR,
   },
 });
 

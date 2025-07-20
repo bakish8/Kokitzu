@@ -7,6 +7,15 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { WalletConnectModal } from "@walletconnect/modal-react-native";
+import {
+  useFonts,
+  SpaceGrotesk_300Light,
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_500Medium,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
+import * as SplashScreen from "expo-splash-screen";
 
 import { initializeApolloClient, getApolloClient } from "./src/graphql/client";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -137,6 +146,20 @@ export default function App() {
   const [apolloClient, setApolloClient] = useState<any>(null);
   const [initializing, setInitializing] = useState(true);
 
+  // Load Space Grotesk fonts
+  const [fontsLoaded] = useFonts({
+    "SpaceGrotesk-Light": SpaceGrotesk_300Light,
+    "SpaceGrotesk-Regular": SpaceGrotesk_400Regular,
+    "SpaceGrotesk-Medium": SpaceGrotesk_500Medium,
+    "SpaceGrotesk-SemiBold": SpaceGrotesk_600SemiBold,
+    "SpaceGrotesk-Bold": SpaceGrotesk_700Bold,
+  });
+
+  // Prevent splash screen from hiding until fonts are loaded
+  useEffect(() => {
+    SplashScreen.preventAutoHideAsync();
+  }, []);
+
   useEffect(() => {
     const initClient = async () => {
       try {
@@ -153,7 +176,14 @@ export default function App() {
     initClient();
   }, []);
 
-  if (initializing || !apolloClient) {
+  // Hide splash screen when fonts and Apollo client are loaded
+  useEffect(() => {
+    if (fontsLoaded && !initializing) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, initializing]);
+
+  if (initializing || !apolloClient || !fontsLoaded) {
     return (
       <View
         style={{

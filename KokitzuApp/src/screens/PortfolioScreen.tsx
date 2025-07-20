@@ -27,6 +27,7 @@ import {
   formatUsd,
   ethToUsd,
 } from "../utils/currencyUtils";
+import { FONTS } from "../constants/fonts";
 
 const PortfolioScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
   },
   statsContainer: {
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginTop: 8,
     marginBottom: 4,
@@ -462,7 +463,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontFamily: FONTS.SEMI_BOLD,
     color: "#ffffff",
     marginBottom: 16,
   },
@@ -523,7 +524,7 @@ const styles = StyleSheet.create({
   },
   betSymbol: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: FONTS.BOLD,
     color: "#ffffff",
     marginBottom: 4,
   },
