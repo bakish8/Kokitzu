@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Modal,
   Alert,
+  ScrollView,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
+import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
 
@@ -29,9 +31,14 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     walletConnectUri,
     connectionStatus,
   } = useWallet();
+  const { currentNetwork, networkConfig, switchNetwork, isNetworkSwitching } =
+    useNetwork();
   const [showModal, setShowModal] = useState(false);
+  const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [localBalance, setLocalBalance] = useState<string | null>(null);
-  const [currentChain, setCurrentChain] = useState<string>("1");
+  const [currentChain, setCurrentChain] = useState<string>(
+    networkConfig.chainId
+  );
 
   // Use the WalletConnect modal hook
   const {
@@ -41,6 +48,17 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     provider,
   } = useWalletConnectModal();
 
+  // Update current chain when network changes
+  useEffect(() => {
+    setCurrentChain(networkConfig.chainId);
+    console.log(
+      "🌐 WalletConnectButton: Network changed to",
+      currentNetwork,
+      "Chain ID:",
+      networkConfig.chainId
+    );
+  }, [currentNetwork, networkConfig.chainId]);
+
   // Debug effect to monitor connection changes
   useEffect(() => {
     console.log("🔗 WalletConnectButton: WalletConnect status:", {
@@ -49,8 +67,16 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       isConnected,
       walletAddress,
       currentChain,
+      currentNetwork,
     });
-  }, [wcConnected, wcAddress, isConnected, walletAddress, currentChain]);
+  }, [
+    wcConnected,
+    wcAddress,
+    isConnected,
+    walletAddress,
+    currentChain,
+    currentNetwork,
+  ]);
 
   // Effect to detect chain changes - we'll use a polling approach
   useEffect(() => {
@@ -65,7 +91,10 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
             console.log("🔗 Chain changed to:", chainIdDecimal);
           }
         } catch (error) {
-          console.log("🔗 Could not detect chain, using default");
+          console.log(
+            "🔗 Could not detect chain, using network context chain ID"
+          );
+          setCurrentChain(networkConfig.chainId);
         }
       };
 
@@ -74,19 +103,19 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       const interval = setInterval(checkChain, 5000);
       return () => clearInterval(interval);
     }
-  }, [wcConnected, provider, currentChain]);
+  }, [wcConnected, provider, currentChain, networkConfig.chainId]);
 
-  // Effect to fetch balance when WalletConnect connects or chain changes
+  // Effect to fetch balance when WalletConnect connects, chain changes, or network changes
   useEffect(() => {
     const fetchBalance = async () => {
       if (wcConnected && wcAddress) {
         try {
           console.log(
-            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain}`
+            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain} (${currentNetwork})`
           );
           const balance = await getWalletBalance(wcAddress, currentChain);
           setLocalBalance(balance);
-          console.log("💰 Balance fetched:", balance);
+          console.log("💰 Balance fetched:", balance, "for", currentNetwork);
         } catch (error) {
           console.error("❌ Error fetching balance:", error);
           setLocalBalance("0.0000");
@@ -95,19 +124,24 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     };
 
     fetchBalance();
-  }, [wcConnected, wcAddress, currentChain]);
+  }, [wcConnected, wcAddress, currentChain, currentNetwork]);
 
   // Effect to clear balance when disconnecting
   useEffect(() => {
     if (!wcConnected && !isConnected) {
       setLocalBalance(null);
-      setCurrentChain("1");
+      setCurrentChain(networkConfig.chainId);
     }
-  }, [wcConnected, isConnected]);
+  }, [wcConnected, isConnected, networkConfig.chainId]);
 
   const handleConnect = async (method: "metamask" | "walletconnect") => {
     try {
-      console.log("🔗 Starting wallet connection with method:", method);
+      console.log(
+        "🔗 Starting wallet connection with method:",
+        method,
+        "on",
+        currentNetwork
+      );
 
       if (method === "walletconnect") {
         // For WalletConnect, directly open the official modal
@@ -139,13 +173,19 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       }
       disconnectWallet();
       setLocalBalance(null);
-      setCurrentChain("1");
+      setCurrentChain(networkConfig.chainId);
     } catch (error) {
       console.error("❌ Error disconnecting:", error);
       disconnectWallet();
       setLocalBalance(null);
-      setCurrentChain("1");
+      setCurrentChain(networkConfig.chainId);
     }
+  };
+
+  const handleNetworkSelect = async (network: NetworkType) => {
+    console.log("🌐 Network selection clicked:", network);
+    setShowNetworkModal(false);
+    await switchNetwork(network);
   };
 
   const formatAddress = (address: string) => {
@@ -157,6 +197,10 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     switch (chainId) {
       case "1":
         return "ETH";
+      case "11155111":
+        return "Sepolia ETH";
+      case "5":
+        return "Goerli ETH";
       case "137":
         return "MATIC";
       case "56":
@@ -166,7 +210,33 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       case "10":
         return "OP";
       default:
-        return "ETH";
+        return networkConfig.nativeCurrency.symbol;
+    }
+  };
+
+  const getNetworkIcon = (network: NetworkType) => {
+    switch (network) {
+      case "mainnet":
+        return "ethereum";
+      case "sepolia":
+        return "test-tube";
+      case "goerli":
+        return "flask";
+      default:
+        return "server-network";
+    }
+  };
+
+  const getNetworkColor = (network: NetworkType) => {
+    switch (network) {
+      case "mainnet":
+        return "#10b981"; // Green for mainnet
+      case "sepolia":
+        return "#3b82f6"; // Blue for Sepolia
+      case "goerli":
+        return "#f59e0b"; // Orange for Goerli
+      default:
+        return "#666";
     }
   };
 
@@ -174,7 +244,14 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   const connectedAddress = wcAddress || walletAddress;
   const isWalletConnected = wcConnected || isConnected;
   const displayBalance = localBalance || balance;
-  const chainName = getChainName(currentChain || "1");
+  const chainName = getChainName(currentChain || networkConfig.chainId);
+
+  // Debug modal state
+  console.log("🔍 Modal states:", {
+    showModal,
+    showNetworkModal,
+    isNetworkSwitching,
+  });
 
   if (isWalletConnected && connectedAddress && connectedAddress !== "Unknown") {
     return (
@@ -225,6 +302,114 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
               <TouchableOpacity onPress={() => setShowModal(false)}>
                 <MaterialCommunityIcons name="close" size={24} color="#666" />
               </TouchableOpacity>
+            </View>
+
+            {/* Network Selection Section */}
+            <View style={styles.networkSection}>
+              <Text style={styles.sectionTitle}>Network</Text>
+              {!showNetworkModal ? (
+                <TouchableOpacity
+                  style={[
+                    styles.networkSelector,
+                    { borderColor: getNetworkColor(currentNetwork) },
+                  ]}
+                  onPress={() => {
+                    console.log(
+                      "🔘 Network selector clicked, showing network list"
+                    );
+                    setShowNetworkModal(true);
+                  }}
+                  disabled={isNetworkSwitching}
+                >
+                  <View style={styles.networkInfo}>
+                    <MaterialCommunityIcons
+                      name={getNetworkIcon(currentNetwork)}
+                      size={20}
+                      color={getNetworkColor(currentNetwork)}
+                    />
+                    <View style={styles.networkDetails}>
+                      <Text style={styles.networkName}>
+                        {networkConfig.name}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.networkActions}>
+                    {isNetworkSwitching && (
+                      <MaterialCommunityIcons
+                        name="loading"
+                        size={16}
+                        color={getNetworkColor(currentNetwork)}
+                        style={styles.spinning}
+                      />
+                    )}
+                    <MaterialCommunityIcons
+                      name="chevron-down"
+                      size={20}
+                      color="#666"
+                    />
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.networkListContainer}>
+                  <View style={styles.networkListHeader}>
+                    <Text style={styles.networkListTitle}>Select Network</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        console.log("🔘 Closing network list");
+                        setShowNetworkModal(false);
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="close"
+                        size={20}
+                        color="#666"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.networkList}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {Object.entries(NETWORKS).map(([key, network]) => (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.networkItem,
+                          currentNetwork === key && styles.selectedNetworkItem,
+                        ]}
+                        onPress={() => {
+                          console.log("🔘 Network item clicked:", key);
+                          handleNetworkSelect(key as NetworkType);
+                        }}
+                      >
+                        <View style={styles.networkInfo}>
+                          <MaterialCommunityIcons
+                            name={getNetworkIcon(key as NetworkType)}
+                            size={24}
+                            color={getNetworkColor(key as NetworkType)}
+                          />
+                          <View style={styles.networkDetails}>
+                            <Text style={styles.networkName}>
+                              {network.name}
+                            </Text>
+
+                            {network.isTestnet && (
+                              <Text style={styles.testnetBadge}>TESTNET</Text>
+                            )}
+                          </View>
+                        </View>
+                        {currentNetwork === key && (
+                          <MaterialCommunityIcons
+                            name="check-circle"
+                            size={24}
+                            color={getNetworkColor(key as NetworkType)}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
 
             <View style={styles.connectionOptions}>
@@ -337,6 +522,54 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#ffffff",
   },
+  closeButton: {
+    padding: 4,
+  },
+  networkSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+    marginBottom: 12,
+  },
+  networkSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0f0f23",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+  },
+  networkInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
+  networkDetails: {
+    flex: 1,
+  },
+  networkName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+    marginBottom: 2,
+  },
+  networkChainId: {
+    fontSize: 12,
+    color: "#666666",
+  },
+  networkActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  spinning: {
+    transform: [{ rotate: "360deg" }],
+  },
   connectionOptions: {
     gap: 12,
   },
@@ -362,6 +595,51 @@ const styles = StyleSheet.create({
   connectionOptionSubtitle: {
     fontSize: 14,
     color: "#666666",
+  },
+  networkListContainer: {
+    backgroundColor: "#0f0f23",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    maxHeight: 300,
+  },
+  networkListHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  networkListTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  networkList: {
+    maxHeight: 250,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  networkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0f0f23",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    marginBottom: 8,
+  },
+  selectedNetworkItem: {
+    borderColor: "#3b82f6",
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
+  },
+  testnetBadge: {
+    fontSize: 10,
+    color: "#f59e0b",
+    fontWeight: "600",
+    marginTop: 2,
   },
   loadingContainer: {
     alignItems: "center",

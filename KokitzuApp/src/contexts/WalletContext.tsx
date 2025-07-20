@@ -15,7 +15,10 @@ import {
   getCurrentSession,
   getConnectionStatus,
   forceDisconnectAll,
+  setCurrentNetwork as setWalletNetwork,
+  getCurrentNetwork as getWalletNetwork,
 } from "../services/walletconnect";
+import { useNetwork } from "./NetworkContext";
 import { Linking, Alert, Platform } from "react-native";
 
 interface WalletContextType {
@@ -47,6 +50,7 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
+  const { currentNetwork, networkConfig } = useNetwork();
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
@@ -57,6 +61,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [connectionStatus, setConnectionStatus] = useState<
     "waiting" | "connecting" | "connected" | "failed"
   >("waiting");
+
+  // Update wallet service network when network context changes
+  useEffect(() => {
+    setWalletNetwork(currentNetwork);
+    console.log("🌐 WalletContext: Network changed to", currentNetwork);
+
+    // Reinitialize provider with new network
+    if (isConnected) {
+      setProvider(new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl));
+      console.log(
+        "🌐 WalletContext: Provider reinitialized for",
+        currentNetwork
+      );
+    }
+  }, [currentNetwork, networkConfig.rpcUrl, isConnected]);
 
   useEffect(() => {
     loadStoredWallet();
@@ -73,16 +92,18 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsConnected(true);
         setWalletSession(session);
         setCurrentSession(session);
-        setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+        setProvider(new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl));
 
-        // Get real balance
+        // Get real balance for current network
         const realBalance = await getWalletBalance(storedAddress);
         setBalance(realBalance);
         console.log(
           "Loaded stored wallet:",
           storedAddress,
           "Balance:",
-          realBalance
+          realBalance,
+          "on",
+          currentNetwork
         );
       }
     } catch (error) {
@@ -124,7 +145,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const { uri, approval } = await connectWC();
 
       if (uri) {
-        console.log("MetaMask connection URI generated:", uri);
+        console.log(
+          "MetaMask connection URI generated for",
+          currentNetwork,
+          ":",
+          uri
+        );
 
         // Try to open MetaMask directly with the URI
         const metamaskUrl = `metamask://wc?uri=${encodeURIComponent(uri)}`;
@@ -153,11 +179,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           setWalletAddress(address);
           setIsConnected(true);
           setWalletSession(session);
-          setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+          setProvider(
+            new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl)
+          );
           await AsyncStorage.setItem("walletAddress", address);
           await AsyncStorage.setItem("walletSession", JSON.stringify(session));
 
-          // Get real balance
+          // Get real balance for current network
           const realBalance = await getWalletBalance(address);
           setBalance(realBalance);
           setConnectionStatus("connected");
@@ -165,7 +193,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             "Connected to MetaMask:",
             address,
             "Balance:",
-            realBalance
+            realBalance,
+            "on",
+            currentNetwork
           );
         }
       } else {
@@ -181,7 +211,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const connectWalletConnect = async () => {
     try {
-      console.log("WalletContext: Starting WalletConnect connection...");
+      console.log(
+        "WalletContext: Starting WalletConnect connection on",
+        currentNetwork
+      );
 
       // Check if API keys are configured
       const errors = validateApiKeys();
@@ -204,7 +237,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           "🔗 WalletContext: walletConnectUri state should now be available"
         );
         console.log(
-          "WalletContext: WalletConnect URI generated:",
+          "WalletContext: WalletConnect URI generated for",
+          currentNetwork,
+          ":",
           uri.substring(0, 50) + "..."
         );
 
@@ -226,33 +261,36 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           setWalletAddress(address);
           setIsConnected(true);
           setWalletSession(session);
-          setProvider(new ethers.providers.JsonRpcProvider(getInfuraUrl()));
+          setProvider(
+            new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl)
+          );
           setConnectionStatus("connected");
 
           console.log("WalletContext: Saving to AsyncStorage...");
           await AsyncStorage.setItem("walletAddress", address);
           await AsyncStorage.setItem("walletSession", JSON.stringify(session));
 
-          // Get real balance
-          console.log("WalletContext: Fetching balance...");
+          // Get real balance for current network
+          console.log("WalletContext: Fetching balance for", currentNetwork);
           const realBalance = await getWalletBalance(address);
           setBalance(realBalance);
           console.log(
             "WalletContext: Connected to wallet:",
             address,
             "Balance:",
-            realBalance
+            realBalance,
+            "on",
+            currentNetwork
           );
         } else {
           throw new Error("Failed to extract wallet address from session");
         }
 
         return { uri, approval };
+      } else {
+        throw new Error("Failed to generate WalletConnect URI");
       }
-
-      throw new Error("Failed to generate WalletConnect URI");
     } catch (error: any) {
-      console.error("WalletContext: WalletConnect connection failed:", error);
       setConnectionStatus("failed");
       throw new Error(
         `WalletConnect connection failed: ${error?.message || "Unknown error"}`
@@ -262,28 +300,25 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const disconnectWallet = async () => {
     try {
-      console.log("Disconnecting wallet...");
+      console.log("WalletContext: Disconnecting wallet...");
 
-      // Use the improved disconnect function
-      if (walletSession?.topic) {
-        console.log("Disconnecting session with topic:", walletSession.topic);
-        await disconnectWalletConnect(walletSession.topic);
-      }
+      // Disconnect from WalletConnect
+      await disconnectWalletConnect();
 
       // Clear local state
       setWalletAddress(null);
       setIsConnected(false);
       setBalance(null);
       setProvider(null);
-      setWalletSession(null);
       setWalletConnectUri(null);
+      setWalletSession(null);
       setConnectionStatus("waiting");
 
       // Clear stored data
       await AsyncStorage.removeItem("walletAddress");
       await AsyncStorage.removeItem("walletSession");
 
-      console.log("Wallet disconnected successfully");
+      console.log("WalletContext: Wallet disconnected successfully");
     } catch (error) {
       console.error("Error disconnecting wallet:", error);
       // Still clear local state even if there's an error
@@ -291,20 +326,19 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsConnected(false);
       setBalance(null);
       setProvider(null);
-      setWalletSession(null);
       setWalletConnectUri(null);
+      setWalletSession(null);
       setConnectionStatus("waiting");
     }
   };
 
   const signMessage = async (message: string): Promise<string | null> => {
     try {
-      if (!walletSession) {
-        throw new Error("No wallet session found");
+      if (!isConnected || !walletSession) {
+        throw new Error("Wallet not connected");
       }
 
-      const signature = await signMessageWC(message, walletSession);
-      return signature;
+      return await signMessageWC(message, walletSession);
     } catch (error) {
       console.error("Error signing message:", error);
       throw error;
@@ -316,17 +350,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     amount: string
   ): Promise<string | null> => {
     try {
-      if (!walletSession) {
-        throw new Error("No wallet session found");
+      if (!isConnected || !walletSession) {
+        throw new Error("Wallet not connected");
       }
 
       const transaction = {
         to,
         value: ethers.utils.parseEther(amount).toHexString(),
+        gas: "0x5208", // 21000 gas
       };
 
-      const txHash = await sendTransactionWC(transaction, walletSession);
-      return txHash;
+      return await sendTransactionWC(transaction, walletSession);
     } catch (error) {
       console.error("Error sending transaction:", error);
       throw error;

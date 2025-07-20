@@ -1,1 +1,26 @@
- 
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" fill="#000000"/>
+  
+  <!-- Tiger stripes pattern -->
+  <g fill="#FFD700">
+    <!-- Tiger head stripes -->
+    <path d="M200 300 Q300 280 400 300 Q500 320 600 300 Q700 280 800 300 L800 350 Q700 330 600 350 Q500 370 400 350 Q300 330 200 350 Z"/>
+    <path d="M200 380 Q300 360 400 380 Q500 400 600 380 Q700 360 800 380 L800 430 Q700 410 600 430 Q500 450 400 430 Q300 410 200 430 Z"/>
+    <path d="M200 460 Q300 440 400 460 Q500 480 600 460 Q700 440 800 460 L800 510 Q700 490 600 510 Q500 530 400 510 Q300 490 200 510 Z"/>
+    
+    <!-- Tiger eye area -->
+    <circle cx="350" cy="400" r="25" fill="#FFD700"/>
+    <circle cx="650" cy="400" r="25" fill="#FFD700"/>
+    <circle cx="350" cy="400" r="15" fill="#000000"/>
+    <circle cx="650" cy="400" r="15" fill="#000000"/>
+    <circle cx="345" cy="395" r="5" fill="#FFD700"/>
+    <circle cx="645" cy="395" r="5" fill="#FFD700"/>
+    
+    <!-- Tiger snout -->
+    <path d="M450 500 Q512 520 574 500 Q512 540 450 500 Z"/>
+    
+    <!-- Chinese characters: 虎穴 -->
+    <text x="512" y="700" text-anchor="middle" font-family="Arial, sans-serif" font-size="120" font-weight="bold" fill="#FFD700">虎穴</text>
+  </g>
+</svg> 

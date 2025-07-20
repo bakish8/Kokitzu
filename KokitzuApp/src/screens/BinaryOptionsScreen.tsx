@@ -29,6 +29,7 @@ import { Coin, CryptoPrice, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
+import { useNetwork } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
 import WalletConnectButton from "../components/WalletConnectButton";
@@ -49,10 +50,13 @@ const BinaryOptionsScreen: React.FC = () => {
 
   // Get wallet balance for verification
   const { balance, isConnected, provider } = useWallet();
+  const { currentNetwork, networkConfig } = useNetwork();
 
   // WalletConnect balance state (same as header)
   const [localBalance, setLocalBalance] = useState<string | null>(null);
-  const [currentChain, setCurrentChain] = useState<string>("1");
+  const [currentChain, setCurrentChain] = useState<string>(
+    networkConfig.chainId
+  );
 
   // Use the WalletConnect modal hook (same as header)
   const {
@@ -60,6 +64,17 @@ const BinaryOptionsScreen: React.FC = () => {
     address: wcAddress,
     provider: wcProvider,
   } = useWalletConnectModal();
+
+  // Update current chain when network changes
+  useEffect(() => {
+    setCurrentChain(networkConfig.chainId);
+    console.log(
+      "🌐 BinaryOptionsScreen: Network changed to",
+      currentNetwork,
+      "Chain ID:",
+      networkConfig.chainId
+    );
+  }, [currentNetwork, networkConfig.chainId]);
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -202,38 +217,25 @@ const BinaryOptionsScreen: React.FC = () => {
   }, [selectedTimeframe]);
 
   // Balance verification helpers (same logic as header)
-  const displayBalance = localBalance || balance;
   const currentBalance = useMemo(() => {
-    return parseFloat(displayBalance || "0");
-  }, [displayBalance]);
+    const walletBalance = parseFloat(localBalance || "0");
+    const contextBalance = parseFloat(balance || "0");
+    return Math.max(walletBalance, contextBalance);
+  }, [localBalance, balance]);
 
   // Debug connection status (same logic as header)
   const isWalletConnected = wcConnected || isConnected;
+  console.log("🔗 BinaryOptionsScreen: Connection status:", {
+    wcConnected,
+    isConnected,
+    isWalletConnected,
+    currentChain,
+    currentNetwork,
+  });
 
-  // Debug log to help troubleshoot
-  useEffect(() => {
-    console.log("🔗 BinaryOptions: Connection status:", {
-      wcConnected,
-      isConnected,
-      isWalletConnected,
-      wcAddress,
-      walletAddress: balance ? "has balance" : "no balance",
-      displayBalance,
-    });
-  }, [wcConnected, isConnected, wcAddress, displayBalance]);
-
-  const betAmountValue = useMemo(() => {
-    return parseFloat(betAmount || "0");
-  }, [betAmount]);
-
-  const hasInsufficientBalance = useMemo(() => {
-    return betAmountValue > currentBalance;
-  }, [betAmountValue, currentBalance]);
-
-  const maxSafeBet = useMemo(() => {
-    // Suggest 90% of balance to leave room for gas fees
-    return Math.max(0, currentBalance * 0.9);
-  }, [currentBalance]);
+  const betAmountValue = parseFloat(betAmount || "0");
+  const maxSafeBet = currentBalance * 0.9; // 90% of balance for safety
+  const hasInsufficientBalance = betAmountValue > currentBalance;
 
   const formatBalance = (amount: number) => {
     return amount.toFixed(4);
@@ -243,6 +245,10 @@ const BinaryOptionsScreen: React.FC = () => {
     switch (chainId) {
       case "1":
         return "ETH";
+      case "11155111":
+        return "Sepolia ETH";
+      case "5":
+        return "Goerli ETH";
       case "137":
         return "MATIC";
       case "56":
@@ -252,7 +258,7 @@ const BinaryOptionsScreen: React.FC = () => {
       case "10":
         return "OP";
       default:
-        return "ETH";
+        return networkConfig.nativeCurrency.symbol;
     }
   };
 
@@ -268,7 +274,10 @@ const BinaryOptionsScreen: React.FC = () => {
             console.log("🔗 Chain changed to:", chainIdDecimal);
           }
         } catch (error) {
-          console.log("🔗 Could not detect chain, using default");
+          console.log(
+            "🔗 Could not detect chain, using network context chain ID"
+          );
+          setCurrentChain(networkConfig.chainId);
         }
       };
 
@@ -276,19 +285,19 @@ const BinaryOptionsScreen: React.FC = () => {
       const interval = setInterval(checkChain, 5000);
       return () => clearInterval(interval);
     }
-  }, [wcConnected, wcProvider, currentChain]);
+  }, [wcConnected, wcProvider, currentChain, networkConfig.chainId]);
 
-  // Effect to fetch balance when WalletConnect connects or chain changes (same as header)
+  // Effect to fetch balance when WalletConnect connects, chain changes, or network changes (same as header)
   useEffect(() => {
     const fetchBalance = async () => {
       if (wcConnected && wcAddress) {
         try {
           console.log(
-            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain}`
+            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain} (${currentNetwork})`
           );
           const balance = await getWalletBalance(wcAddress, currentChain);
           setLocalBalance(balance);
-          console.log("💰 Balance fetched:", balance);
+          console.log("💰 Balance fetched:", balance, "for", currentNetwork);
         } catch (error) {
           console.error("❌ Error fetching balance:", error);
           setLocalBalance("0.0000");
@@ -297,24 +306,24 @@ const BinaryOptionsScreen: React.FC = () => {
     };
 
     fetchBalance();
-  }, [wcConnected, wcAddress, currentChain]);
+  }, [wcConnected, wcAddress, currentChain, currentNetwork]);
 
   // Effect to clear balance when disconnecting (same as header)
   useEffect(() => {
     if (!wcConnected && !isConnected) {
       setLocalBalance(null);
-      setCurrentChain("1");
+      setCurrentChain(networkConfig.chainId);
     }
-  }, [wcConnected, isConnected]);
+  }, [wcConnected, isConnected, networkConfig.chainId]);
 
   // Refresh balance function
   const refreshBalance = async () => {
     if (wcConnected && wcAddress) {
       try {
-        console.log("🔄 Refreshing balance...");
+        console.log("🔄 Refreshing balance for", currentNetwork);
         const balance = await getWalletBalance(wcAddress, currentChain);
         setLocalBalance(balance);
-        console.log("💰 Balance refreshed:", balance);
+        console.log("💰 Balance refreshed:", balance, "for", currentNetwork);
       } catch (error) {
         console.error("Error refreshing balance:", error);
       }
@@ -363,7 +372,7 @@ const BinaryOptionsScreen: React.FC = () => {
         "Insufficient Balance",
         `You only have ${formatBalance(currentBalance)} ${getChainName(
           currentChain
-        )}. Please reduce your bet amount.`
+        )} on ${currentNetwork}. Please reduce your bet amount.`
       );
       return;
     }
@@ -377,7 +386,7 @@ const BinaryOptionsScreen: React.FC = () => {
           betAmountValue + gasBuffer
         )} ${getChainName(
           currentChain
-        )} (including gas fees). Current balance: ${formatBalance(
+        )} (including gas fees) on ${currentNetwork}. Current balance: ${formatBalance(
           currentBalance
         )} ${getChainName(currentChain)}`
       );
@@ -425,7 +434,9 @@ const BinaryOptionsScreen: React.FC = () => {
           />
         </View>
         <View style={styles.headerRight}>
-          <WalletConnectButton />
+          <View style={styles.headerButtons}>
+            <WalletConnectButton />
+          </View>
         </View>
       </Animated.View>
 
@@ -522,7 +533,9 @@ const BinaryOptionsScreen: React.FC = () => {
 
       {/* Bet Amount */}
       <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Bet Amount (ETH)</Text>
+        <Text style={styles.sectionTitle}>
+          Bet Amount ({networkConfig.nativeCurrency.symbol})
+        </Text>
 
         {/* Balance Display */}
         <View style={styles.balanceContainer}>
@@ -531,7 +544,7 @@ const BinaryOptionsScreen: React.FC = () => {
             {isWalletConnected
               ? `Available: ${formatBalance(currentBalance)} ${getChainName(
                   currentChain
-                )}`
+                )} (${currentNetwork})`
               : "Connect wallet to see balance"}
           </Text>
           {isWalletConnected && (
@@ -557,7 +570,7 @@ const BinaryOptionsScreen: React.FC = () => {
             value={betAmount}
             onChangeText={setBetAmount}
             keyboardType="numeric"
-            placeholder="Enter amount in ETH"
+            placeholder={`Enter amount in ${networkConfig.nativeCurrency.symbol}`}
             placeholderTextColor="#666"
           />
           <TouchableOpacity
@@ -579,7 +592,8 @@ const BinaryOptionsScreen: React.FC = () => {
             />
             <Text style={styles.balanceWarningText}>
               Insufficient balance. You only have{" "}
-              {formatBalance(currentBalance)} {getChainName(currentChain)}
+              {formatBalance(currentBalance)} {getChainName(currentChain)} on{" "}
+              {currentNetwork}
             </Text>
           </View>
         )}
@@ -590,7 +604,7 @@ const BinaryOptionsScreen: React.FC = () => {
             <MaterialCommunityIcons name="gas-station" size={14} color="#666" />
             <Text style={styles.gasInfoText}>
               Gas fees (~0.001 {getChainName(currentChain)}) will be added to
-              your bet amount
+              your bet amount on {currentNetwork}
             </Text>
           </View>
         )}
@@ -605,7 +619,7 @@ const BinaryOptionsScreen: React.FC = () => {
             />
             <Text style={styles.maxBetInfoText}>
               Max safe bet: {formatBalance(maxSafeBet)}{" "}
-              {getChainName(currentChain)} (90% of balance)
+              {getChainName(currentChain)} (90% of balance) on {currentNetwork}
             </Text>
           </View>
         )}
@@ -753,6 +767,11 @@ const styles = StyleSheet.create({
   headerRight: {
     flex: 1,
     alignItems: "flex-end",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
   },
   logo: {
     width: 160,

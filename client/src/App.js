@@ -16,11 +16,13 @@ import {
   createHttpLink,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { WalletProvider } from "./contexts/WalletContext";
+import { NetworkProvider } from "./contexts/NetworkContext";
 
 // Import components
 import ErrorBoundary from "./components/ErrorBoundary";
-import AuthModal from "./components/AuthModal";
 import Navigation from "./components/Navigation";
+import MobileFooterNav from "./components/MobileFooterNav";
 import LiveMarketData from "./components/LiveMarketData";
 import BinaryOptions from "./components/BinaryOptions";
 import Portfolio from "./components/Portfolio";
@@ -37,8 +39,6 @@ import {
   GET_ACTIVE_BETS,
   GET_BET_HISTORY,
   PLACE_BET,
-  REGISTER,
-  LOGIN,
 } from "./graphql/queries";
 
 // Import constants
@@ -74,81 +74,19 @@ function App() {
   const [activeTab, setActiveTab] = useState("prices");
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const [user, setUser] = useState(() => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
-    return token && user ? JSON.parse(user) : null;
-  });
-  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
 
   const userId = "user-1";
 
-  // Apollo auth link
+  // Apollo client setup
   const httpLink = createHttpLink({ uri: "http://localhost:4000/graphql" });
-  const authLink = setContext((_, { headers }) => {
-    return {
-      headers: {
-        ...headers,
-        authorization: token ? `Bearer ${token}` : "",
-      },
-    };
-  });
   const apolloClient = useMemo(
     () =>
       new ApolloClient({
-        link: authLink.concat(httpLink),
+        link: httpLink,
         cache: new InMemoryCache(),
       }),
-    [token]
+    []
   );
-
-  // Register/Login mutations
-  const [registerMutation] = useMutation(REGISTER, { client: apolloClient });
-  const [loginMutation] = useMutation(LOGIN, { client: apolloClient });
-
-  // Auth handlers
-  const handleAuth = async (username, password) => {
-    setAuthError("");
-    setAuthLoading(true);
-    try {
-      if (authMode === "register") {
-        await registerMutation({ variables: { username, password } });
-        setAuthMode("login");
-        setAuthLoading(false);
-        setAuthError("Registration successful! Please log in.");
-        return;
-      } else {
-        const { data } = await loginMutation({
-          variables: { username, password },
-        });
-        setUser(data.login.user);
-        setToken(data.login.token);
-        localStorage.setItem("token", data.login.token);
-        localStorage.setItem("user", JSON.stringify(data.login.user));
-        setAuthModalOpen(false);
-      }
-    } catch (e) {
-      setAuthError(e.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setToken("");
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-  };
-
-  // Show modal if not logged in
-  useEffect(() => {
-    if (!user) setAuthModalOpen(true);
-  }, [user]);
 
   // Optimized queries with better caching
   const { loading, error, data, refetch } = useQuery(GET_CRYPTO_PRICES, {
@@ -337,173 +275,168 @@ function App() {
 
   return (
     <ApolloProvider client={apolloClient}>
-      {authModalOpen && (
-        <AuthModal
-          mode={authMode}
-          setMode={setAuthMode}
-          onSubmit={handleAuth}
-          error={authError}
-          loading={authLoading}
-        />
-      )}
-      <Router>
-        <ErrorBoundary>
-          <div style={backgroundStyle}>
-            <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                zIndex: 0,
-                pointerEvents: "none",
-                background: isDarkMode
-                  ? "rgba(0,0,0,0.5)"
-                  : "rgba(255,255,255,0.9)",
-              }}
-            />
-            <div className={`app ${isDarkMode ? "dark" : "light"}`}>
-              {/* Navigation */}
-              <Navigation
-                isDarkMode={isDarkMode}
-                setIsDarkMode={setIsDarkMode}
-                isRefreshing={isRefreshing}
-                handleRefresh={handleRefresh}
-                user={user}
-                handleLogout={handleLogout}
-                setAuthModalOpen={setAuthModalOpen}
-                isMobileNavOpen={isMobileNavOpen}
-                setActiveTab={setActiveTab}
-                coinsData={coinsData}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                setSelectedCrypto={setSelectedCrypto}
-                setBetType={setBetType}
-                setSelectedTimeframe={setSelectedTimeframe}
-                setBetAmount={setBetAmount}
-              />
+      <WalletProvider>
+        <NetworkProvider>
+          <Router>
+            <ErrorBoundary>
+              <div style={backgroundStyle}>
+                <div
+                  style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100vw",
+                    height: "100vh",
+                    zIndex: 0,
+                    pointerEvents: "none",
+                    background: isDarkMode
+                      ? "rgba(0,0,0,0.5)"
+                      : "rgba(255,255,255,0.9)",
+                  }}
+                />
+                <div className={`app ${isDarkMode ? "dark" : "light"}`}>
+                  {/* Navigation */}
+                  <Navigation
+                    isDarkMode={isDarkMode}
+                    setIsDarkMode={setIsDarkMode}
+                    isRefreshing={isRefreshing}
+                    handleRefresh={handleRefresh}
+                    setActiveTab={setActiveTab}
+                    coinsData={coinsData}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    setSelectedCrypto={setSelectedCrypto}
+                    setBetType={setBetType}
+                    setSelectedTimeframe={setSelectedTimeframe}
+                    setBetAmount={setBetAmount}
+                  />
 
-              {/* Main Content */}
-              <main className="main-content">
-                <div className="breadcrumb">
-                  <span className="breadcrumb-item">Kokitzu</span>
-                  <span className="breadcrumb-item active">
-                    {window.location.pathname === "/" && "Live Prices"}
-                    {window.location.pathname === "/betting" &&
-                      "Binary Options"}
-                    {window.location.pathname === "/portfolio" && "Portfolio"}
-                  </span>
+                  {/* Main Content */}
+                  <main className="main-content">
+                    <div className="breadcrumb">
+                      <span className="breadcrumb-item">Kokitzu</span>
+                      <span className="breadcrumb-item active">
+                        {window.location.pathname === "/" && "Live Prices"}
+                        {window.location.pathname === "/betting" &&
+                          "Binary Options"}
+                        {window.location.pathname === "/portfolio" &&
+                          "Portfolio"}
+                      </span>
+                    </div>
+
+                    {/* Search Functionality */}
+                    {window.location.pathname === "/" && (
+                      <div className="search-container">
+                        <svg
+                          className="search-icon"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder="Search cryptocurrencies..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
+                    )}
+
+                    <Routes>
+                      <Route
+                        path="/"
+                        element={
+                          <LiveMarketData
+                            filteredCryptoData={filteredCryptoData}
+                            loading={loading}
+                            SkeletonCryptoCard={SkeletonCryptoCard}
+                            getPriceChange={getPriceChange}
+                            animatedPrices={animatedPrices}
+                            setSelectedCrypto={setSelectedCrypto}
+                            setBetType={setBetType}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/betting"
+                        element={
+                          <BinaryOptions
+                            coinsData={coinsData}
+                            data={data}
+                            loading={loading}
+                            SkeletonCryptoCard={SkeletonCryptoCard}
+                            selectedCrypto={selectedCrypto}
+                            setSelectedCrypto={setSelectedCrypto}
+                            selectedTimeframe={selectedTimeframe}
+                            setSelectedTimeframe={setSelectedTimeframe}
+                            betAmount={betAmount}
+                            setBetAmount={setBetAmount}
+                            betType={betType}
+                            setBetType={setBetType}
+                            getSelectedTimeframeInfo={getSelectedTimeframeInfo}
+                            handlePlaceBet={handlePlaceBet}
+                            showBetModal={showBetModal}
+                            setShowBetModal={setShowBetModal}
+                            getPriceChange={getPriceChange}
+                            animatedPrices={animatedPrices}
+                            activeBetsData={activeBetsData}
+                            getTimeLeft={getTimeLeft}
+                            currentPrice={getCurrentCrypto()?.price}
+                          />
+                        }
+                      />
+                      <Route
+                        path="/portfolio"
+                        element={
+                          <Portfolio
+                            userStats={userStats}
+                            betHistoryLoading={betHistoryLoading}
+                            betHistoryData={betHistoryData}
+                            getTimeLeft={getTimeLeft}
+                            currentPrice={getCurrentCrypto()?.price}
+                          />
+                        }
+                      />
+                    </Routes>
+                  </main>
+
+                  {/* Bet Confirmation Modal */}
+                  <BetConfirmationModal
+                    showBetModal={showBetModal}
+                    setShowBetModal={setShowBetModal}
+                    selectedCrypto={selectedCrypto}
+                    betType={betType}
+                    betAmount={betAmount}
+                    getSelectedTimeframeInfo={getSelectedTimeframeInfo}
+                    handlePlaceBet={handlePlaceBet}
+                  />
+
+                  {/* Footer */}
+                  <footer className="footer">
+                    <div className="footer-content">
+                      <div className="footer-links">
+                        <span>Powered by CoinGecko</span>
+                        <span>•</span>
+                        <span>Binary Options Trading</span>
+                      </div>
+                    </div>
+                  </footer>
+
+                  {/* Mobile Footer Navigation */}
+                  <MobileFooterNav setActiveTab={setActiveTab} />
                 </div>
-
-                {/* Search Functionality */}
-                {window.location.pathname === "/" && (
-                  <div className="search-container">
-                    <svg
-                      className="search-icon"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="M21 21l-4.35-4.35" />
-                    </svg>
-                    <input
-                      type="text"
-                      className="search-input"
-                      placeholder="Search cryptocurrencies..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                <Routes>
-                  <Route
-                    path="/"
-                    element={
-                      <LiveMarketData
-                        filteredCryptoData={filteredCryptoData}
-                        loading={loading}
-                        SkeletonCryptoCard={SkeletonCryptoCard}
-                        getPriceChange={getPriceChange}
-                        animatedPrices={animatedPrices}
-                        setSelectedCrypto={setSelectedCrypto}
-                        setBetType={setBetType}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/betting"
-                    element={
-                      <BinaryOptions
-                        coinsData={coinsData}
-                        data={data}
-                        loading={loading}
-                        SkeletonCryptoCard={SkeletonCryptoCard}
-                        selectedCrypto={selectedCrypto}
-                        setSelectedCrypto={setSelectedCrypto}
-                        selectedTimeframe={selectedTimeframe}
-                        setSelectedTimeframe={setSelectedTimeframe}
-                        betAmount={betAmount}
-                        setBetAmount={setBetAmount}
-                        betType={betType}
-                        setBetType={setBetType}
-                        getSelectedTimeframeInfo={getSelectedTimeframeInfo}
-                        handlePlaceBet={handlePlaceBet}
-                        showBetModal={showBetModal}
-                        setShowBetModal={setShowBetModal}
-                        getPriceChange={getPriceChange}
-                        animatedPrices={animatedPrices}
-                        activeBetsData={activeBetsData}
-                        getTimeLeft={getTimeLeft}
-                        currentPrice={getCurrentCrypto()?.price}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/portfolio"
-                    element={
-                      <Portfolio
-                        userStats={userStats}
-                        betHistoryLoading={betHistoryLoading}
-                        betHistoryData={betHistoryData}
-                        getTimeLeft={getTimeLeft}
-                        currentPrice={getCurrentCrypto()?.price}
-                      />
-                    }
-                  />
-                </Routes>
-              </main>
-
-              {/* Bet Confirmation Modal */}
-              <BetConfirmationModal
-                showBetModal={showBetModal}
-                setShowBetModal={setShowBetModal}
-                selectedCrypto={selectedCrypto}
-                betType={betType}
-                betAmount={betAmount}
-                getSelectedTimeframeInfo={getSelectedTimeframeInfo}
-                handlePlaceBet={handlePlaceBet}
-              />
-
-              {/* Footer */}
-              <footer className="footer">
-                <div className="footer-content">
-                  <div className="footer-links">
-                    <span>Powered by CoinGecko</span>
-                    <span>•</span>
-                    <span>Binary Options Trading</span>
-                  </div>
-                </div>
-              </footer>
-            </div>
-          </div>
-        </ErrorBoundary>
-      </Router>
+              </div>
+            </ErrorBoundary>
+          </Router>
+        </NetworkProvider>
+      </WalletProvider>
     </ApolloProvider>
   );
 }

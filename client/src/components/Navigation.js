@@ -1,22 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-function getInitials(name) {
-  if (!name) return "U";
-  const parts = name.split(".");
-  if (parts.length === 2)
-    return parts[0][0].toUpperCase() + parts[1][0].toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
+import WalletConnectButton from "./WalletConnectButton";
 
 function Navigation({
   isDarkMode,
   setIsDarkMode,
   isRefreshing,
   handleRefresh,
-  user,
-  handleLogout,
-  setAuthModalOpen,
   setActiveTab,
   coinsData, // add coinsData prop
   searchQuery, // add searchQuery prop
@@ -26,7 +16,6 @@ function Navigation({
   setSelectedTimeframe,
   setBetAmount,
 }) {
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef(null);
   const navigate = useNavigate();
@@ -117,66 +106,7 @@ function Navigation({
             Crypto Options Trading
           </div>
         </div>
-        {/* Navigation Tabs */}
-        <div className="tab-navigation pro-nav-tabs">
-          <Link
-            className={`tab-button ${
-              window.location.pathname === "/" ? "active" : ""
-            }`}
-            to="/"
-            onClick={() => setActiveTab("prices")}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M3 3v18h18M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
-            </svg>
-            Live Prices
-          </Link>
-          <Link
-            className={`tab-button ${
-              window.location.pathname === "/betting" ? "active" : ""
-            }`}
-            to="/betting"
-            onClick={() => setActiveTab("betting")}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-            Binary Options
-          </Link>
-          <Link
-            className={`tab-button ${
-              window.location.pathname === "/portfolio" ? "active" : ""
-            }`}
-            to="/portfolio"
-            onClick={() => setActiveTab("portfolio")}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            Portfolio
-          </Link>
-        </div>
+
         {/* Search Bar with Suggestions */}
         <div className="pro-header-search" ref={searchRef}>
           <input
@@ -263,49 +193,7 @@ function Navigation({
                 </svg>
               )}
             </button>
-          </div>
-          {/* User Profile Dropdown */}
-          <div
-            className="pro-user-menu"
-            onMouseLeave={() => setUserMenuOpen(false)}
-          >
-            <div
-              className="pro-user-avatar"
-              onClick={() => setUserMenuOpen((v) => !v)}
-            >
-              {user && user.username ? (
-                <span>{getInitials(user.username)}</span>
-              ) : (
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-              )}
-            </div>
-            <div className="pro-user-info">
-              <span className="pro-user-name">
-                {user ? user.username : "Guest"}
-              </span>
-              <span className="pro-user-balance">
-                ${user ? user.balance.toLocaleString() : "-"}
-              </span>
-            </div>
-            {userMenuOpen && (
-              <div className="pro-user-dropdown">
-                <div className="pro-user-dropdown-item">Profile</div>
-                <div className="pro-user-dropdown-item">Settings</div>
-                <div className="pro-user-dropdown-item" onClick={handleLogout}>
-                  Logout
-                </div>
-              </div>
-            )}
+            <WalletConnectButton />
           </div>
         </div>
       </div>

@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    justifyContent: "flex-end",
   },
   title: {
     fontSize: 24,

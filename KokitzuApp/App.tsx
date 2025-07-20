@@ -16,6 +16,7 @@ import PortfolioScreen from "./src/screens/PortfolioScreen";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import { TradingProvider } from "./src/contexts/TradingContext";
 import { WalletProvider } from "./src/contexts/WalletContext";
+import { NetworkProvider } from "./src/contexts/NetworkContext";
 import AuthModal from "./src/components/AuthModal";
 import usePerformanceMonitor from "./src/hooks/usePerformanceMonitor";
 
@@ -172,17 +173,19 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ApolloProvider client={apolloClient}>
-        <AuthProvider>
-          <TradingProvider>
-            <WalletProvider>
-              <AppContent />
-              <WalletConnectModal
-                projectId={projectId}
-                providerMetadata={providerMetadata}
-              />
-            </WalletProvider>
-          </TradingProvider>
-        </AuthProvider>
+        <NetworkProvider>
+          <AuthProvider>
+            <TradingProvider>
+              <WalletProvider>
+                <AppContent />
+                <WalletConnectModal
+                  projectId={projectId}
+                  providerMetadata={providerMetadata}
+                />
+              </WalletProvider>
+            </TradingProvider>
+          </AuthProvider>
+        </NetworkProvider>
       </ApolloProvider>
     </GestureHandlerRootView>
   );

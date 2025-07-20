@@ -9,17 +9,18 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
+import { useNetwork } from "../contexts/NetworkContext";
+import NetworkSelector from "./NetworkSelector";
 
 interface SmartContractInfoProps {
   contractAddress?: string;
-  network?: string;
 }
 
 const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
   contractAddress = "0x1234567890123456789012345678901234567890",
-  network = "Ethereum Mainnet",
 }) => {
   const { isConnected, walletAddress, sendTransaction } = useWallet();
+  const { currentNetwork, networkConfig } = useNetwork();
   const [loading, setLoading] = useState(false);
 
   const handlePlaceBet = async (direction: "UP" | "DOWN", amount: string) => {
@@ -36,14 +37,16 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
       if (txHash) {
         Alert.alert(
           "Transaction Sent",
-          `Your ${direction} bet for ${amount} ETH has been placed!\n\nTransaction Hash: ${txHash.slice(
+          `Your ${direction} bet for ${amount} ${
+            networkConfig.nativeCurrency.symbol
+          } has been placed!\n\nTransaction Hash: ${txHash.slice(
             0,
             10
-          )}...`,
+          )}...\n\nNetwork: ${networkConfig.name}`,
           [
             {
-              text: "View on Etherscan",
-              onPress: () => console.log("Open Etherscan"),
+              text: "View on Explorer",
+              onPress: () => console.log("Open Explorer"),
             },
             { text: "OK" },
           ]
@@ -61,6 +64,32 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getNetworkIcon = () => {
+    switch (currentNetwork) {
+      case "mainnet":
+        return "ethereum";
+      case "sepolia":
+        return "test-tube";
+      case "goerli":
+        return "flask";
+      default:
+        return "server-network";
+    }
+  };
+
+  const getNetworkColor = () => {
+    switch (currentNetwork) {
+      case "mainnet":
+        return "#10b981"; // Green for mainnet
+      case "sepolia":
+        return "#3b82f6"; // Blue for Sepolia
+      case "goerli":
+        return "#f59e0b"; // Orange for Goerli
+      default:
+        return "#666";
     }
   };
 
@@ -82,7 +111,23 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.label}>Network:</Text>
-          <Text style={styles.value}>{network}</Text>
+          <View style={styles.networkContainer}>
+            <MaterialCommunityIcons
+              name={getNetworkIcon()}
+              size={16}
+              color={getNetworkColor()}
+            />
+            <Text style={[styles.networkText, { color: getNetworkColor() }]}>
+              {networkConfig.name}
+            </Text>
+            {networkConfig.isTestnet && (
+              <Text style={styles.testnetBadge}>TESTNET</Text>
+            )}
+          </View>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Chain ID:</Text>
+          <Text style={styles.value}>{networkConfig.chainId}</Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.label}>Status:</Text>
@@ -91,6 +136,12 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
             <Text style={styles.statusText}>Active</Text>
           </View>
         </View>
+      </View>
+
+      {/* Network Selector */}
+      <View style={styles.networkSelectorContainer}>
+        <Text style={styles.sectionTitle}>Switch Network</Text>
+        <NetworkSelector compact={true} />
       </View>
 
       {isConnected && (
@@ -115,7 +166,9 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
                 size={20}
                 color="#ffffff"
               />
-              <Text style={styles.betButtonText}>UP 0.01 ETH</Text>
+              <Text style={styles.betButtonText}>
+                UP 0.01 {networkConfig.nativeCurrency.symbol}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -132,7 +185,9 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
                 size={20}
                 color="#ffffff"
               />
-              <Text style={styles.betButtonText}>DOWN 0.01 ETH</Text>
+              <Text style={styles.betButtonText}>
+                DOWN 0.01 {networkConfig.nativeCurrency.symbol}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -220,6 +275,22 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "500",
   },
+  networkContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  networkText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  testnetBadge: {
+    color: "#f59e0b",
+    fontSize: 10,
+    fontWeight: "700",
+    fontFamily: "monospace",
+    marginLeft: 4,
+  },
   statusContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -236,6 +307,12 @@ const styles = StyleSheet.create({
     color: "#10b981",
     fontWeight: "500",
   },
+  networkSelectorContainer: {
+    borderTopWidth: 1,
+    borderTopColor: "#333",
+    paddingTop: 16,
+    marginBottom: 16,
+  },
   bettingSection: {
     borderTopWidth: 1,
     borderTopColor: "#333",
@@ -245,7 +322,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: "#ffffff",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 12,

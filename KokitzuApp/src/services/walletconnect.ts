@@ -1,10 +1,12 @@
 import { getInfuraUrl, validateApiKeys, API_CONFIG } from "../config/api";
 import { SignClient } from "@walletconnect/sign-client";
+import { NetworkType, NETWORKS } from "../contexts/NetworkContext";
 
 let signClient: any = null;
 let isConnected = false;
 let currentAddress: string | null = null;
 let currentSession: any = null;
+let currentNetwork: NetworkType = "sepolia"; // Default to Sepolia
 
 // Initialize WalletConnect SignClient
 export const initializeWalletConnect = async () => {
@@ -45,10 +47,21 @@ export const initializeWalletConnect = async () => {
   }
 };
 
+// Set current network
+export const setCurrentNetwork = (network: NetworkType) => {
+  currentNetwork = network;
+  console.log("🌐 WalletConnect network set to:", network);
+};
+
+// Get current network
+export const getCurrentNetwork = (): NetworkType => {
+  return currentNetwork;
+};
+
 // Connect to wallet using WalletConnect
 export const connectWalletConnect = async () => {
   try {
-    console.log("Starting WalletConnect connection...");
+    console.log("Starting WalletConnect connection on", currentNetwork);
 
     // Initialize if not already done
     if (!signClient) {
@@ -62,12 +75,15 @@ export const connectWalletConnect = async () => {
 
     console.log("Creating WalletConnect connection...");
 
+    // Get chain ID for current network
+    const chainId = NETWORKS[currentNetwork].chainId;
+
     // Create connection URI
     const { uri, approval } = await signClient.connect({
       optionalNamespaces: {
         eip155: {
           methods: ["eth_sendTransaction", "eth_sign", "personal_sign"],
-          chains: ["eip155:1"],
+          chains: [`eip155:${chainId}`],
           events: ["chainChanged", "accountsChanged"],
         },
       },
@@ -78,7 +94,9 @@ export const connectWalletConnect = async () => {
     }
 
     console.log(
-      "WalletConnect URI generated successfully:",
+      "WalletConnect URI generated successfully for",
+      currentNetwork,
+      ":",
       uri.substring(0, 50) + "..."
     );
     console.log("Waiting for wallet approval...");
@@ -154,12 +172,13 @@ export const getCurrentChainId = (session: any): string => {
         return chainId;
       }
     }
-    // Default to Ethereum mainnet
-    console.log("🔗 Using default chain ID: 1");
-    return "1";
+    // Default to current network chain ID
+    const defaultChainId = NETWORKS[currentNetwork].chainId;
+    console.log("🔗 Using default chain ID:", defaultChainId);
+    return defaultChainId;
   } catch (error) {
     console.error("Error getting current chain ID:", error);
-    return "1";
+    return NETWORKS[currentNetwork].chainId;
   }
 };
 
@@ -185,18 +204,27 @@ export const getWalletAddress = (session: any): string | null => {
 // Get wallet balance (real balance from Infura)
 export const getWalletBalance = async (
   address: string,
-  chainId: string = "1"
+  chainId?: string
 ): Promise<string> => {
   try {
+    // Use provided chainId or current network chainId
+    const targetChainId = chainId || NETWORKS[currentNetwork].chainId;
+
     console.log(
-      `💰 Fetching balance for address ${address} on chain ${chainId}`
+      `💰 Fetching balance for address ${address} on chain ${targetChainId} (${currentNetwork})`
     );
 
     // Get the appropriate RPC URL based on chain
     let rpcUrl: string;
-    switch (chainId) {
+    switch (targetChainId) {
       case "1": // Ethereum Mainnet
-        rpcUrl = getInfuraUrl();
+        rpcUrl = getInfuraUrl("mainnet");
+        break;
+      case "11155111": // Sepolia
+        rpcUrl = getInfuraUrl("sepolia");
+        break;
+      case "5": // Goerli
+        rpcUrl = getInfuraUrl("goerli");
         break;
       case "137": // Polygon
         rpcUrl = "https://polygon-rpc.com";
@@ -211,7 +239,7 @@ export const getWalletBalance = async (
         rpcUrl = "https://mainnet.optimism.io";
         break;
       default:
-        rpcUrl = getInfuraUrl(); // Default to Ethereum
+        rpcUrl = getInfuraUrl(currentNetwork); // Default to current network
     }
 
     const response = await fetch(rpcUrl, {
@@ -238,7 +266,9 @@ export const getWalletBalance = async (
     const balanceEth = parseInt(balanceWei, 16) / Math.pow(10, 18);
 
     console.log(
-      `💰 Balance fetched: ${balanceEth.toFixed(4)} on chain ${chainId}`
+      `💰 Balance fetched: ${balanceEth.toFixed(
+        4
+      )} on chain ${targetChainId} (${currentNetwork})`
     );
     return balanceEth.toFixed(4);
   } catch (error) {
@@ -263,10 +293,12 @@ export const signMessage = async (
       throw new Error("No wallet address found");
     }
 
+    const chainId = NETWORKS[currentNetwork].chainId;
+
     // Request signature from wallet
     const signature = await signClient.request({
       topic: session.topic,
-      chainId: "eip155:1",
+      chainId: `eip155:${chainId}`,
       request: {
         method: "personal_sign",
         params: [message, address],
@@ -290,10 +322,12 @@ export const sendTransaction = async (
       throw new Error("Wallet not connected");
     }
 
+    const chainId = NETWORKS[currentNetwork].chainId;
+
     // Request transaction from wallet
     const txHash = await signClient.request({
       topic: session.topic,
-      chainId: "eip155:1",
+      chainId: `eip155:${chainId}`,
       request: {
         method: "eth_sendTransaction",
         params: [transaction],
@@ -316,7 +350,9 @@ export const setCurrentSession = (session: any) => {
     "Current session set:",
     session?.topic,
     "Address:",
-    currentAddress
+    currentAddress,
+    "Network:",
+    currentNetwork
   );
 };
 
@@ -327,6 +363,7 @@ export const getCurrentSession = () => currentSession;
 export const getConnectionStatus = () => ({
   isConnected,
   currentAddress,
+  currentNetwork,
 });
 
 // Force disconnect all sessions

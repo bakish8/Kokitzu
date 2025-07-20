@@ -1,1 +1,32 @@
- 
+<svg width="1242" height="2436" viewBox="0 0 1242 2436" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1242" height="2436" fill="#000000"/>
+  
+  <!-- Tiger stripes pattern - larger for splash -->
+  <g fill="#FFD700">
+    <!-- Tiger head stripes -->
+    <path d="M250 800 Q450 750 650 800 Q850 850 1050 800 L1050 900 Q850 850 650 900 Q450 950 250 900 Z"/>
+    <path d="M250 1000 Q450 950 650 1000 Q850 1050 1050 1000 L1050 1100 Q850 1050 650 1100 Q450 1150 250 1100 Z"/>
+    <path d="M250 1200 Q450 1150 650 1200 Q850 1250 1050 1200 L1050 1300 Q850 1250 650 1300 Q450 1350 250 1300 Z"/>
+    
+    <!-- Tiger eye area -->
+    <circle cx="450" cy="1000" r="40" fill="#FFD700"/>
+    <circle cx="850" cy="1000" r="40" fill="#FFD700"/>
+    <circle cx="450" cy="1000" r="25" fill="#000000"/>
+    <circle cx="850" cy="1000" r="25" fill="#000000"/>
+    <circle cx="440" cy="990" r="8" fill="#FFD700"/>
+    <circle cx="840" cy="990" r="8" fill="#FFD700"/>
+    
+    <!-- Tiger snout -->
+    <path d="M550 1300 Q621 1330 692 1300 Q621 1370 550 1300 Z"/>
+    
+    <!-- Chinese characters: 虎穴 -->
+    <text x="621" y="1600" text-anchor="middle" font-family="Arial, sans-serif" font-size="180" font-weight="bold" fill="#FFD700">虎穴</text>
+    
+    <!-- App name in English -->
+    <text x="621" y="1750" text-anchor="middle" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="#FFD700">KOKETSU</text>
+    
+    <!-- Tagline -->
+    <text x="621" y="1850" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" fill="#FFD700">Crypto Trading Platform</text>
+  </g>
+</svg> 

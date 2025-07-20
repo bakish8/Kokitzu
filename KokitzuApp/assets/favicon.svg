@@ -1,1 +1,20 @@
- 
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" fill="#000000"/>
+  
+  <!-- Simplified tiger stripes for small size -->
+  <g fill="#FFD700">
+    <!-- Tiger stripes -->
+    <path d="M6 9 Q10 8 14 9 Q18 10 22 9 Q26 8 30 9 L30 11 Q26 10 22 11 Q18 12 14 11 Q10 10 6 11 Z"/>
+    <path d="M6 12 Q10 11 14 12 Q18 13 22 12 Q26 11 30 12 L30 14 Q26 13 22 14 Q18 15 14 14 Q10 13 6 14 Z"/>
+    
+    <!-- Simplified eyes -->
+    <circle cx="11" cy="12" r="2" fill="#FFD700"/>
+    <circle cx="21" cy="12" r="2" fill="#FFD700"/>
+    <circle cx="11" cy="12" r="1" fill="#000000"/>
+    <circle cx="21" cy="12" r="1" fill="#000000"/>
+    
+    <!-- Chinese characters: 虎穴 (simplified) -->
+    <text x="16" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="4" font-weight="bold" fill="#FFD700">虎穴</text>
+  </g>
+</svg> 

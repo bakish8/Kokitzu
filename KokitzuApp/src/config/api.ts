@@ -9,7 +9,7 @@ export const API_CONFIG = {
   WALLETCONNECT_PROJECT_ID: "7f511967202c5d90747168fd9f2e8c3c",
 
   // Ethereum Network
-  ETHEREUM_NETWORK: "mainnet", // or "goerli", "sepolia" for testnets
+  ETHEREUM_NETWORK: "sepolia", // Default to Sepolia for development
 
   // Infura URLs
   INFURA_URLS: {
@@ -20,10 +20,10 @@ export const API_CONFIG = {
 };
 
 // Helper function to get the correct Infura URL
-export const getInfuraUrl = (network: string = "mainnet") => {
+export const getInfuraUrl = (network: string = "sepolia") => {
   return (
     API_CONFIG.INFURA_URLS[network as keyof typeof API_CONFIG.INFURA_URLS] ||
-    API_CONFIG.INFURA_URLS.mainnet
+    API_CONFIG.INFURA_URLS.sepolia
   );
 };
 

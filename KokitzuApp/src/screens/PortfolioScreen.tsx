@@ -190,7 +190,9 @@ const PortfolioScreen: React.FC = () => {
           />
         </View>
         <View style={styles.headerRight}>
-          <WalletConnectButton />
+          <View style={styles.headerButtons}>
+            <WalletConnectButton />
+          </View>
         </View>
       </Animated.View>
 
@@ -381,6 +383,11 @@ const styles = StyleSheet.create({
   headerRight: {
     flex: 1,
     alignItems: "flex-end",
+  },
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
   },
   logo: {
     width: 160,

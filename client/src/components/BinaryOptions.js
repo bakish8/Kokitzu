@@ -1,6 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { TIMEFRAMES } from "../constants/timeframes";
+import { useWallet } from "../contexts/WalletContext";
+import { useNetwork } from "../contexts/NetworkContext";
 
 function BinaryOptions({
   coinsData,
@@ -26,6 +28,26 @@ function BinaryOptions({
   currentPrice,
 }) {
   const navigate = useNavigate();
+  const { isConnected, balance, walletAddress } = useWallet();
+  const { currentNetwork, networkConfig } = useNetwork();
+
+  const formatAddress = (address) => {
+    if (!address) return "Unknown";
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const getChainName = (chainId) => {
+    switch (chainId) {
+      case "1":
+        return "ETH";
+      case "11155111":
+        return "Sepolia ETH";
+      case "5":
+        return "Goerli ETH";
+      default:
+        return networkConfig.nativeCurrency.symbol;
+    }
+  };
 
   return (
     <div className="betting-container" data-active={true}>
@@ -171,6 +193,33 @@ function BinaryOptions({
               </div>
             </div>
 
+            {/* Wallet Connection Status */}
+            <div className="wallet-status-section">
+              <div className="wallet-status">
+                {isConnected ? (
+                  <div className="wallet-connected">
+                    <div className="wallet-info">
+                      <div className="wallet-address">
+                        {formatAddress(walletAddress)} ({currentNetwork})
+                      </div>
+                      {balance && (
+                        <div className="wallet-balance">
+                          Balance: {parseFloat(balance).toFixed(4)}{" "}
+                          {getChainName(networkConfig.chainId)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="wallet-disconnected">
+                    <div className="wallet-warning">
+                      ⚠️ Connect your wallet to place bets
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Bet Action Bar */}
             <div className="bet-action-bar">
               <div className="bet-preview">
@@ -190,9 +239,11 @@ function BinaryOptions({
               <button
                 className="place-bet-btn"
                 onClick={() => setShowBetModal(true)}
-                disabled={!selectedCrypto || !betType || !betAmount}
+                disabled={
+                  !selectedCrypto || !betType || !betAmount || !isConnected
+                }
               >
-                Place Bet
+                {!isConnected ? "Connect Wallet to Bet" : "Place Bet"}
               </button>
             </div>
           </div>

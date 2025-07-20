@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { getInfuraUrl } from "../config/api";
+import { NetworkType, NETWORKS } from "../contexts/NetworkContext";
 
 // BinaryOptions Contract ABI (simplified for key functions)
 const BINARY_OPTIONS_ABI = [
@@ -25,11 +26,10 @@ const BINARY_OPTIONS_ABI = [
 ];
 
 // Contract addresses for different networks
-const CONTRACT_ADDRESSES = {
+const CONTRACT_ADDRESSES: Record<NetworkType, string> = {
   mainnet: "0x...", // Deploy and add mainnet address
   sepolia: "0x...", // Deploy and add sepolia address
   goerli: "0x...", // Deploy and add goerli address
-  localhost: "0x5FbDB2315678afecb367f032d93F642f64180aa3", // Default local address
 };
 
 export interface Option {
@@ -63,7 +63,7 @@ class BinaryOptionsContractService {
   private contract: ethers.Contract | null = null;
   private provider: ethers.providers.JsonRpcProvider | null = null;
   private signer: ethers.Signer | null = null;
-  private network: string = "sepolia"; // Default to testnet
+  private currentNetwork: NetworkType = "sepolia"; // Default to Sepolia
 
   constructor() {
     this.initializeProvider();
@@ -71,11 +71,39 @@ class BinaryOptionsContractService {
 
   private initializeProvider() {
     try {
-      this.provider = new ethers.providers.JsonRpcProvider(getInfuraUrl());
-      console.log("✅ BinaryOptions contract provider initialized");
+      this.provider = new ethers.providers.JsonRpcProvider(
+        getInfuraUrl(this.currentNetwork)
+      );
+      console.log(
+        "✅ BinaryOptions contract provider initialized for",
+        this.currentNetwork
+      );
     } catch (error) {
       console.error("❌ Failed to initialize provider:", error);
     }
+  }
+
+  /**
+   * Set network and reinitialize provider
+   */
+  setNetwork(network: NetworkType) {
+    this.currentNetwork = network;
+    this.initializeProvider();
+    console.log("🌐 BinaryOptions contract network set to:", network);
+  }
+
+  /**
+   * Get current network
+   */
+  getCurrentNetwork(): NetworkType {
+    return this.currentNetwork;
+  }
+
+  /**
+   * Get current network config
+   */
+  getCurrentNetworkConfig() {
+    return NETWORKS[this.currentNetwork];
   }
 
   /**
@@ -84,11 +112,12 @@ class BinaryOptionsContractService {
   async connectWallet(signer: ethers.Signer) {
     try {
       this.signer = signer;
-      const contractAddress =
-        CONTRACT_ADDRESSES[this.network as keyof typeof CONTRACT_ADDRESSES];
+      const contractAddress = CONTRACT_ADDRESSES[this.currentNetwork];
 
-      if (!contractAddress) {
-        throw new Error(`Contract not deployed on ${this.network}`);
+      if (!contractAddress || contractAddress === "0x...") {
+        throw new Error(
+          `Contract not deployed on ${this.currentNetwork}. Please deploy the contract first.`
+        );
       }
 
       this.contract = new ethers.Contract(
@@ -96,21 +125,18 @@ class BinaryOptionsContractService {
         BINARY_OPTIONS_ABI,
         signer
       );
-      console.log("✅ Connected to BinaryOptions contract:", contractAddress);
+      console.log(
+        "✅ Connected to BinaryOptions contract:",
+        contractAddress,
+        "on",
+        this.currentNetwork
+      );
 
       return true;
     } catch (error) {
       console.error("❌ Failed to connect to contract:", error);
       return false;
     }
-  }
-
-  /**
-   * Set network
-   */
-  setNetwork(network: string) {
-    this.network = network;
-    console.log("🌐 Network set to:", network);
   }
 
   /**
@@ -143,7 +169,7 @@ class BinaryOptionsContractService {
 
       const amountWei = ethers.utils.parseEther(params.amount);
 
-      console.log("📝 Creating option:", {
+      console.log("📝 Creating option on", this.currentNetwork, ":", {
         asset: params.asset,
         amount: params.amount,
         expiryTime: params.expiryTime,
@@ -158,7 +184,12 @@ class BinaryOptionsContractService {
         { value: amountWei }
       );
 
-      console.log("✅ Option creation transaction sent:", tx.hash);
+      console.log(
+        "✅ Option creation transaction sent:",
+        tx.hash,
+        "on",
+        this.currentNetwork
+      );
       return tx;
     } catch (error) {
       console.error("❌ Failed to create option:", error);
@@ -175,10 +206,15 @@ class BinaryOptionsContractService {
         throw new Error("Contract not connected");
       }
 
-      console.log("🎯 Executing option:", optionId);
+      console.log("🎯 Executing option:", optionId, "on", this.currentNetwork);
 
       const tx = await this.contract.executeOption(optionId);
-      console.log("✅ Option execution transaction sent:", tx.hash);
+      console.log(
+        "✅ Option execution transaction sent:",
+        tx.hash,
+        "on",
+        this.currentNetwork
+      );
 
       return tx;
     } catch (error) {
