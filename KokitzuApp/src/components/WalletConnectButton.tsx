@@ -14,6 +14,8 @@ import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
+import WalletConnectedModal from "./WalletConnectedModal";
+import NetworkSelectionModal from "./NetworkSelectionModal";
 
 interface WalletConnectButtonProps {
   onConnected?: (address: string, signer: any) => void;
@@ -35,6 +37,9 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     useNetwork();
   const [showModal, setShowModal] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
+  const [showWalletConnectedModal, setShowWalletConnectedModal] =
+    useState(false);
+  const [modalView, setModalView] = useState<"wallet" | "network">("wallet");
   const [localBalance, setLocalBalance] = useState<string | null>(null);
   const [currentChain, setCurrentChain] = useState<string>(
     networkConfig.chainId
@@ -255,23 +260,32 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
 
   if (isWalletConnected && connectedAddress && connectedAddress !== "Unknown") {
     return (
-      <TouchableOpacity
-        style={styles.connectedButton}
-        onPress={handleDisconnect}
-      >
-        <MaterialCommunityIcons name="wallet" size={20} color="#10b981" />
-        <View style={styles.addressContainer}>
-          <Text style={styles.connectedButtonText}>
-            {formatAddress(connectedAddress)}
-          </Text>
-          {displayBalance && (
-            <Text style={styles.balanceText}>
-              {parseFloat(displayBalance || "0").toFixed(4)} {chainName}
+      <>
+        <TouchableOpacity
+          style={styles.connectedButton}
+          onPress={() => setShowWalletConnectedModal(true)}
+        >
+          <MaterialCommunityIcons name="wallet" size={20} color="#10b981" />
+          <View style={styles.addressContainer}>
+            <Text style={styles.connectedButtonText}>
+              {formatAddress(connectedAddress)}
             </Text>
-          )}
-        </View>
-        <MaterialCommunityIcons name="logout" size={16} color="#666" />
-      </TouchableOpacity>
+            {displayBalance && (
+              <Text style={styles.balanceText}>
+                {parseFloat(displayBalance || "0").toFixed(4)} {chainName}
+              </Text>
+            )}
+          </View>
+          <MaterialCommunityIcons name="chevron-down" size={16} color="#666" />
+        </TouchableOpacity>
+
+        {/* Wallet Connected Modal */}
+        <WalletConnectedModal
+          visible={showWalletConnectedModal}
+          onClose={() => setShowWalletConnectedModal(false)}
+          onNetworkSelect={() => setShowWalletConnectedModal(false)}
+        />
+      </>
     );
   }
 
@@ -291,7 +305,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
 
       {/* Wallet Selection Modal */}
       <Modal
-        visible={showModal}
+        visible={showModal && modalView === "wallet"}
         transparent={true}
         onRequestClose={() => setShowModal(false)}
       >
@@ -307,109 +321,45 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
             {/* Network Selection Section */}
             <View style={styles.networkSection}>
               <Text style={styles.sectionTitle}>Network</Text>
-              {!showNetworkModal ? (
-                <TouchableOpacity
-                  style={[
-                    styles.networkSelector,
-                    { borderColor: getNetworkColor(currentNetwork) },
-                  ]}
-                  onPress={() => {
-                    console.log(
-                      "🔘 Network selector clicked, showing network list"
-                    );
-                    setShowNetworkModal(true);
-                  }}
-                  disabled={isNetworkSwitching}
-                >
-                  <View style={styles.networkInfo}>
-                    <MaterialCommunityIcons
-                      name={getNetworkIcon(currentNetwork)}
-                      size={20}
-                      color={getNetworkColor(currentNetwork)}
-                    />
-                    <View style={styles.networkDetails}>
-                      <Text style={styles.networkName}>
-                        {networkConfig.name}
-                      </Text>
-                    </View>
+              <TouchableOpacity
+                style={[
+                  styles.networkSelector,
+                  { borderColor: getNetworkColor(currentNetwork) },
+                ]}
+                onPress={() => {
+                  console.log(
+                    "🔘 Network selector clicked, showing network modal"
+                  );
+                  setModalView("network");
+                }}
+                disabled={isNetworkSwitching}
+              >
+                <View style={styles.networkInfo}>
+                  <MaterialCommunityIcons
+                    name={getNetworkIcon(currentNetwork)}
+                    size={20}
+                    color={getNetworkColor(currentNetwork)}
+                  />
+                  <View style={styles.networkDetails}>
+                    <Text style={styles.networkName}>{networkConfig.name}</Text>
                   </View>
-                  <View style={styles.networkActions}>
-                    {isNetworkSwitching && (
-                      <MaterialCommunityIcons
-                        name="loading"
-                        size={16}
-                        color={getNetworkColor(currentNetwork)}
-                        style={styles.spinning}
-                      />
-                    )}
-                    <MaterialCommunityIcons
-                      name="chevron-down"
-                      size={20}
-                      color="#666"
-                    />
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.networkListContainer}>
-                  <View style={styles.networkListHeader}>
-                    <Text style={styles.networkListTitle}>Select Network</Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        console.log("🔘 Closing network list");
-                        setShowNetworkModal(false);
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name="close"
-                        size={20}
-                        color="#666"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  <ScrollView
-                    style={styles.networkList}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {Object.entries(NETWORKS).map(([key, network]) => (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.networkItem,
-                          currentNetwork === key && styles.selectedNetworkItem,
-                        ]}
-                        onPress={() => {
-                          console.log("🔘 Network item clicked:", key);
-                          handleNetworkSelect(key as NetworkType);
-                        }}
-                      >
-                        <View style={styles.networkInfo}>
-                          <MaterialCommunityIcons
-                            name={getNetworkIcon(key as NetworkType)}
-                            size={24}
-                            color={getNetworkColor(key as NetworkType)}
-                          />
-                          <View style={styles.networkDetails}>
-                            <Text style={styles.networkName}>
-                              {network.name}
-                            </Text>
-
-                            {network.isTestnet && (
-                              <Text style={styles.testnetBadge}>TESTNET</Text>
-                            )}
-                          </View>
-                        </View>
-                        {currentNetwork === key && (
-                          <MaterialCommunityIcons
-                            name="check-circle"
-                            size={24}
-                            color={getNetworkColor(key as NetworkType)}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
                 </View>
-              )}
+                <View style={styles.networkActions}>
+                  {isNetworkSwitching && (
+                    <MaterialCommunityIcons
+                      name="loading"
+                      size={16}
+                      color={getNetworkColor(currentNetwork)}
+                      style={styles.spinning}
+                    />
+                  )}
+                  <MaterialCommunityIcons
+                    name="chevron-down"
+                    size={20}
+                    color="#666"
+                  />
+                </View>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.connectionOptions}>
@@ -452,6 +402,14 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           </View>
         </View>
       </Modal>
+
+      {/* Network Selection Modal */}
+      <NetworkSelectionModal
+        visible={showModal && modalView === "network"}
+        onClose={() => setShowModal(false)}
+        onBack={() => setModalView("wallet")}
+        isConnected={false}
+      />
     </>
   );
 };
