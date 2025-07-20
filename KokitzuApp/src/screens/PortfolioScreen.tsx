@@ -21,10 +21,19 @@ import { GET_USER_STATS, GET_BET_HISTORY } from "../graphql/queries";
 import { UserStats, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import WalletConnectButton from "../components/WalletConnectButton";
+import {
+  useEthPrice,
+  formatEthWithUsd,
+  formatUsd,
+  ethToUsd,
+} from "../utils/currencyUtils";
 
 const PortfolioScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [timerTick, setTimerTick] = useState(0);
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -204,6 +213,9 @@ const PortfolioScreen: React.FC = () => {
             {formatCurrency(stats.netProfit)}
           </Text>
           <Text style={styles.statLabel}>Net Profit</Text>
+          <Text style={styles.statSubtext}>
+            (Ξ {ethToUsd(stats.netProfit, ethPrice).toFixed(4)})
+          </Text>
         </View>
         <View style={styles.statCard}>
           <MaterialCommunityIcons name="trophy" size={24} color="#10b981" />
@@ -233,6 +245,18 @@ const PortfolioScreen: React.FC = () => {
             <Text style={styles.statRowLabel}>Total Won</Text>
             <Text style={styles.statRowValue}>
               {formatCurrency(stats.totalWon)}
+            </Text>
+          </View>
+          <View style={styles.statRow}>
+            <Text style={styles.statRowLabel}>Total Wagered (ETH)</Text>
+            <Text style={styles.statRowValue}>
+              Ξ {ethToUsd(stats.totalWagered, ethPrice).toFixed(4)}
+            </Text>
+          </View>
+          <View style={styles.statRow}>
+            <Text style={styles.statRowLabel}>Total Won (ETH)</Text>
+            <Text style={styles.statRowValue}>
+              Ξ {ethToUsd(stats.totalWon, ethPrice).toFixed(4)}
             </Text>
           </View>
           <View style={styles.statRow}>
@@ -425,6 +449,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666666",
     textAlign: "center",
+  },
+  statSubtext: {
+    fontSize: 10,
+    color: "#10b981",
+    textAlign: "center",
+    marginTop: 2,
   },
   section: {
     paddingHorizontal: 24,

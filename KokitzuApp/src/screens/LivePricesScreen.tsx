@@ -30,6 +30,7 @@ import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
 import WalletConnectButton from "../components/WalletConnectButton";
+import { useEthPrice } from "../utils/currencyUtils";
 
 const LivePricesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,6 +41,9 @@ const LivePricesScreen: React.FC = () => {
   // Add wallet context usage to ensure proper header updates
   const { isConnected, balance } = useWallet();
   const { currentNetwork } = useNetwork();
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
 
   // Debug effect to monitor wallet state changes
   useEffect(() => {

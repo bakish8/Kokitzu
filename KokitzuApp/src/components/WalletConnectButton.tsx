@@ -16,6 +16,7 @@ import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
 import WalletConnectedModal from "./WalletConnectedModal";
 import NetworkSelectionModal from "./NetworkSelectionModal";
+import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
 
 interface WalletConnectButtonProps {
   onConnected?: (address: string, signer: any) => void;
@@ -44,6 +45,9 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   const [currentChain, setCurrentChain] = useState<string>(
     networkConfig.chainId
   );
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
 
   // Use the WalletConnect modal hook
   const {
@@ -328,8 +332,11 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
             </Text>
             {displayBalance && (
               <Text style={styles.balanceText}>
-                {parseFloat(displayBalance || "0").toFixed(4)}{" "}
-                {getChainName(networkConfig.chainId)}
+                {formatEthWithUsd(
+                  parseFloat(displayBalance || "0"),
+                  ethPrice,
+                  false
+                )}
               </Text>
             )}
           </View>

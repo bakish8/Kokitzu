@@ -34,6 +34,13 @@ import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
 import WalletConnectButton from "../components/WalletConnectButton";
 import SmartContractInfo from "../components/SmartContractInfo";
+import {
+  useEthPrice,
+  formatEthWithUsd,
+  formatUsd,
+  ethToUsd,
+  usdToEth,
+} from "../utils/currencyUtils";
 
 const BinaryOptionsScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
@@ -59,6 +66,8 @@ const BinaryOptionsScreen: React.FC = () => {
     networkConfig.chainId
   );
   const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+  // USD-only betting - no currency toggle needed
+  const inputInUsd = true;
 
   // Use the WalletConnect modal hook (same as header)
   const {
@@ -69,6 +78,10 @@ const BinaryOptionsScreen: React.FC = () => {
 
   // Debug connection status (same logic as header)
   const isWalletConnected = wcConnected || isConnected;
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
+
   console.log("🔗 BinaryOptionsScreen: Connection status:", {
     wcConnected,
     isConnected,
@@ -104,6 +117,8 @@ const BinaryOptionsScreen: React.FC = () => {
   const timeframeTranslateY = useSharedValue(30);
   const betSectionOpacity = useSharedValue(0);
   const betSectionTranslateY = useSharedValue(30);
+  const placeBetButtonOpacity = useSharedValue(0);
+  const placeBetButtonTranslateY = useSharedValue(30);
   const activeBetsOpacity = useSharedValue(0);
   const activeBetsTranslateY = useSharedValue(30);
 
@@ -138,6 +153,11 @@ const BinaryOptionsScreen: React.FC = () => {
     transform: [{ translateY: activeBetsTranslateY.value }],
   }));
 
+  const placeBetButtonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: placeBetButtonOpacity.value,
+    transform: [{ translateY: placeBetButtonTranslateY.value }],
+  }));
+
   // Animation function
   const startEntranceAnimations = () => {
     // Reset animation values
@@ -151,6 +171,8 @@ const BinaryOptionsScreen: React.FC = () => {
     timeframeTranslateY.value = 30;
     betSectionOpacity.value = 0;
     betSectionTranslateY.value = 30;
+    placeBetButtonOpacity.value = 0;
+    placeBetButtonTranslateY.value = 30;
     activeBetsOpacity.value = 0;
     activeBetsTranslateY.value = 30;
 
@@ -191,9 +213,18 @@ const BinaryOptionsScreen: React.FC = () => {
       withSpring(0, { damping: 15, stiffness: 150 })
     );
 
-    activeBetsOpacity.value = withDelay(600, withTiming(1, { duration: 600 }));
+    placeBetButtonOpacity.value = withDelay(
+      700,
+      withTiming(1, { duration: 600 })
+    );
+    placeBetButtonTranslateY.value = withDelay(
+      700,
+      withSpring(0, { damping: 15, stiffness: 150 })
+    );
+
+    activeBetsOpacity.value = withDelay(800, withTiming(1, { duration: 600 }));
     activeBetsTranslateY.value = withDelay(
-      600,
+      800,
       withSpring(0, { damping: 15, stiffness: 150 })
     );
   };
@@ -271,9 +302,18 @@ const BinaryOptionsScreen: React.FC = () => {
   ]);
 
   const betAmountValue = parseFloat(betAmount || "0");
-  const maxSafeBet = currentBalance * 0.9; // 90% of balance for safety
+
+  // Calculate max safe bet in USD (90% of ETH balance converted to USD)
+  const maxSafeBetEth = currentBalance * 0.9; // 90% of ETH balance for safety
+  const maxSafeBetUsd = ethToUsd(maxSafeBetEth, ethPrice);
+
+  // USD-only betting, so max safe bet is in USD
+  const maxSafeBet = maxSafeBetUsd;
+
+  // Check if bet amount exceeds available USD balance
+  const availableUsdBalance = ethToUsd(currentBalance, ethPrice);
   const hasInsufficientBalance =
-    betAmountValue > currentBalance && !isBalanceLoading;
+    betAmountValue > availableUsdBalance && !isBalanceLoading;
 
   // Determine if we should show loading state
   const shouldShowLoading = isBalanceLoading && wcConnected && !localBalance;
@@ -380,6 +420,36 @@ const BinaryOptionsScreen: React.FC = () => {
     }
   }, [wcConnected, isConnected, networkConfig.chainId]);
 
+  // Effect to update bet amount when network changes
+  useEffect(() => {
+    if (
+      isWalletConnected &&
+      currentBalance > 0 &&
+      !shouldShowLoading &&
+      betAmount
+    ) {
+      const currentBetAmount = parseFloat(betAmount);
+
+      // If current bet amount is higher than new max safe bet, update to max safe bet
+      if (currentBetAmount > maxSafeBetUsd) {
+        const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+        setBetAmount(formattedMaxBet);
+        console.log(
+          "🌐 Updated bet amount after network change to",
+          currentNetwork,
+          "in USD"
+        );
+      }
+    }
+  }, [
+    currentNetwork,
+    currentBalance,
+    maxSafeBetUsd,
+    isWalletConnected,
+    shouldShowLoading,
+    betAmount,
+  ]);
+
   // Refresh balance function
   const refreshBalance = async () => {
     if (wcConnected && wcAddress) {
@@ -409,12 +479,14 @@ const BinaryOptionsScreen: React.FC = () => {
     if (isWalletConnected && currentBalance > 0 && !shouldShowLoading) {
       const currentBetAmount = parseFloat(betAmount || "0");
 
-      // Only update if the current bet amount is 100 (default) or if it's higher than the new max safe bet
-      if (currentBetAmount === 100 || currentBetAmount > currentBalance * 0.9) {
-        updateBetAmountToMaxSafe(currentBalance);
+      // Update if the current bet amount is 100 (default) or if it's higher than the new max safe bet
+      if (currentBetAmount === 100 || currentBetAmount > maxSafeBetUsd) {
+        const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+        setBetAmount(formattedMaxBet);
         console.log(
           "💰 Updated bet amount to max safe bet for",
-          currentNetwork
+          currentNetwork,
+          "in USD"
         );
       }
     }
@@ -424,7 +496,7 @@ const BinaryOptionsScreen: React.FC = () => {
     shouldShowLoading,
     currentNetwork,
     betAmount,
-    updateBetAmountToMaxSafe,
+    maxSafeBetUsd,
   ]);
 
   // Effect to set initial bet amount when wallet connects for the first time
@@ -435,10 +507,13 @@ const BinaryOptionsScreen: React.FC = () => {
       !shouldShowLoading &&
       betAmount === "100"
     ) {
-      updateBetAmountToMaxSafe(currentBalance);
+      // Set to max safe bet in USD by default
+      const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+      setBetAmount(formattedMaxBet);
       console.log(
         "💰 Set initial bet amount to max safe bet for",
-        currentNetwork
+        currentNetwork,
+        "in USD"
       );
     }
   }, [
@@ -446,7 +521,7 @@ const BinaryOptionsScreen: React.FC = () => {
     currentBalance,
     shouldShowLoading,
     betAmount,
-    updateBetAmountToMaxSafe,
+    maxSafeBetUsd,
     currentNetwork,
   ]);
 
@@ -457,6 +532,12 @@ const BinaryOptionsScreen: React.FC = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Function to set bet amount to max safe bet in USD
+  const setBetAmountToMaxSafe = () => {
+    const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+    setBetAmount(formattedMaxBet);
+  };
 
   const handlePlaceBet = async () => {
     // Check if wallet is connected (same logic as header)
@@ -657,9 +738,9 @@ const BinaryOptionsScreen: React.FC = () => {
             {isWalletConnected
               ? shouldShowLoading
                 ? `Loading balance for ${currentNetwork}...`
-                : `Available: ${formatBalance(currentBalance)} ${getChainName(
-                    currentChain
-                  )} (${currentNetwork})`
+                : `Available: ${formatUsd(
+                    ethToUsd(currentBalance, ethPrice)
+                  )} (Ξ ${currentBalance.toFixed(4)}) (${currentNetwork})`
               : "Connect wallet to see balance"}
           </Text>
           {isWalletConnected && !shouldShowLoading && (
@@ -686,30 +767,31 @@ const BinaryOptionsScreen: React.FC = () => {
         </View>
 
         <View style={styles.betInputContainer}>
-          <TextInput
-            style={[
-              styles.betInput,
-              hasInsufficientBalance && styles.betInputError,
-              shouldShowLoading && styles.betInputLoading,
-            ]}
-            value={betAmount}
-            onChangeText={setBetAmount}
-            keyboardType="numeric"
-            placeholder={
-              shouldShowLoading
-                ? "Loading balance..."
-                : `Enter amount in ${networkConfig.nativeCurrency.symbol}`
-            }
-            placeholderTextColor="#666"
-            editable={!shouldShowLoading}
-          />
+          <View style={styles.betInputWrapper}>
+            <Text style={styles.currencySymbol}>$</Text>
+            <TextInput
+              style={[
+                styles.betInput,
+                hasInsufficientBalance && styles.betInputError,
+                shouldShowLoading && styles.betInputLoading,
+              ]}
+              value={betAmount}
+              onChangeText={setBetAmount}
+              keyboardType="numeric"
+              placeholder={
+                shouldShowLoading ? "Loading balance..." : "Enter amount in USD"
+              }
+              placeholderTextColor="#666"
+              editable={!shouldShowLoading}
+            />
+          </View>
           <TouchableOpacity
             style={[
               styles.maxButton,
               (maxSafeBet <= 0 || shouldShowLoading) &&
                 styles.maxButtonDisabled,
             ]}
-            onPress={() => setBetAmount(maxSafeBet.toFixed(4))}
+            onPress={setBetAmountToMaxSafe}
             disabled={maxSafeBet <= 0 || shouldShowLoading}
           >
             <Text
@@ -724,6 +806,23 @@ const BinaryOptionsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* ETH Equivalent Display */}
+        {isWalletConnected &&
+          !shouldShowLoading &&
+          betAmount &&
+          parseFloat(betAmount) > 0 && (
+            <View style={styles.usdEquivalentContainer}>
+              <MaterialCommunityIcons
+                name="ethereum"
+                size={14}
+                color="#3b82f6"
+              />
+              <Text style={styles.usdEquivalentText}>
+                Ξ {usdToEth(parseFloat(betAmount), ethPrice).toFixed(4)} ETH
+              </Text>
+            </View>
+          )}
+
         {/* Balance Warning */}
         {isWalletConnected && hasInsufficientBalance && !shouldShowLoading && (
           <View style={styles.balanceWarning}>
@@ -734,8 +833,8 @@ const BinaryOptionsScreen: React.FC = () => {
             />
             <Text style={styles.balanceWarningText}>
               Insufficient balance. You only have{" "}
-              {formatBalance(currentBalance)} {getChainName(currentChain)} on{" "}
-              {currentNetwork}
+              {formatUsd(ethToUsd(currentBalance, ethPrice))} (Ξ{" "}
+              {currentBalance.toFixed(4)}) on {currentNetwork}
             </Text>
           </View>
         )}
@@ -760,8 +859,8 @@ const BinaryOptionsScreen: React.FC = () => {
               color="#10b981"
             />
             <Text style={styles.maxBetInfoText}>
-              Max safe bet: {formatBalance(maxSafeBet)}{" "}
-              {getChainName(currentChain)} (90% of balance) on {currentNetwork}
+              Max safe bet: {formatUsd(maxSafeBetUsd)} (Ξ{" "}
+              {maxSafeBetEth.toFixed(4)}) (90% of balance) on {currentNetwork}
             </Text>
           </View>
         )}
@@ -814,39 +913,43 @@ const BinaryOptionsScreen: React.FC = () => {
       </Animated.View>
 
       {/* Place Bet Button */}
-      <TouchableOpacity
-        style={[
-          styles.placeBetButton,
-          ((!wcConnected && !isConnected) ||
-            hasInsufficientBalance ||
-            shouldShowLoading) &&
-            styles.placeBetButtonDisabled,
-        ]}
-        onPress={handlePlaceBet}
-        disabled={
-          (!wcConnected && !isConnected) ||
-          hasInsufficientBalance ||
-          shouldShowLoading
-        }
+      <Animated.View
+        style={[styles.placeBetButtonContainer, placeBetButtonAnimatedStyle]}
       >
-        <Text
+        <TouchableOpacity
           style={[
-            styles.placeBetButtonText,
+            styles.placeBetButton,
             ((!wcConnected && !isConnected) ||
               hasInsufficientBalance ||
               shouldShowLoading) &&
-              styles.placeBetButtonTextDisabled,
+              styles.placeBetButtonDisabled,
           ]}
+          onPress={handlePlaceBet}
+          disabled={
+            (!wcConnected && !isConnected) ||
+            hasInsufficientBalance ||
+            shouldShowLoading
+          }
         >
-          {!wcConnected && !isConnected
-            ? "Connect Wallet to Bet"
-            : shouldShowLoading
-            ? "Loading Balance..."
-            : hasInsufficientBalance
-            ? "Insufficient Balance"
-            : "Place Bet"}
-        </Text>
-      </TouchableOpacity>
+          <Text
+            style={[
+              styles.placeBetButtonText,
+              ((!wcConnected && !isConnected) ||
+                hasInsufficientBalance ||
+                shouldShowLoading) &&
+                styles.placeBetButtonTextDisabled,
+            ]}
+          >
+            {!wcConnected && !isConnected
+              ? "Connect Wallet to Bet"
+              : shouldShowLoading
+              ? "Loading Balance..."
+              : hasInsufficientBalance
+              ? "Insufficient Balance"
+              : "Place Bet"}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Smart Contract Info */}
       {/* <SmartContractInfo /> */}
@@ -1057,8 +1160,6 @@ const styles = StyleSheet.create({
   },
   placeBetButton: {
     backgroundColor: "#3b82f6",
-    marginHorizontal: 20,
-    marginVertical: 20,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -1207,6 +1308,39 @@ const styles = StyleSheet.create({
   },
   maxButtonTextDisabled: {
     color: "#cccccc",
+  },
+  usdEquivalentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    gap: 6,
+  },
+  usdEquivalentText: {
+    color: "#10b981",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  betInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    backgroundColor: "#1a1a2e",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#333",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  currencySymbol: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginRight: 8,
+  },
+  placeBetButtonContainer: {
+    marginHorizontal: 20,
+    marginVertical: 20,
   },
 });
 

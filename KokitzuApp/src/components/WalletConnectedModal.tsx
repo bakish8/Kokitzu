@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
+import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
 
 interface WalletConnectedModalProps {
   visible: boolean;
@@ -35,6 +36,9 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
 
   // Use WalletConnect modal hook
   const { provider } = useWalletConnectModal();
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
 
   // Debug logging
   console.log("🔍 WalletConnectedModal Debug:", {
@@ -362,8 +366,7 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Balance:</Text>
               <Text style={styles.infoValue}>
-                {parseFloat(balance || "0").toFixed(4)}{" "}
-                {getChainName(networkConfig.chainId)}
+                {formatEthWithUsd(parseFloat(balance || "0"), ethPrice, false)}
               </Text>
             </View>
           </View>
