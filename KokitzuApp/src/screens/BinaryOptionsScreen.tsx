@@ -242,6 +242,16 @@ const BinaryOptionsScreen: React.FC = () => {
   );
 
   const { data: coinsData } = useQuery(GET_COINS);
+
+  // Function to get payout multiplier for timeframe
+  const getPayoutMultiplier = (timeframe: string): number => {
+    const timeframeData = TIMEFRAMES.find((tf) => tf.value === timeframe);
+    if (!timeframeData) return 1.8; // Default to 1.8x
+
+    // Extract multiplier from payout string (e.g., "1.8x" -> 1.8)
+    const multiplier = parseFloat(timeframeData.payout.replace("x", ""));
+    return multiplier || 1.8;
+  };
   const { data: cryptoData } = useQuery(GET_CRYPTO_PRICES);
   const { data: activeBetsData } = useQuery(GET_ACTIVE_BETS, {
     variables: { userId: "user-1" },
@@ -912,6 +922,91 @@ const BinaryOptionsScreen: React.FC = () => {
         </View>
       </Animated.View>
 
+      {/* Profit Summary Card */}
+      <Animated.View
+        style={[styles.profitSummaryContainer, placeBetButtonAnimatedStyle]}
+      >
+        <View style={styles.profitSummaryCard}>
+          <Text style={styles.profitSummaryTitle}>Trade Summary</Text>
+
+          <View style={styles.profitSummaryRow}>
+            <Text style={styles.profitSummaryLabel}>Investment:</Text>
+            <View style={styles.profitSummaryValue}>
+              <Text style={styles.profitSummaryAmount}>
+                ${formatUsd(betAmountValue)}
+              </Text>
+              <Text style={styles.profitSummaryEquivalent}>
+                Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.profitSummaryRow}>
+            <Text style={styles.profitSummaryLabel}>Direction:</Text>
+            <View
+              style={[
+                styles.directionBadge,
+                betType === "UP"
+                  ? styles.upDirectionBadge
+                  : styles.downDirectionBadge,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={betType === "UP" ? "trending-up" : "trending-down"}
+                size={16}
+                color="#ffffff"
+              />
+              <Text style={styles.directionText}>{betType}</Text>
+            </View>
+          </View>
+
+          <View style={styles.profitSummaryRow}>
+            <Text style={styles.profitSummaryLabel}>Timeframe:</Text>
+            <Text style={styles.profitSummaryValueText}>
+              {TIMEFRAMES.find((tf) => tf.value === selectedTimeframe)?.label}
+            </Text>
+          </View>
+
+          <View style={styles.profitSummaryRow}>
+            <Text style={styles.profitSummaryLabel}>Asset:</Text>
+            <Text style={styles.profitSummaryValueText}>{selectedCrypto}</Text>
+          </View>
+
+          <View style={styles.profitSummaryDivider} />
+
+          <View style={styles.profitSummaryRow}>
+            <Text style={styles.profitSummaryLabel}>Potential Profit:</Text>
+            <View style={styles.profitSummaryValue}>
+              <Text style={styles.profitSummaryProfit}>
+                +$
+                {formatUsd(
+                  betAmountValue * (getPayoutMultiplier(selectedTimeframe) - 1)
+                )}
+              </Text>
+              <Text style={styles.profitSummaryProfitEquivalent}>
+                +Ξ{" "}
+                {(
+                  usdToEth(betAmountValue, ethPrice) *
+                  (getPayoutMultiplier(selectedTimeframe) - 1)
+                ).toFixed(4)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.profitSummaryRow}>
+            <Text style={styles.profitSummaryLabel}>Potential Loss:</Text>
+            <View style={styles.profitSummaryValue}>
+              <Text style={styles.profitSummaryLoss}>
+                -${formatUsd(betAmountValue)}
+              </Text>
+              <Text style={styles.profitSummaryLossEquivalent}>
+                -Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+
       {/* Place Bet Button */}
       <Animated.View
         style={[styles.placeBetButtonContainer, placeBetButtonAnimatedStyle]}
@@ -1341,6 +1436,106 @@ const styles = StyleSheet.create({
   placeBetButtonContainer: {
     marginHorizontal: 20,
     marginVertical: 20,
+  },
+  // Profit Summary Card Styles
+  profitSummaryContainer: {
+    marginHorizontal: 20,
+    marginVertical: 10,
+  },
+  profitSummaryCard: {
+    backgroundColor: "#1a1a2e",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#333",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  profitSummaryTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#ffffff",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  profitSummaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  profitSummaryLabel: {
+    fontSize: 14,
+    color: "#cccccc",
+    fontWeight: "500",
+  },
+  profitSummaryValue: {
+    alignItems: "flex-end",
+  },
+  profitSummaryValueText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  profitSummaryAmount: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  profitSummaryEquivalent: {
+    fontSize: 12,
+    color: "#666666",
+    marginTop: 2,
+  },
+  directionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  upDirectionBadge: {
+    backgroundColor: "rgba(16, 185, 129, 0.2)",
+  },
+  downDirectionBadge: {
+    backgroundColor: "rgba(239, 68, 68, 0.2)",
+  },
+  directionText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  profitSummaryDivider: {
+    height: 1,
+    backgroundColor: "#333",
+    marginVertical: 12,
+  },
+  profitSummaryProfit: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#10b981",
+  },
+  profitSummaryProfitEquivalent: {
+    fontSize: 12,
+    color: "#10b981",
+    marginTop: 2,
+  },
+  profitSummaryLoss: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#ef4444",
+  },
+  profitSummaryLossEquivalent: {
+    fontSize: 12,
+    color: "#ef4444",
+    marginTop: 2,
   },
 });
 
