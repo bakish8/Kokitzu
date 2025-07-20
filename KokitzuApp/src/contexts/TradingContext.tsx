@@ -1,5 +1,9 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { CryptoPrice } from "../types";
+import { useNetwork } from "./NetworkContext";
+import { useWallet } from "./WalletContext";
+import { useEthPrice } from "../utils/currencyUtils";
+import { ethToUsd } from "../utils/currencyUtils";
 
 interface TradingContextType {
   selectedCrypto: string;
@@ -31,6 +35,10 @@ interface TradingProviderProps {
 export const TradingProvider: React.FC<TradingProviderProps> = ({
   children,
 }) => {
+  const { currentNetwork } = useNetwork();
+  const { balance, isConnected } = useWallet();
+  const ethPrice = useEthPrice();
+
   const [selectedCrypto, setSelectedCrypto] = useState<string>("");
   const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_MINUTE");
   const [betAmount, setBetAmount] = useState("100");
@@ -50,6 +58,29 @@ export const TradingProvider: React.FC<TradingProviderProps> = ({
       setBetAmount(newBetAmount.toFixed(4));
     }
   };
+
+  // Effect to automatically update bet amount when network or balance changes
+  useEffect(() => {
+    if (isConnected && balance) {
+      const currentBalance = parseFloat(balance);
+      if (currentBalance > 0) {
+        // Calculate max safe bet in USD (90% of ETH balance converted to USD)
+        const maxSafeBetEth = currentBalance * 0.9;
+        const maxSafeBetUsd = ethToUsd(maxSafeBetEth, ethPrice);
+
+        // Update bet amount to max safe bet
+        const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+        setBetAmount(formattedMaxBet);
+
+        console.log(
+          "🔄 TradingContext: Updated bet amount to max safe bet for",
+          currentNetwork,
+          "in USD:",
+          formattedMaxBet
+        );
+      }
+    }
+  }, [currentNetwork, balance, isConnected, ethPrice]);
 
   const value: TradingContextType = {
     selectedCrypto,

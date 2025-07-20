@@ -205,15 +205,15 @@ export default function App() {
       <ApolloProvider client={apolloClient}>
         <NetworkProvider>
           <AuthProvider>
-            <TradingProvider>
-              <WalletProvider>
+            <WalletProvider>
+              <TradingProvider>
                 <AppContent />
                 <WalletConnectModal
                   projectId={projectId}
                   providerMetadata={providerMetadata}
                 />
-              </WalletProvider>
-            </TradingProvider>
+              </TradingProvider>
+            </WalletProvider>
           </AuthProvider>
         </NetworkProvider>
       </ApolloProvider>

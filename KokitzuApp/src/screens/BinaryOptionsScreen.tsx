@@ -333,24 +333,16 @@ const BinaryOptionsScreen: React.FC = () => {
 
   // Effect to update bet amount when network changes
   useEffect(() => {
-    if (
-      isWalletConnected &&
-      currentBalance > 0 &&
-      !shouldShowLoading &&
-      betAmount
-    ) {
-      const currentBetAmount = parseFloat(betAmount);
-
-      // If current bet amount is higher than new max safe bet, update to max safe bet
-      if (currentBetAmount > maxSafeBetUsd) {
-        const formattedMaxBet = maxSafeBetUsd.toFixed(2);
-        setBetAmount(formattedMaxBet);
-        console.log(
-          "🌐 Updated bet amount after network change to",
-          currentNetwork,
-          "in USD"
-        );
-      }
+    if (isWalletConnected && currentBalance > 0 && !shouldShowLoading) {
+      // Always update bet amount when network changes to reflect new balance
+      const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+      setBetAmount(formattedMaxBet);
+      console.log(
+        "🌐 Updated bet amount after network change to",
+        currentNetwork,
+        "in USD:",
+        formattedMaxBet
+      );
     }
   }, [
     currentNetwork,
@@ -358,22 +350,22 @@ const BinaryOptionsScreen: React.FC = () => {
     maxSafeBetUsd,
     isWalletConnected,
     shouldShowLoading,
-    betAmount,
   ]);
 
-  // Effect to update bet amount to max safe bet when balance changes
+  // Effect to update bet amount to max safe bet when balance or network changes
   useEffect(() => {
     if (isWalletConnected && currentBalance > 0 && !shouldShowLoading) {
       const currentBetAmount = parseFloat(betAmount || "0");
 
-      // Update if the current bet amount is 100 (default) or if it's higher than the new max safe bet
+      // Update if the current bet amount is 100 (default), higher than max safe bet, or network changed
       if (currentBetAmount === 100 || currentBetAmount > maxSafeBetUsd) {
         const formattedMaxBet = maxSafeBetUsd.toFixed(2);
         setBetAmount(formattedMaxBet);
         console.log(
           "💰 Updated bet amount to max safe bet for",
           currentNetwork,
-          "in USD"
+          "in USD:",
+          formattedMaxBet
         );
       }
     }
