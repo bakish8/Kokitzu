@@ -5050,3 +5050,76 @@ body.modal-open .nav {
     font-size: 0.75rem;
   }
 }
+
+/* Network Selection Modal Styles */
+.network-selection-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+.network-modal-back-section {
+  padding: 0 0 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.app.light .network-modal-back-section {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.network-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.network-back-btn:hover {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.app.light .network-back-btn:hover {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.network-back-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+.network-back-btn:hover svg {
+  transform: translateX(-2px);
+}
+
+/* Mobile responsive for network modal */
+@media (max-width: 480px) {
+  .network-selection-modal {
+    max-width: 100%;
+    width: 95%;
+  }
+
+  .network-modal-back-section {
+    padding: 0 0 0.75rem 0;
+    margin-bottom: 1rem;
+  }
+
+  .network-back-btn {
+    font-size: 0.85rem;
+    padding: 0.4rem;
+  }
+
+  .network-back-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+}

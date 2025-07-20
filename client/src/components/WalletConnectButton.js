@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NETWORKS } from "../contexts/NetworkContext";
+import NetworkSelectionModal from "./NetworkSelectionModal";
 
 const WalletConnectButton = () => {
   const {
@@ -17,6 +18,7 @@ const WalletConnectButton = () => {
     useNetwork();
   const [showModal, setShowModal] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
+  const [modalView, setModalView] = useState("wallet"); // "wallet" or "network"
 
   // Handle modal open/close with body scroll lock
   const handleModalOpen = () => {
@@ -27,6 +29,7 @@ const WalletConnectButton = () => {
   const handleModalClose = () => {
     setShowModal(false);
     setShowNetworkModal(false);
+    setModalView("wallet");
     document.body.classList.remove("modal-open");
   };
 
@@ -59,7 +62,6 @@ const WalletConnectButton = () => {
 
   const handleNetworkSelect = async (networkType) => {
     try {
-      setShowNetworkModal(false);
       await switchNetwork(networkType);
     } catch (error) {
       console.error("Network switch error:", error);
@@ -160,7 +162,7 @@ const WalletConnectButton = () => {
         </div>
 
         {/* Connected Wallet Modal */}
-        {showModal && (
+        {showModal && modalView === "wallet" && (
           <div className="wallet-modal-overlay" onClick={handleModalClose}>
             <div
               className="wallet-modal-content"
@@ -297,7 +299,7 @@ const WalletConnectButton = () => {
                   <button
                     className="wallet-action-btn"
                     onClick={() => {
-                      setShowNetworkModal(true);
+                      setModalView("network");
                     }}
                   >
                     <div className="action-icon">
@@ -358,80 +360,6 @@ const WalletConnectButton = () => {
                 </button>
               </div>
 
-              {/* Network Selection Modal */}
-              {showNetworkModal && (
-                <div className="wallet-network-list-container">
-                  <div className="wallet-network-list-header">
-                    <h4>Choose Network</h4>
-                    <button
-                      className="wallet-close-btn"
-                      onClick={() => setShowNetworkModal(false)}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="wallet-network-list">
-                    {Object.entries(NETWORKS).map(([key, network]) => (
-                      <div
-                        key={key}
-                        className={`wallet-network-item ${
-                          currentNetwork === key ? "selected" : ""
-                        }`}
-                        onClick={() => handleNetworkSelect(key)}
-                      >
-                        <div className="wallet-network-item-info">
-                          <div
-                            className="wallet-network-item-icon"
-                            style={{ color: getNetworkColor(key) }}
-                          >
-                            {getNetworkIcon(key)}
-                          </div>
-                          <div className="wallet-network-item-details">
-                            <div className="wallet-network-item-name">
-                              {network.name}
-                            </div>
-                            <div className="wallet-network-item-chain">
-                              Chain ID: {network.chainId}
-                            </div>
-                            {network.isTestnet && (
-                              <span className="wallet-testnet-badge">
-                                TESTNET
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {currentNetwork === key && (
-                          <div
-                            className="wallet-check-icon"
-                            style={{ color: getNetworkColor(key) }}
-                          >
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Footer */}
               <div className="wallet-modal-footer">
                 <p className="wallet-footer-text">
@@ -440,6 +368,15 @@ const WalletConnectButton = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Network Selection Modal */}
+        {showModal && modalView === "network" && (
+          <NetworkSelectionModal
+            onClose={handleModalClose}
+            onBack={() => setModalView("wallet")}
+            isConnected={isConnected}
+          />
         )}
       </>
     );
@@ -458,7 +395,7 @@ const WalletConnectButton = () => {
       </button>
 
       {/* Wallet Connection Modal */}
-      {showModal && (
+      {showModal && modalView === "wallet" && (
         <div className="wallet-modal-overlay" onClick={handleModalClose}>
           <div
             className="wallet-modal-content"
@@ -494,64 +431,30 @@ const WalletConnectButton = () => {
                 <span className="section-icon">🌐</span>
                 <h4>Select Network</h4>
               </div>
-              {!showNetworkModal ? (
-                <div
-                  className="wallet-network-selector"
-                  style={{ borderColor: getNetworkColor(currentNetwork) }}
-                  onClick={() => setShowNetworkModal(true)}
-                >
-                  <div className="wallet-network-info">
-                    <div
-                      className="wallet-network-icon"
-                      style={{ color: getNetworkColor(currentNetwork) }}
-                    >
-                      {getNetworkIcon(currentNetwork)}
-                    </div>
-                    <div className="wallet-network-details">
-                      <div className="wallet-network-name">
-                        {networkConfig.name}
-                      </div>
-                      <div className="wallet-network-chain">
-                        Chain ID: {networkConfig.chainId}
-                      </div>
-                    </div>
+              <div
+                className="wallet-network-selector"
+                style={{ borderColor: getNetworkColor(currentNetwork) }}
+                onClick={() => setModalView("network")}
+              >
+                <div className="wallet-network-info">
+                  <div
+                    className="wallet-network-icon"
+                    style={{ color: getNetworkColor(currentNetwork) }}
+                  >
+                    {getNetworkIcon(currentNetwork)}
                   </div>
-                  <div className="wallet-network-actions">
-                    {isNetworkSwitching && (
-                      <div className="wallet-loading-spinner">
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M21 12a9 9 0 11-6.219-8.56" />
-                        </svg>
-                      </div>
-                    )}
-                    <svg
-                      className="wallet-chevron"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
+                  <div className="wallet-network-details">
+                    <div className="wallet-network-name">
+                      {networkConfig.name}
+                    </div>
+                    <div className="wallet-network-chain">
+                      Chain ID: {networkConfig.chainId}
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div className="wallet-network-list-container">
-                  <div className="wallet-network-list-header">
-                    <h4>Choose Network</h4>
-                    <button
-                      className="wallet-close-btn"
-                      onClick={() => setShowNetworkModal(false)}
-                    >
+                <div className="wallet-network-actions">
+                  {isNetworkSwitching && (
+                    <div className="wallet-loading-spinner">
                       <svg
                         width="16"
                         height="16"
@@ -560,62 +463,23 @@ const WalletConnectButton = () => {
                         stroke="currentColor"
                         strokeWidth="2"
                       >
-                        <path d="M18 6L6 18M6 6l12 12" />
+                        <path d="M21 12a9 9 0 11-6.219-8.56" />
                       </svg>
-                    </button>
-                  </div>
-                  <div className="wallet-network-list">
-                    {Object.entries(NETWORKS).map(([key, network]) => (
-                      <div
-                        key={key}
-                        className={`wallet-network-item ${
-                          currentNetwork === key ? "selected" : ""
-                        }`}
-                        onClick={() => handleNetworkSelect(key)}
-                      >
-                        <div className="wallet-network-item-info">
-                          <div
-                            className="wallet-network-item-icon"
-                            style={{ color: getNetworkColor(key) }}
-                          >
-                            {getNetworkIcon(key)}
-                          </div>
-                          <div className="wallet-network-item-details">
-                            <div className="wallet-network-item-name">
-                              {network.name}
-                            </div>
-                            <div className="wallet-network-item-chain">
-                              Chain ID: {network.chainId}
-                            </div>
-                            {network.isTestnet && (
-                              <span className="wallet-testnet-badge">
-                                TESTNET
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {currentNetwork === key && (
-                          <div
-                            className="wallet-check-icon"
-                            style={{ color: getNetworkColor(key) }}
-                          >
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M20 6L9 17l-5-5" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+                  <svg
+                    className="wallet-chevron"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Connection Options */}
@@ -678,6 +542,15 @@ const WalletConnectButton = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Network Selection Modal for Disconnected State */}
+      {showModal && modalView === "network" && (
+        <NetworkSelectionModal
+          onClose={handleModalClose}
+          onBack={() => setModalView("wallet")}
+          isConnected={isConnected}
+        />
       )}
     </>
   );
