@@ -78,6 +78,26 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
     hoverTranslateY.value = withSpring(0, { damping: 15, stiffness: 150 });
     shadowOpacity.value = withTiming(0.1, { duration: 200 });
   };
+
+  // Button press animations
+  const [upButtonPressed, setUpButtonPressed] = useState(false);
+  const [downButtonPressed, setDownButtonPressed] = useState(false);
+
+  const handleUpButtonPressIn = () => {
+    setUpButtonPressed(true);
+  };
+
+  const handleUpButtonPressOut = () => {
+    setUpButtonPressed(false);
+  };
+
+  const handleDownButtonPressIn = () => {
+    setDownButtonPressed(true);
+  };
+
+  const handleDownButtonPressOut = () => {
+    setDownButtonPressed(false);
+  };
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -180,24 +200,38 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
         <View style={styles.cardFooter}>
           <View style={styles.tradeButtonsContainer}>
             <TouchableOpacity
-              style={styles.tradeUpButton}
+              style={[
+                styles.tradeUpButton,
+                upButtonPressed && styles.tradeUpButtonPressed,
+              ]}
               onPress={() => onTradeUp?.(crypto, selectedTimeframe)}
+              onPressIn={handleUpButtonPressIn}
+              onPressOut={handleUpButtonPressOut}
+              activeOpacity={0.8}
             >
               <MaterialCommunityIcons
                 name="trending-up"
-                size={20}
+                size={22}
                 color="#ffffff"
               />
+              <Text style={styles.tradeButtonText}>Buy</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.tradeDownButton}
+              style={[
+                styles.tradeDownButton,
+                downButtonPressed && styles.tradeDownButtonPressed,
+              ]}
               onPress={() => onTradeDown?.(crypto, selectedTimeframe)}
+              onPressIn={handleDownButtonPressIn}
+              onPressOut={handleDownButtonPressOut}
+              activeOpacity={0.8}
             >
               <MaterialCommunityIcons
                 name="trending-down"
-                size={20}
+                size={22}
                 color="#ffffff"
               />
+              <Text style={styles.tradeButtonText}>Sell</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -297,42 +331,40 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   tradeUpButton: {
-    backgroundColor: "#10b981",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
     shadowColor: "#10b981",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 10,
+    elevation: 6,
   },
   tradeDownButton: {
-    backgroundColor: "#ef4444",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.3)",
     shadowColor: "#ef4444",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 10,
+    elevation: 6,
   },
   // Timeframe Selection Styles
   timeframeSection: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   timeframeLabel: {
     fontSize: 14,
@@ -377,6 +409,27 @@ const styles = StyleSheet.create({
   },
   selectedTimeframePayout: {
     color: "#ffffff",
+  },
+  tradeButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "700",
+    marginLeft: 8,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  tradeUpButtonPressed: {
+    backgroundColor: "rgba(16, 185, 129, 0.25)",
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+  },
+  tradeDownButtonPressed: {
+    backgroundColor: "rgba(239, 68, 68, 0.25)",
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
 });
 

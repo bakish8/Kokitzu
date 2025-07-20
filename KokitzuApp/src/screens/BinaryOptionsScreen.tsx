@@ -895,7 +895,7 @@ const BinaryOptionsScreen: React.FC = () => {
                 betType === "UP" && styles.upButtonText,
               ]}
             >
-              UP
+              BUY
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -916,7 +916,7 @@ const BinaryOptionsScreen: React.FC = () => {
                 betType === "DOWN" && styles.downButtonText,
               ]}
             >
-              DOWN
+              SELL
             </Text>
           </TouchableOpacity>
         </View>
