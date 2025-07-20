@@ -1,7 +1,14 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { CryptoPrice } from "../types";
+import { TIMEFRAMES } from "../constants/timeframes";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -15,8 +22,8 @@ import Animated, {
 interface CryptoCardProps {
   crypto: CryptoPrice;
   onPress?: () => void;
-  onTradeUp?: (crypto: CryptoPrice) => void;
-  onTradeDown?: (crypto: CryptoPrice) => void;
+  onTradeUp?: (crypto: CryptoPrice, timeframe: string) => void;
+  onTradeDown?: (crypto: CryptoPrice, timeframe: string) => void;
   index?: number;
 }
 
@@ -27,6 +34,7 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
   onTradeDown,
   index = 0,
 }) => {
+  const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_MINUTE");
   // Animation values
   const scale = useSharedValue(0.9);
   const opacity = useSharedValue(0);
@@ -127,33 +135,70 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
           </View>
         </View>
 
+        {/* Timeframe Selection */}
+        <View style={styles.timeframeSection}>
+          <Text style={styles.timeframeLabel}>Select Timeframe:</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.timeframeScrollView}
+            contentContainerStyle={styles.timeframeContainer}
+          >
+            {TIMEFRAMES.map((timeframe) => (
+              <TouchableOpacity
+                key={timeframe.value}
+                style={[
+                  styles.timeframeOption,
+                  selectedTimeframe === timeframe.value &&
+                    styles.selectedTimeframe,
+                ]}
+                onPress={() => setSelectedTimeframe(timeframe.value)}
+              >
+                <Text
+                  style={[
+                    styles.timeframeText,
+                    selectedTimeframe === timeframe.value &&
+                      styles.selectedTimeframeText,
+                  ]}
+                >
+                  {timeframe.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.timeframePayout,
+                    selectedTimeframe === timeframe.value &&
+                      styles.selectedTimeframePayout,
+                  ]}
+                >
+                  {timeframe.payout}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         <View style={styles.cardFooter}>
-          <View style={styles.footerRow}>
-            <Text style={styles.lastUpdated}>
-              Last updated: {new Date(crypto.lastUpdated).toLocaleTimeString()}
-            </Text>
-            <View style={styles.tradeButtonsContainer}>
-              <TouchableOpacity
-                style={styles.tradeUpButton}
-                onPress={() => onTradeUp?.(crypto)}
-              >
-                <MaterialCommunityIcons
-                  name="trending-up"
-                  size={16}
-                  color="#ffffff"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.tradeDownButton}
-                onPress={() => onTradeDown?.(crypto)}
-              >
-                <MaterialCommunityIcons
-                  name="trending-down"
-                  size={16}
-                  color="#ffffff"
-                />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.tradeButtonsContainer}>
+            <TouchableOpacity
+              style={styles.tradeUpButton}
+              onPress={() => onTradeUp?.(crypto, selectedTimeframe)}
+            >
+              <MaterialCommunityIcons
+                name="trending-up"
+                size={20}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tradeDownButton}
+              onPress={() => onTradeDown?.(crypto, selectedTimeframe)}
+            >
+              <MaterialCommunityIcons
+                name="trending-down"
+                size={20}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
@@ -249,22 +294,89 @@ const styles = StyleSheet.create({
   tradeButtonsContainer: {
     flexDirection: "row",
     gap: 8,
+    width: "100%",
   },
   tradeUpButton: {
     backgroundColor: "#10b981",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    flex: 1,
+    shadowColor: "#10b981",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   tradeDownButton: {
     backgroundColor: "#ef4444",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
+    flex: 1,
+    shadowColor: "#ef4444",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  // Timeframe Selection Styles
+  timeframeSection: {
+    marginBottom: 12,
+  },
+  timeframeLabel: {
+    fontSize: 14,
+    color: "#cccccc",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  timeframeScrollView: {
+    flexGrow: 0,
+  },
+  timeframeContainer: {
+    paddingHorizontal: 4,
+  },
+  timeframeOption: {
+    backgroundColor: "transparent",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: "#444",
+    alignItems: "center",
+    minWidth: 50,
+  },
+  selectedTimeframe: {
+    backgroundColor: "#3b82f6",
+    borderColor: "#3b82f6",
+  },
+  timeframeText: {
+    fontSize: 11,
+    color: "#999999",
+    fontWeight: "500",
+  },
+  selectedTimeframeText: {
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  timeframePayout: {
+    fontSize: 9,
+    color: "#666666",
+    marginTop: 1,
+  },
+  selectedTimeframePayout: {
+    color: "#ffffff",
   },
 });
 

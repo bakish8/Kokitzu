@@ -933,7 +933,7 @@ const BinaryOptionsScreen: React.FC = () => {
             <Text style={styles.profitSummaryLabel}>Investment:</Text>
             <View style={styles.profitSummaryValue}>
               <Text style={styles.profitSummaryAmount}>
-                ${formatUsd(betAmountValue)}
+                {formatUsd(betAmountValue)}
               </Text>
               <Text style={styles.profitSummaryEquivalent}>
                 Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
@@ -978,7 +978,7 @@ const BinaryOptionsScreen: React.FC = () => {
             <Text style={styles.profitSummaryLabel}>Potential Profit:</Text>
             <View style={styles.profitSummaryValue}>
               <Text style={styles.profitSummaryProfit}>
-                +$
+                +
                 {formatUsd(
                   betAmountValue * (getPayoutMultiplier(selectedTimeframe) - 1)
                 )}
@@ -997,7 +997,7 @@ const BinaryOptionsScreen: React.FC = () => {
             <Text style={styles.profitSummaryLabel}>Potential Loss:</Text>
             <View style={styles.profitSummaryValue}>
               <Text style={styles.profitSummaryLoss}>
-                -${formatUsd(betAmountValue)}
+                -{formatUsd(betAmountValue)}
               </Text>
               <Text style={styles.profitSummaryLossEquivalent}>
                 -Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
