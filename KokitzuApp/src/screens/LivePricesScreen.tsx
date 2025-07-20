@@ -36,7 +36,7 @@ const LivePricesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
-  const { setDefaultBet } = useTrading();
+  const { setDefaultBet, setBetType } = useTrading();
 
   // Add wallet context usage to ensure proper header updates
   const { isConnected, balance } = useWallet();
@@ -173,8 +173,15 @@ const LivePricesScreen: React.FC = () => {
     }
   };
 
-  const handleCryptoPress = (crypto: CryptoPrice) => {
+  const handleTradeUp = (crypto: CryptoPrice) => {
     setDefaultBet(crypto.symbol);
+    setBetType("UP");
+    (navigation as any).navigate("BinaryOptions");
+  };
+
+  const handleTradeDown = (crypto: CryptoPrice) => {
+    setDefaultBet(crypto.symbol);
+    setBetType("DOWN");
     (navigation as any).navigate("BinaryOptions");
   };
 
@@ -240,7 +247,8 @@ const LivePricesScreen: React.FC = () => {
                 <CryptoCard
                   key={crypto.id}
                   crypto={crypto}
-                  onPress={() => handleCryptoPress(crypto)}
+                  onTradeUp={handleTradeUp}
+                  onTradeDown={handleTradeDown}
                   index={index}
                 />
               ))}

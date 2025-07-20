@@ -15,12 +15,16 @@ import Animated, {
 interface CryptoCardProps {
   crypto: CryptoPrice;
   onPress?: () => void;
+  onTradeUp?: (crypto: CryptoPrice) => void;
+  onTradeDown?: (crypto: CryptoPrice) => void;
   index?: number;
 }
 
 const CryptoCard: React.FC<CryptoCardProps> = ({
   crypto,
   onPress,
+  onTradeUp,
+  onTradeDown,
   index = 0,
 }) => {
   // Animation values
@@ -128,9 +132,28 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
             <Text style={styles.lastUpdated}>
               Last updated: {new Date(crypto.lastUpdated).toLocaleTimeString()}
             </Text>
-            <TouchableOpacity style={styles.tradeButton} onPress={onPress}>
-              <Text style={styles.tradeButtonText}>Trade</Text>
-            </TouchableOpacity>
+            <View style={styles.tradeButtonsContainer}>
+              <TouchableOpacity
+                style={styles.tradeUpButton}
+                onPress={() => onTradeUp?.(crypto)}
+              >
+                <MaterialCommunityIcons
+                  name="trending-up"
+                  size={16}
+                  color="#ffffff"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.tradeDownButton}
+                onPress={() => onTradeDown?.(crypto)}
+              >
+                <MaterialCommunityIcons
+                  name="trending-down"
+                  size={16}
+                  color="#ffffff"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -223,16 +246,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666666",
   },
-  tradeButton: {
-    backgroundColor: "#3b82f6",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+  tradeButtonsContainer: {
+    flexDirection: "row",
+    gap: 8,
   },
-  tradeButtonText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "600",
+  tradeUpButton: {
+    backgroundColor: "#10b981",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tradeDownButton: {
+    backgroundColor: "#ef4444",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 
