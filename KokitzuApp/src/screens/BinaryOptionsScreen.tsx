@@ -247,8 +247,7 @@ const BinaryOptionsScreen: React.FC = () => {
         return "ETH";
       case "11155111":
         return "Sepolia ETH";
-      case "5":
-        return "Goerli ETH";
+
       case "137":
         return "MATIC";
       case "56":

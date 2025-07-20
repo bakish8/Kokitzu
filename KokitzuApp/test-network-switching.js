@@ -57,7 +57,6 @@ console.log("\n3. Checking contract addresses:");
 const contractAddresses = {
   mainnet: "0x...", // Deploy and add mainnet address
   sepolia: "0x...", // Deploy and add sepolia address
-  goerli: "0x...", // Deploy and add goerli address
 };
 
 Object.entries(contractAddresses).forEach(([key, address]) => {

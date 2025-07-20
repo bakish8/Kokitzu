@@ -223,8 +223,7 @@ export const getWalletBalance = async (
       case "11155111": // Sepolia
         rpcUrl = getInfuraUrl("sepolia");
         break;
-      case "5": // Goerli
-        rpcUrl = getInfuraUrl("goerli");
+
         break;
       case "137": // Polygon
         rpcUrl = "https://polygon-rpc.com";

@@ -32,8 +32,7 @@ const NetworkSelectionModal = ({
         return "🔵";
       case "sepolia":
         return "🧪";
-      case "goerli":
-        return "🧬";
+
       default:
         return "🌐";
     }
@@ -45,8 +44,7 @@ const NetworkSelectionModal = ({
         return "#10b981";
       case "sepolia":
         return "#3b82f6";
-      case "goerli":
-        return "#f59e0b";
+
       default:
         return "#666";
     }

@@ -80,8 +80,7 @@ const WalletConnectButton = () => {
         return "🔵";
       case "sepolia":
         return "🧪";
-      case "goerli":
-        return "🧬";
+
       default:
         return "🌐";
     }
@@ -93,8 +92,7 @@ const WalletConnectButton = () => {
         return "#10b981";
       case "sepolia":
         return "#3b82f6";
-      case "goerli":
-        return "#f59e0b";
+
       default:
         return "#666";
     }
@@ -106,8 +104,7 @@ const WalletConnectButton = () => {
         return "ETH";
       case "11155111":
         return "Sepolia ETH";
-      case "5":
-        return "Goerli ETH";
+
       default:
         return networkConfig.nativeCurrency.symbol;
     }

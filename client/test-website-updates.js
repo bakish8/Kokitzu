@@ -49,7 +49,7 @@ console.log("");
 
 console.log("🎯 Features Implemented:");
 console.log("  • MetaMask wallet connection");
-console.log("  • Network selection (Mainnet, Sepolia, Goerli)");
+console.log("  • Network selection (Mainnet, Sepolia)");
 console.log("  • Wallet balance display");
 console.log("  • Connection status indicators");
 console.log("  • Network switching functionality");

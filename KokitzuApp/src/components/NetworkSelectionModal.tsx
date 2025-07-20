@@ -49,8 +49,7 @@ const NetworkSelectionModal: React.FC<NetworkSelectionModalProps> = ({
         return "ethereum";
       case "sepolia":
         return "test-tube";
-      case "goerli":
-        return "flask";
+
       default:
         return "server-network";
     }
@@ -62,8 +61,7 @@ const NetworkSelectionModal: React.FC<NetworkSelectionModalProps> = ({
         return "#10b981";
       case "sepolia":
         return "#3b82f6";
-      case "goerli":
-        return "#f59e0b";
+
       default:
         return "#666";
     }

@@ -73,8 +73,7 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
         return "ethereum";
       case "sepolia":
         return "test-tube";
-      case "goerli":
-        return "flask";
+
       default:
         return "server-network";
     }
@@ -86,8 +85,7 @@ const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
         return "#10b981"; // Green for mainnet
       case "sepolia":
         return "#3b82f6"; // Blue for Sepolia
-      case "goerli":
-        return "#f59e0b"; // Orange for Goerli
+
       default:
         return "#666";
     }

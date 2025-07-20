@@ -21,14 +21,7 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 20000000000, // 20 gwei
     },
-    // Goerli Testnet
-    goerli: {
-      url:
-        process.env.GOERLI_RPC_URL ||
-        "https://eth-goerli.g.alchemy.com/v2/YOUR_API_KEY",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 20000000000, // 20 gwei
-    },
+
     // Sepolia Testnet
     sepolia: {
       url:
@@ -49,7 +42,7 @@ module.exports = {
   etherscan: {
     apiKey: {
       mainnet: process.env.ETHERSCAN_API_KEY,
-      goerli: process.env.ETHERSCAN_API_KEY,
+
       sepolia: process.env.ETHERSCAN_API_KEY,
     },
   },

@@ -14,7 +14,7 @@ export const API_CONFIG = {
   // Infura URLs
   INFURA_URLS: {
     mainnet: "https://mainnet.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
-    goerli: "https://goerli.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
+
     sepolia: "https://sepolia.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
   },
 };

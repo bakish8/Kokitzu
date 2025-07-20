@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 
-export type NetworkType = "mainnet" | "sepolia" | "goerli";
+export type NetworkType = "mainnet" | "sepolia";
 
 export interface NetworkConfig {
   name: string;
@@ -38,18 +38,6 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
     isTestnet: true,
     nativeCurrency: {
       name: "Sepolia Ether",
-      symbol: "ETH",
-      decimals: 18,
-    },
-  },
-  goerli: {
-    name: "Goerli Testnet",
-    chainId: "5",
-    rpcUrl: "https://goerli.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
-    explorerUrl: "https://goerli.etherscan.io",
-    isTestnet: true,
-    nativeCurrency: {
-      name: "Goerli Ether",
       symbol: "ETH",
       decimals: 18,
     },

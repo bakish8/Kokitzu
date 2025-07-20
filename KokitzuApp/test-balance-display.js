@@ -30,18 +30,6 @@ const NETWORKS = {
       decimals: 18,
     },
   },
-  goerli: {
-    name: "Goerli Testnet",
-    chainId: "5",
-    rpcUrl: "https://goerli.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
-    explorerUrl: "https://goerli.etherscan.io",
-    isTestnet: true,
-    nativeCurrency: {
-      name: "Goerli Ether",
-      symbol: "ETH",
-      decimals: 18,
-    },
-  },
 };
 
 // Mock wallet address for testing
@@ -105,8 +93,7 @@ const getChainName = (chainId) => {
       return "ETH";
     case "11155111":
       return "Sepolia ETH";
-    case "5":
-      return "Goerli ETH";
+
     case "137":
       return "MATIC";
     case "56":
@@ -143,7 +130,7 @@ const switchNetwork = (newNetwork) => {
   );
 };
 
-switchNetwork("goerli");
+switchNetwork("sepolia");
 switchNetwork("mainnet");
 switchNetwork("sepolia");
 

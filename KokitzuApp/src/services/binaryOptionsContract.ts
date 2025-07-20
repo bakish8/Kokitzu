@@ -29,7 +29,6 @@ const BINARY_OPTIONS_ABI = [
 const CONTRACT_ADDRESSES: Record<NetworkType, string> = {
   mainnet: "0x...", // Deploy and add mainnet address
   sepolia: "0x...", // Deploy and add sepolia address
-  goerli: "0x...", // Deploy and add goerli address
 };
 
 export interface Option {

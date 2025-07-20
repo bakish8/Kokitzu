@@ -13,22 +13,38 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
+import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 
 interface WalletConnectedModalProps {
   visible: boolean;
   onClose: () => void;
   onNetworkSelect: () => void;
+  onRefreshBalance?: () => void;
 }
 
 const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
   visible,
   onClose,
   onNetworkSelect,
+  onRefreshBalance,
 }) => {
   const { walletAddress, disconnectWallet, isConnected, balance } = useWallet();
   const { currentNetwork, networkConfig, switchNetwork, isNetworkSwitching } =
     useNetwork();
   const [showNetworkModal, setShowNetworkModal] = useState(false);
+
+  // Use WalletConnect modal hook
+  const { provider } = useWalletConnectModal();
+
+  // Debug logging
+  console.log("🔍 WalletConnectedModal Debug:", {
+    walletAddress,
+    currentNetwork,
+    networkConfig: networkConfig?.name,
+    isConnected,
+    balance,
+    hasProvider: !!provider,
+  });
 
   const formatAddress = (address: string) => {
     if (!address) return "Unknown";
@@ -41,8 +57,7 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
         return "ethereum";
       case "sepolia":
         return "test-tube";
-      case "goerli":
-        return "flask";
+
       default:
         return "server-network";
     }
@@ -54,8 +69,7 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
         return "#10b981";
       case "sepolia":
         return "#3b82f6";
-      case "goerli":
-        return "#f59e0b";
+
       default:
         return "#666";
     }
@@ -70,10 +84,40 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
         return `https://etherscan.io/address/${address}`;
       case "sepolia":
         return `https://sepolia.etherscan.io/address/${address}`;
-      case "goerli":
-        return `https://goerli.etherscan.io/address/${address}`;
+
       default:
         return null;
+    }
+  };
+
+  const getChainName = (chainId: string) => {
+    switch (chainId) {
+      case "1":
+        return "ETH";
+      case "11155111":
+        return "Sepolia ETH";
+      case "137":
+        return "MATIC";
+      case "56":
+        return "BNB";
+      case "42161":
+        return "ARB";
+      case "10":
+        return "OP";
+      default:
+        return networkConfig.nativeCurrency.symbol;
+    }
+  };
+
+  const getExplorerName = () => {
+    switch (currentNetwork) {
+      case "mainnet":
+        return "Etherscan";
+      case "sepolia":
+        return "Sepolia Etherscan";
+
+      default:
+        return "Blockchain Explorer";
     }
   };
 
@@ -83,8 +127,13 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
       try {
         await Linking.openURL(url);
       } catch (error) {
-        Alert.alert("Error", "Could not open Etherscan");
+        Alert.alert("Error", `Could not open ${getExplorerName()}`);
       }
+    } else {
+      Alert.alert(
+        "Error",
+        "No wallet address available or unsupported network"
+      );
     }
   };
 
@@ -114,7 +163,7 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
     Alert.alert(
       "Disconnect Wallet",
       "Are you sure you want to disconnect your wallet?",
@@ -123,9 +172,40 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
         {
           text: "Disconnect",
           style: "destructive",
-          onPress: () => {
-            disconnectWallet();
-            onClose();
+          onPress: async () => {
+            try {
+              console.log("🔌 Disconnecting wallet...");
+
+              // Disconnect from WalletConnect if connected
+              if (provider) {
+                console.log("🔌 Disconnecting from WalletConnect provider...");
+                await provider.disconnect();
+              }
+
+              // Disconnect from local wallet context
+              console.log("🔌 Disconnecting from local wallet context...");
+              disconnectWallet();
+
+              console.log("✅ Wallet disconnected successfully");
+              onClose();
+            } catch (error) {
+              console.error("❌ Error disconnecting wallet:", error);
+
+              // Fallback: try to disconnect from local context anyway
+              try {
+                disconnectWallet();
+                onClose();
+              } catch (fallbackError) {
+                console.error(
+                  "❌ Fallback disconnect also failed:",
+                  fallbackError
+                );
+                Alert.alert(
+                  "Error",
+                  "Failed to disconnect wallet. Please try again."
+                );
+              }
+            }
           },
         },
       ]
@@ -273,7 +353,9 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
                   size={16}
                   color={getNetworkColor(currentNetwork)}
                 />
-                <Text style={styles.infoValue}>{networkConfig.name}</Text>
+                <Text style={styles.infoValue}>
+                  {networkConfig.name || currentNetwork || "Unknown"}
+                </Text>
               </View>
             </View>
 
@@ -281,7 +363,7 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
               <Text style={styles.infoLabel}>Balance:</Text>
               <Text style={styles.infoValue}>
                 {parseFloat(balance || "0").toFixed(4)}{" "}
-                {networkConfig.nativeCurrency.symbol}
+                {getChainName(networkConfig.chainId)}
               </Text>
             </View>
           </View>
@@ -294,24 +376,42 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
             </View>
 
             <TouchableOpacity
-              style={styles.actionItem}
+              style={[
+                styles.actionItem,
+                !walletAddress && styles.disabledActionItem,
+              ]}
               onPress={handleViewOnEtherscan}
+              disabled={!walletAddress}
             >
               <MaterialCommunityIcons
                 name="open-in-new"
                 size={20}
-                color="#3b82f6"
+                color={walletAddress ? "#3b82f6" : "#666"}
               />
               <View style={styles.actionText}>
-                <Text style={styles.actionTitle}>View on Etherscan</Text>
-                <Text style={styles.actionSubtitle}>
-                  Open wallet on blockchain explorer
+                <Text
+                  style={[
+                    styles.actionTitle,
+                    !walletAddress && styles.disabledText,
+                  ]}
+                >
+                  View on {getExplorerName()}
+                </Text>
+                <Text
+                  style={[
+                    styles.actionSubtitle,
+                    !walletAddress && styles.disabledText,
+                  ]}
+                >
+                  {walletAddress
+                    ? "Open wallet on blockchain explorer"
+                    : "No wallet address available"}
                 </Text>
               </View>
               <MaterialCommunityIcons
                 name="chevron-right"
                 size={20}
-                color="#666"
+                color={walletAddress ? "#666" : "#444"}
               />
             </TouchableOpacity>
 
@@ -548,6 +648,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     textAlign: "center",
+  },
+  disabledActionItem: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: "#666",
   },
 });
 

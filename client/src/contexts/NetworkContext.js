@@ -37,18 +37,6 @@ export const NETWORKS = {
     blockExplorerUrls: ["https://sepolia.etherscan.io"],
     isTestnet: true,
   },
-  goerli: {
-    name: "Goerli Testnet",
-    chainId: "5",
-    rpcUrl: "https://goerli.infura.io/v3/your-project-id",
-    nativeCurrency: {
-      name: "Goerli Ether",
-      symbol: "Goerli ETH",
-      decimals: 18,
-    },
-    blockExplorerUrls: ["https://goerli.etherscan.io"],
-    isTestnet: true,
-  },
 };
 
 export const NetworkProvider = ({ children }) => {

@@ -8,10 +8,8 @@
     "test": "hardhat test",
     "deploy:local": "hardhat run deploy.js --network localhost",
     "deploy:sepolia": "hardhat run deploy.js --network sepolia",
-    "deploy:goerli": "hardhat run deploy.js --network goerli",
     "deploy:mainnet": "hardhat run deploy.js --network mainnet",
     "verify:sepolia": "hardhat verify --network sepolia",
-    "verify:goerli": "hardhat verify --network goerli",
     "verify:mainnet": "hardhat verify --network mainnet",
     "node": "hardhat node",
     "clean": "hardhat clean"
