@@ -46,6 +46,7 @@ const BinaryOptionsScreen: React.FC = () => {
     setBetAmount,
     betType,
     setBetType,
+    updateBetAmountToMaxSafe,
   } = useTrading();
 
   // Get wallet balance for verification
@@ -57,6 +58,7 @@ const BinaryOptionsScreen: React.FC = () => {
   const [currentChain, setCurrentChain] = useState<string>(
     networkConfig.chainId
   );
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
 
   // Use the WalletConnect modal hook (same as header)
   const {
@@ -65,16 +67,31 @@ const BinaryOptionsScreen: React.FC = () => {
     provider: wcProvider,
   } = useWalletConnectModal();
 
+  // Debug connection status (same logic as header)
+  const isWalletConnected = wcConnected || isConnected;
+  console.log("🔗 BinaryOptionsScreen: Connection status:", {
+    wcConnected,
+    isConnected,
+    isWalletConnected,
+    currentChain,
+    currentNetwork,
+  });
+
   // Update current chain when network changes
   useEffect(() => {
     setCurrentChain(networkConfig.chainId);
+    // Clear balance immediately when network changes to show loading state
+    if (isWalletConnected) {
+      setLocalBalance(null);
+      setIsBalanceLoading(true);
+    }
     console.log(
       "🌐 BinaryOptionsScreen: Network changed to",
       currentNetwork,
       "Chain ID:",
       networkConfig.chainId
     );
-  }, [currentNetwork, networkConfig.chainId]);
+  }, [currentNetwork, networkConfig.chainId, isWalletConnected]);
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -218,24 +235,48 @@ const BinaryOptionsScreen: React.FC = () => {
 
   // Balance verification helpers (same logic as header)
   const currentBalance = useMemo(() => {
-    const walletBalance = parseFloat(localBalance || "0");
-    const contextBalance = parseFloat(balance || "0");
-    return Math.max(walletBalance, contextBalance);
-  }, [localBalance, balance]);
-
-  // Debug connection status (same logic as header)
-  const isWalletConnected = wcConnected || isConnected;
-  console.log("🔗 BinaryOptionsScreen: Connection status:", {
+    if (wcConnected && wcAddress) {
+      // For WalletConnect, use localBalance
+      const walletBalance = parseFloat(localBalance || "0");
+      console.log(
+        "💰 BinaryOptionsScreen: WalletConnect balance:",
+        walletBalance,
+        "for",
+        currentNetwork
+      );
+      return walletBalance;
+    } else if (isConnected && provider) {
+      // For wallet context, use the balance from context
+      const contextBalance = parseFloat(balance || "0");
+      console.log(
+        "💰 BinaryOptionsScreen: Wallet context balance:",
+        contextBalance,
+        "for",
+        currentNetwork
+      );
+      return contextBalance;
+    } else {
+      // No wallet connected
+      console.log("💰 BinaryOptionsScreen: No wallet connected");
+      return 0;
+    }
+  }, [
+    localBalance,
+    balance,
     wcConnected,
+    wcAddress,
     isConnected,
-    isWalletConnected,
-    currentChain,
+    provider,
     currentNetwork,
-  });
+  ]);
 
   const betAmountValue = parseFloat(betAmount || "0");
   const maxSafeBet = currentBalance * 0.9; // 90% of balance for safety
-  const hasInsufficientBalance = betAmountValue > currentBalance;
+  const hasInsufficientBalance =
+    betAmountValue > currentBalance && !isBalanceLoading;
+
+  // Determine if we should show loading state
+  const shouldShowLoading = isBalanceLoading && wcConnected && !localBalance;
 
   const formatBalance = (amount: number) => {
     return amount.toFixed(4);
@@ -291,6 +332,10 @@ const BinaryOptionsScreen: React.FC = () => {
     const fetchBalance = async () => {
       if (wcConnected && wcAddress) {
         try {
+          setIsBalanceLoading(true);
+          // Clear the old balance immediately when network changes
+          setLocalBalance(null);
+
           console.log(
             `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain} (${currentNetwork})`
           );
@@ -300,12 +345,32 @@ const BinaryOptionsScreen: React.FC = () => {
         } catch (error) {
           console.error("❌ Error fetching balance:", error);
           setLocalBalance("0.0000");
+        } finally {
+          setIsBalanceLoading(false);
         }
+      } else if (isConnected && provider) {
+        // For wallet context, we don't need to fetch balance manually
+        // The wallet context will handle it automatically
+        setIsBalanceLoading(false);
+        setLocalBalance(null); // Clear local balance to use context balance
+        console.log("💰 Using wallet context balance for", currentNetwork);
+      } else {
+        // No wallet connected
+        setIsBalanceLoading(false);
+        setLocalBalance(null);
       }
     };
 
     fetchBalance();
-  }, [wcConnected, wcAddress, currentChain, currentNetwork]);
+  }, [
+    wcConnected,
+    wcAddress,
+    isConnected,
+    provider,
+    currentChain,
+    currentNetwork,
+    balance, // Add balance dependency to react to wallet context balance changes
+  ]);
 
   // Effect to clear balance when disconnecting (same as header)
   useEffect(() => {
@@ -319,12 +384,15 @@ const BinaryOptionsScreen: React.FC = () => {
   const refreshBalance = async () => {
     if (wcConnected && wcAddress) {
       try {
+        setIsBalanceLoading(true);
         console.log("🔄 Refreshing balance for", currentNetwork);
         const balance = await getWalletBalance(wcAddress, currentChain);
         setLocalBalance(balance);
         console.log("💰 Balance refreshed:", balance, "for", currentNetwork);
       } catch (error) {
         console.error("Error refreshing balance:", error);
+      } finally {
+        setIsBalanceLoading(false);
       }
     } else if (isConnected && provider) {
       try {
@@ -336,6 +404,52 @@ const BinaryOptionsScreen: React.FC = () => {
     }
   };
 
+  // Effect to update bet amount to max safe bet when balance changes
+  useEffect(() => {
+    if (isWalletConnected && currentBalance > 0 && !shouldShowLoading) {
+      const currentBetAmount = parseFloat(betAmount || "0");
+
+      // Only update if the current bet amount is 100 (default) or if it's higher than the new max safe bet
+      if (currentBetAmount === 100 || currentBetAmount > currentBalance * 0.9) {
+        updateBetAmountToMaxSafe(currentBalance);
+        console.log(
+          "💰 Updated bet amount to max safe bet for",
+          currentNetwork
+        );
+      }
+    }
+  }, [
+    currentBalance,
+    isWalletConnected,
+    shouldShowLoading,
+    currentNetwork,
+    betAmount,
+    updateBetAmountToMaxSafe,
+  ]);
+
+  // Effect to set initial bet amount when wallet connects for the first time
+  useEffect(() => {
+    if (
+      isWalletConnected &&
+      currentBalance > 0 &&
+      !shouldShowLoading &&
+      betAmount === "100"
+    ) {
+      updateBetAmountToMaxSafe(currentBalance);
+      console.log(
+        "💰 Set initial bet amount to max safe bet for",
+        currentNetwork
+      );
+    }
+  }, [
+    isWalletConnected,
+    currentBalance,
+    shouldShowLoading,
+    betAmount,
+    updateBetAmountToMaxSafe,
+    currentNetwork,
+  ]);
+
   // Timer update for Active Bets - updates every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -346,7 +460,6 @@ const BinaryOptionsScreen: React.FC = () => {
 
   const handlePlaceBet = async () => {
     // Check if wallet is connected (same logic as header)
-    const isWalletConnected = wcConnected || isConnected;
     if (!isWalletConnected) {
       Alert.alert(
         "Wallet Not Connected",
@@ -404,7 +517,8 @@ const BinaryOptionsScreen: React.FC = () => {
         },
       });
       Alert.alert("Success", "Bet placed successfully!");
-      setBetAmount("100");
+      // Reset to max safe bet instead of hardcoded 100
+      updateBetAmountToMaxSafe(currentBalance);
     } catch (error) {
       Alert.alert("Error", "Failed to place bet. Please try again.");
     }
@@ -541,12 +655,14 @@ const BinaryOptionsScreen: React.FC = () => {
           <MaterialCommunityIcons name="wallet" size={16} color="#666" />
           <Text style={styles.balanceText}>
             {isWalletConnected
-              ? `Available: ${formatBalance(currentBalance)} ${getChainName(
-                  currentChain
-                )} (${currentNetwork})`
+              ? shouldShowLoading
+                ? `Loading balance for ${currentNetwork}...`
+                : `Available: ${formatBalance(currentBalance)} ${getChainName(
+                    currentChain
+                  )} (${currentNetwork})`
               : "Connect wallet to see balance"}
           </Text>
-          {isWalletConnected && (
+          {isWalletConnected && !shouldShowLoading && (
             <TouchableOpacity
               onPress={refreshBalance}
               style={styles.refreshButton}
@@ -558,6 +674,15 @@ const BinaryOptionsScreen: React.FC = () => {
               />
             </TouchableOpacity>
           )}
+          {isWalletConnected && shouldShowLoading && (
+            <View style={styles.refreshButton}>
+              <MaterialCommunityIcons
+                name="loading"
+                size={14}
+                color="#3b82f6"
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.betInputContainer}>
@@ -565,24 +690,42 @@ const BinaryOptionsScreen: React.FC = () => {
             style={[
               styles.betInput,
               hasInsufficientBalance && styles.betInputError,
+              shouldShowLoading && styles.betInputLoading,
             ]}
             value={betAmount}
             onChangeText={setBetAmount}
             keyboardType="numeric"
-            placeholder={`Enter amount in ${networkConfig.nativeCurrency.symbol}`}
+            placeholder={
+              shouldShowLoading
+                ? "Loading balance..."
+                : `Enter amount in ${networkConfig.nativeCurrency.symbol}`
+            }
             placeholderTextColor="#666"
+            editable={!shouldShowLoading}
           />
           <TouchableOpacity
-            style={styles.maxButton}
+            style={[
+              styles.maxButton,
+              (maxSafeBet <= 0 || shouldShowLoading) &&
+                styles.maxButtonDisabled,
+            ]}
             onPress={() => setBetAmount(maxSafeBet.toFixed(4))}
-            disabled={maxSafeBet <= 0}
+            disabled={maxSafeBet <= 0 || shouldShowLoading}
           >
-            <Text style={styles.maxButtonText}>Max</Text>
+            <Text
+              style={[
+                styles.maxButtonText,
+                (maxSafeBet <= 0 || shouldShowLoading) &&
+                  styles.maxButtonTextDisabled,
+              ]}
+            >
+              Max
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Balance Warning */}
-        {isWalletConnected && hasInsufficientBalance && (
+        {isWalletConnected && hasInsufficientBalance && !shouldShowLoading && (
           <View style={styles.balanceWarning}>
             <MaterialCommunityIcons
               name="alert-circle"
@@ -674,21 +817,31 @@ const BinaryOptionsScreen: React.FC = () => {
       <TouchableOpacity
         style={[
           styles.placeBetButton,
-          ((!wcConnected && !isConnected) || hasInsufficientBalance) &&
+          ((!wcConnected && !isConnected) ||
+            hasInsufficientBalance ||
+            shouldShowLoading) &&
             styles.placeBetButtonDisabled,
         ]}
         onPress={handlePlaceBet}
-        disabled={(!wcConnected && !isConnected) || hasInsufficientBalance}
+        disabled={
+          (!wcConnected && !isConnected) ||
+          hasInsufficientBalance ||
+          shouldShowLoading
+        }
       >
         <Text
           style={[
             styles.placeBetButtonText,
-            ((!wcConnected && !isConnected) || hasInsufficientBalance) &&
+            ((!wcConnected && !isConnected) ||
+              hasInsufficientBalance ||
+              shouldShowLoading) &&
               styles.placeBetButtonTextDisabled,
           ]}
         >
           {!wcConnected && !isConnected
             ? "Connect Wallet to Bet"
+            : shouldShowLoading
+            ? "Loading Balance..."
             : hasInsufficientBalance
             ? "Insufficient Balance"
             : "Place Bet"}
@@ -1044,6 +1197,16 @@ const styles = StyleSheet.create({
   maxBetInfoText: {
     color: "#10b981",
     fontSize: 12,
+  },
+  betInputLoading: {
+    opacity: 0.6,
+  },
+  maxButtonDisabled: {
+    backgroundColor: "#666666",
+    opacity: 0.6,
+  },
+  maxButtonTextDisabled: {
+    color: "#cccccc",
   },
 });
 

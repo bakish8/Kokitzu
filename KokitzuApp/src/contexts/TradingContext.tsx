@@ -11,6 +11,7 @@ interface TradingContextType {
   betType: "UP" | "DOWN";
   setBetType: (type: "UP" | "DOWN") => void;
   setDefaultBet: (cryptoSymbol: string) => void;
+  updateBetAmountToMaxSafe: (balance: number) => void;
 }
 
 const TradingContext = createContext<TradingContextType | undefined>(undefined);
@@ -42,6 +43,14 @@ export const TradingProvider: React.FC<TradingProviderProps> = ({
     setBetType("UP");
   };
 
+  const updateBetAmountToMaxSafe = (balance: number) => {
+    if (balance > 0) {
+      const maxSafeBet = balance * 0.9; // 90% of balance for safety
+      const newBetAmount = Math.max(0.0001, maxSafeBet); // Minimum 0.0001
+      setBetAmount(newBetAmount.toFixed(4));
+    }
+  };
+
   const value: TradingContextType = {
     selectedCrypto,
     setSelectedCrypto,
@@ -52,6 +61,7 @@ export const TradingProvider: React.FC<TradingProviderProps> = ({
     betType,
     setBetType,
     setDefaultBet,
+    updateBetAmountToMaxSafe,
   };
 
   return (

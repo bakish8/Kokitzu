@@ -67,15 +67,38 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     setWalletNetwork(currentNetwork);
     console.log("🌐 WalletContext: Network changed to", currentNetwork);
 
-    // Reinitialize provider with new network
-    if (isConnected) {
+    // Reinitialize provider with new network and refresh balance
+    if (isConnected && walletAddress) {
       setProvider(new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl));
       console.log(
         "🌐 WalletContext: Provider reinitialized for",
         currentNetwork
       );
+
+      // Refresh balance for the new network
+      const refreshBalance = async () => {
+        try {
+          console.log(
+            "🌐 WalletContext: Refreshing balance for",
+            currentNetwork
+          );
+          const realBalance = await getWalletBalance(walletAddress);
+          setBalance(realBalance);
+          console.log(
+            "🌐 WalletContext: Balance refreshed:",
+            realBalance,
+            "for",
+            currentNetwork
+          );
+        } catch (error) {
+          console.error("🌐 WalletContext: Error refreshing balance:", error);
+          setBalance("0.0000");
+        }
+      };
+
+      refreshBalance();
     }
-  }, [currentNetwork, networkConfig.rpcUrl, isConnected]);
+  }, [currentNetwork, networkConfig.rpcUrl, isConnected, walletAddress]);
 
   useEffect(() => {
     loadStoredWallet();

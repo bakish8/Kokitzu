@@ -27,6 +27,8 @@ import { CryptoPrice, Coin } from "../types";
 import CryptoCard from "../components/CryptoCard";
 import SkeletonCryptoCard from "../components/SkeletonCryptoCard";
 import { useTrading } from "../contexts/TradingContext";
+import { useWallet } from "../contexts/WalletContext";
+import { useNetwork } from "../contexts/NetworkContext";
 import WalletConnectButton from "../components/WalletConnectButton";
 
 const LivePricesScreen: React.FC = () => {
@@ -34,6 +36,19 @@ const LivePricesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const { setDefaultBet } = useTrading();
+
+  // Add wallet context usage to ensure proper header updates
+  const { isConnected, balance } = useWallet();
+  const { currentNetwork } = useNetwork();
+
+  // Debug effect to monitor wallet state changes
+  useEffect(() => {
+    console.log("🔗 LivePricesScreen: Wallet state changed:", {
+      isConnected,
+      balance,
+      currentNetwork,
+    });
+  }, [isConnected, balance, currentNetwork]);
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
