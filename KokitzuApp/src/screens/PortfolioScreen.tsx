@@ -20,7 +20,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { GET_USER_STATS, GET_BET_HISTORY } from "../graphql/queries";
 import { UserStats, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import WalletConnectButton from "../components/WalletConnectButton";
+import UnifiedHeader from "../components/UnifiedHeader";
 import {
   useEthPrice,
   formatEthWithUsd,
@@ -192,18 +192,7 @@ const PortfolioScreen: React.FC = () => {
     >
       {/* Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={require("../../assets/Koketsu.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-        <View style={styles.headerRight}>
-          <View style={styles.headerButtons}>
-            <WalletConnectButton />
-          </View>
-        </View>
+        <UnifiedHeader />
       </Animated.View>
 
       {/* Stats Cards */}

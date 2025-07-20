@@ -31,8 +31,8 @@ import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
-import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
-import WalletConnectButton from "../components/WalletConnectButton";
+
+import UnifiedHeader from "../components/UnifiedHeader";
 import SmartContractInfo from "../components/SmartContractInfo";
 import {
   useEthPrice,
@@ -63,12 +63,6 @@ const BinaryOptionsScreen: React.FC = () => {
   const { balance, isConnected, provider } = useWallet();
   const { currentNetwork, networkConfig } = useNetwork();
 
-  // WalletConnect balance state (same as header)
-  const [localBalance, setLocalBalance] = useState<string | null>(null);
-  const [currentChain, setCurrentChain] = useState<string>(
-    networkConfig.chainId
-  );
-  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   // USD-only betting - no currency toggle needed
@@ -91,25 +85,8 @@ const BinaryOptionsScreen: React.FC = () => {
     wcConnected,
     isConnected,
     isWalletConnected,
-    currentChain,
     currentNetwork,
   });
-
-  // Update current chain when network changes
-  useEffect(() => {
-    setCurrentChain(networkConfig.chainId);
-    // Clear balance immediately when network changes to show loading state
-    if (isWalletConnected) {
-      setLocalBalance(null);
-      setIsBalanceLoading(true);
-    }
-    console.log(
-      "🌐 BinaryOptionsScreen: Network changed to",
-      currentNetwork,
-      "Chain ID:",
-      networkConfig.chainId
-    );
-  }, [currentNetwork, networkConfig.chainId, isWalletConnected]);
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -302,42 +279,17 @@ const BinaryOptionsScreen: React.FC = () => {
     return TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
   }, [selectedTimeframe]);
 
-  // Balance verification helpers (same logic as header)
+  // Use balance from wallet context (unified with header)
   const currentBalance = useMemo(() => {
-    if (wcConnected && wcAddress) {
-      // For WalletConnect, use localBalance
-      const walletBalance = parseFloat(localBalance || "0");
-      console.log(
-        "💰 BinaryOptionsScreen: WalletConnect balance:",
-        walletBalance,
-        "for",
-        currentNetwork
-      );
-      return walletBalance;
-    } else if (isConnected && provider) {
-      // For wallet context, use the balance from context
-      const contextBalance = parseFloat(balance || "0");
-      console.log(
-        "💰 BinaryOptionsScreen: Wallet context balance:",
-        contextBalance,
-        "for",
-        currentNetwork
-      );
-      return contextBalance;
-    } else {
-      // No wallet connected
-      console.log("💰 BinaryOptionsScreen: No wallet connected");
-      return 0;
-    }
-  }, [
-    localBalance,
-    balance,
-    wcConnected,
-    wcAddress,
-    isConnected,
-    provider,
-    currentNetwork,
-  ]);
+    const contextBalance = parseFloat(balance || "0");
+    console.log(
+      "💰 BinaryOptionsScreen: Using wallet context balance:",
+      contextBalance,
+      "for",
+      currentNetwork
+    );
+    return contextBalance;
+  }, [balance, currentNetwork]);
 
   const betAmountValue = parseFloat(betAmount || "0");
 
@@ -350,11 +302,10 @@ const BinaryOptionsScreen: React.FC = () => {
 
   // Check if bet amount exceeds available USD balance
   const availableUsdBalance = ethToUsd(currentBalance, ethPrice);
-  const hasInsufficientBalance =
-    betAmountValue > availableUsdBalance && !isBalanceLoading;
+  const hasInsufficientBalance = betAmountValue > availableUsdBalance;
 
   // Determine if we should show loading state
-  const shouldShowLoading = isBalanceLoading && wcConnected && !localBalance;
+  const shouldShowLoading = false; // Balance is now handled by unified header
 
   const formatBalance = (amount: number) => {
     return amount.toFixed(4);
@@ -379,84 +330,6 @@ const BinaryOptionsScreen: React.FC = () => {
         return networkConfig.nativeCurrency.symbol;
     }
   };
-
-  // Effect to detect chain changes (same as header)
-  useEffect(() => {
-    if (wcConnected && wcProvider) {
-      const checkChain = async () => {
-        try {
-          const chainId = await wcProvider.request({ method: "eth_chainId" });
-          const chainIdDecimal = parseInt(chainId as string, 16).toString();
-          if (chainIdDecimal !== currentChain) {
-            setCurrentChain(chainIdDecimal);
-            console.log("🔗 Chain changed to:", chainIdDecimal);
-          }
-        } catch (error) {
-          console.log(
-            "🔗 Could not detect chain, using network context chain ID"
-          );
-          setCurrentChain(networkConfig.chainId);
-        }
-      };
-
-      checkChain();
-      const interval = setInterval(checkChain, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [wcConnected, wcProvider, currentChain, networkConfig.chainId]);
-
-  // Effect to fetch balance when WalletConnect connects, chain changes, or network changes (same as header)
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (wcConnected && wcAddress) {
-        try {
-          setIsBalanceLoading(true);
-          // Clear the old balance immediately when network changes
-          setLocalBalance(null);
-
-          console.log(
-            `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain} (${currentNetwork})`
-          );
-          const balance = await getWalletBalance(wcAddress, currentChain);
-          setLocalBalance(balance);
-          console.log("💰 Balance fetched:", balance, "for", currentNetwork);
-        } catch (error) {
-          console.error("❌ Error fetching balance:", error);
-          setLocalBalance("0.0000");
-        } finally {
-          setIsBalanceLoading(false);
-        }
-      } else if (isConnected && provider) {
-        // For wallet context, we don't need to fetch balance manually
-        // The wallet context will handle it automatically
-        setIsBalanceLoading(false);
-        setLocalBalance(null); // Clear local balance to use context balance
-        console.log("💰 Using wallet context balance for", currentNetwork);
-      } else {
-        // No wallet connected
-        setIsBalanceLoading(false);
-        setLocalBalance(null);
-      }
-    };
-
-    fetchBalance();
-  }, [
-    wcConnected,
-    wcAddress,
-    isConnected,
-    provider,
-    currentChain,
-    currentNetwork,
-    balance, // Add balance dependency to react to wallet context balance changes
-  ]);
-
-  // Effect to clear balance when disconnecting (same as header)
-  useEffect(() => {
-    if (!wcConnected && !isConnected) {
-      setLocalBalance(null);
-      setCurrentChain(networkConfig.chainId);
-    }
-  }, [wcConnected, isConnected, networkConfig.chainId]);
 
   // Effect to update bet amount when network changes
   useEffect(() => {
@@ -487,30 +360,6 @@ const BinaryOptionsScreen: React.FC = () => {
     shouldShowLoading,
     betAmount,
   ]);
-
-  // Refresh balance function
-  const refreshBalance = async () => {
-    if (wcConnected && wcAddress) {
-      try {
-        setIsBalanceLoading(true);
-        console.log("🔄 Refreshing balance for", currentNetwork);
-        const balance = await getWalletBalance(wcAddress, currentChain);
-        setLocalBalance(balance);
-        console.log("💰 Balance refreshed:", balance, "for", currentNetwork);
-      } catch (error) {
-        console.error("Error refreshing balance:", error);
-      } finally {
-        setIsBalanceLoading(false);
-      }
-    } else if (isConnected && provider) {
-      try {
-        console.log("🔄 Refreshing wallet context balance...");
-        // The wallet context will automatically update the balance
-      } catch (error) {
-        console.error("Error refreshing balance:", error);
-      }
-    }
-  };
 
   // Effect to update bet amount to max safe bet when balance changes
   useEffect(() => {
@@ -602,7 +451,7 @@ const BinaryOptionsScreen: React.FC = () => {
       Alert.alert(
         "Insufficient Balance",
         `You only have ${formatBalance(currentBalance)} ${getChainName(
-          currentChain
+          networkConfig.chainId
         )} on ${currentNetwork}. Please reduce your bet amount.`
       );
       return;
@@ -616,10 +465,10 @@ const BinaryOptionsScreen: React.FC = () => {
         `You need at least ${formatBalance(
           betAmountValue + gasBuffer
         )} ${getChainName(
-          currentChain
+          networkConfig.chainId
         )} (including gas fees) on ${currentNetwork}. Current balance: ${formatBalance(
           currentBalance
-        )} ${getChainName(currentChain)}`
+        )} ${getChainName(networkConfig.chainId)}`
       );
       return;
     }
@@ -658,18 +507,7 @@ const BinaryOptionsScreen: React.FC = () => {
     <ScrollView style={styles.container}>
       {/* Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={require("../../assets/Koketsu.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-        <View style={styles.headerRight}>
-          <View style={styles.headerButtons}>
-            <WalletConnectButton />
-          </View>
-        </View>
+        <UnifiedHeader />
       </Animated.View>
 
       {/* Crypto Selection */}
@@ -797,41 +635,6 @@ const BinaryOptionsScreen: React.FC = () => {
           Bet Amount ({networkConfig.nativeCurrency.symbol})
         </Text>
 
-        {/* Balance Display */}
-        <View style={styles.balanceContainer}>
-          <MaterialCommunityIcons name="wallet" size={16} color="#666" />
-          <Text style={styles.balanceText}>
-            {isWalletConnected
-              ? shouldShowLoading
-                ? `Loading balance for ${currentNetwork}...`
-                : `Available: ${formatUsd(
-                    ethToUsd(currentBalance, ethPrice)
-                  )} (Ξ ${currentBalance.toFixed(4)}) (${currentNetwork})`
-              : "Connect wallet to see balance"}
-          </Text>
-          {isWalletConnected && !shouldShowLoading && (
-            <TouchableOpacity
-              onPress={refreshBalance}
-              style={styles.refreshButton}
-            >
-              <MaterialCommunityIcons
-                name="refresh"
-                size={14}
-                color="#3b82f6"
-              />
-            </TouchableOpacity>
-          )}
-          {isWalletConnected && shouldShowLoading && (
-            <View style={styles.refreshButton}>
-              <MaterialCommunityIcons
-                name="loading"
-                size={14}
-                color="#3b82f6"
-              />
-            </View>
-          )}
-        </View>
-
         <View style={styles.betInputContainer}>
           <View style={styles.betInputWrapper}>
             <Text style={styles.currencySymbol}>$</Text>
@@ -910,8 +713,8 @@ const BinaryOptionsScreen: React.FC = () => {
           <View style={styles.gasInfo}>
             <MaterialCommunityIcons name="gas-station" size={14} color="#666" />
             <Text style={styles.gasInfoText}>
-              Gas fees (~0.001 {getChainName(currentChain)}) will be added to
-              your bet amount on {currentNetwork}
+              Gas fees (~0.001 {getChainName(networkConfig.chainId)}) will be
+              added to your bet amount on {currentNetwork}
             </Text>
           </View>
         )}

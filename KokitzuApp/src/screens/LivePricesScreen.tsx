@@ -29,7 +29,7 @@ import SkeletonCryptoCard from "../components/SkeletonCryptoCard";
 import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
-import WalletConnectButton from "../components/WalletConnectButton";
+import UnifiedHeader from "../components/UnifiedHeader";
 import { useEthPrice } from "../utils/currencyUtils";
 import { FONTS } from "../constants/fonts";
 import { TIMEFRAMES } from "../constants/timeframes";
@@ -210,18 +210,7 @@ const LivePricesScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Header */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={require("../../assets/Koketsu.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-        <View style={styles.headerRight}>
-          <View style={styles.headerButtons}>
-            <WalletConnectButton />
-          </View>
-        </View>
+        <UnifiedHeader />
       </Animated.View>
 
       {/* Search Bar */}
@@ -233,38 +222,6 @@ const LivePricesScreen: React.FC = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-      </Animated.View>
-
-      {/* Timeframe Selector */}
-      <Animated.View style={[styles.timeframeContainer, searchAnimatedStyle]}>
-        <Text style={styles.timeframeLabel}>Chart Timeframe:</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.timeframeScrollView}
-        >
-          {TIMEFRAMES.map((timeframe) => (
-            <TouchableOpacity
-              key={timeframe.value}
-              style={[
-                styles.timeframeOption,
-                selectedTimeframe === timeframe.value &&
-                  styles.selectedTimeframeOption,
-              ]}
-              onPress={() => setSelectedTimeframe(timeframe.value)}
-            >
-              <Text
-                style={[
-                  styles.timeframeOptionText,
-                  selectedTimeframe === timeframe.value &&
-                    styles.selectedTimeframeOptionText,
-                ]}
-              >
-                {timeframe.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
       </Animated.View>
 
       {/* Content */}

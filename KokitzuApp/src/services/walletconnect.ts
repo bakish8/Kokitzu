@@ -204,14 +204,16 @@ export const getWalletAddress = (session: any): string | null => {
 // Get wallet balance (real balance from Infura)
 export const getWalletBalance = async (
   address: string,
-  chainId?: string
+  chainId?: string,
+  network?: NetworkType
 ): Promise<string> => {
   try {
-    // Use provided chainId or current network chainId
-    const targetChainId = chainId || NETWORKS[currentNetwork].chainId;
+    // Use provided network, chainId, or current network chainId
+    const targetNetwork = network || currentNetwork;
+    const targetChainId = chainId || NETWORKS[targetNetwork].chainId;
 
     console.log(
-      `💰 Fetching balance for address ${address} on chain ${targetChainId} (${currentNetwork})`
+      `💰 Fetching balance for address ${address} on chain ${targetChainId} (${targetNetwork})`
     );
 
     // Get the appropriate RPC URL based on chain
@@ -222,8 +224,6 @@ export const getWalletBalance = async (
         break;
       case "11155111": // Sepolia
         rpcUrl = getInfuraUrl("sepolia");
-        break;
-
         break;
       case "137": // Polygon
         rpcUrl = "https://polygon-rpc.com";
@@ -238,7 +238,7 @@ export const getWalletBalance = async (
         rpcUrl = "https://mainnet.optimism.io";
         break;
       default:
-        rpcUrl = getInfuraUrl(currentNetwork); // Default to current network
+        rpcUrl = getInfuraUrl(targetNetwork); // Use target network
     }
 
     const response = await fetch(rpcUrl, {
@@ -267,7 +267,7 @@ export const getWalletBalance = async (
     console.log(
       `💰 Balance fetched: ${balanceEth.toFixed(
         4
-      )} on chain ${targetChainId} (${currentNetwork})`
+      )} on chain ${targetChainId} (${targetNetwork})`
     );
     return balanceEth.toFixed(4);
   } catch (error) {

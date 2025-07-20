@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
-import { getWalletBalance, getCurrentChainId } from "../services/walletconnect";
+
 import WalletConnectedModal from "./WalletConnectedModal";
 import NetworkSelectionModal from "./NetworkSelectionModal";
 import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
@@ -41,7 +41,6 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   const [showWalletConnectedModal, setShowWalletConnectedModal] =
     useState(false);
   const [modalView, setModalView] = useState<"wallet" | "network">("wallet");
-  const [localBalance, setLocalBalance] = useState<string | null>(null);
   const [currentChain, setCurrentChain] = useState<string>(
     networkConfig.chainId
   );
@@ -125,49 +124,12 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     }
   }, [wcConnected, provider, currentChain, networkConfig.chainId]);
 
-  // Balance fetching function
-  const fetchBalance = async () => {
-    if (wcConnected && wcAddress) {
-      try {
-        console.log(
-          `💰 Fetching balance for WalletConnect address: ${wcAddress} on chain: ${currentChain} (${currentNetwork})`
-        );
-        const balance = await getWalletBalance(wcAddress, currentChain);
-        setLocalBalance(balance);
-        console.log("💰 Balance fetched:", balance, "for", currentNetwork);
-      } catch (error) {
-        console.error("❌ Error fetching balance:", error);
-        setLocalBalance("0.0000");
-      }
-    } else if (isConnected && walletAddress) {
-      try {
-        console.log(
-          `💰 Fetching balance for MetaMask address: ${walletAddress} on chain: ${networkConfig.chainId} (${currentNetwork})`
-        );
-        // For MetaMask, we can try to get balance from the wallet context
-        // or use a similar method as WalletConnect
-        const balance = await getWalletBalance(
-          walletAddress,
-          networkConfig.chainId
-        );
-        setLocalBalance(balance);
-        console.log("💰 Balance fetched:", balance, "for", currentNetwork);
-      } catch (error) {
-        console.error("❌ Error fetching MetaMask balance:", error);
-        setLocalBalance("0.0000");
-      }
-    }
-  };
+  // Use global balance from wallet context instead of local balance
+  const globalBalance = balance; // From wallet context
 
-  // Effect to fetch balance when WalletConnect connects, chain changes, or network changes
-  useEffect(() => {
-    fetchBalance();
-  }, [wcConnected, wcAddress, currentChain, currentNetwork]);
-
-  // Effect to clear balance when disconnecting
+  // Effect to clear chain when disconnecting
   useEffect(() => {
     if (!wcConnected && !isConnected) {
-      setLocalBalance(null);
       setCurrentChain(networkConfig.chainId);
     }
   }, [wcConnected, isConnected, networkConfig.chainId]);
@@ -223,12 +185,10 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
         await provider.disconnect();
       }
       disconnectWallet();
-      setLocalBalance(null);
       setCurrentChain(networkConfig.chainId);
     } catch (error) {
       console.error("❌ Error disconnecting:", error);
       disconnectWallet();
-      setLocalBalance(null);
       setCurrentChain(networkConfig.chainId);
     }
   };
@@ -238,11 +198,8 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     setShowNetworkModal(false);
     await switchNetwork(network);
 
-    // Refresh balance after network switch
-    setTimeout(() => {
-      console.log("🔄 Refreshing balance after network switch to:", network);
-      fetchBalance();
-    }, 1000); // Small delay to ensure network switch is complete
+    // Balance will be automatically refreshed by wallet context
+    console.log("🔄 Network switched to:", network);
   };
 
   const formatAddress = (address: string) => {
@@ -296,7 +253,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   // Use WalletConnect connection status if available
   const connectedAddress = wcAddress || walletAddress;
   const isWalletConnected = wcConnected || isConnected;
-  const displayBalance = localBalance || balance;
+  const displayBalance = globalBalance;
   const chainName = getChainName(currentChain || networkConfig.chainId);
 
   // Periodic balance refresh every 30 seconds when connected
@@ -304,7 +261,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     if (isWalletConnected) {
       const interval = setInterval(() => {
         console.log("🔄 Periodic balance refresh");
-        fetchBalance();
+        // Balance is handled by wallet context
       }, 30000); // 30 seconds
 
       return () => clearInterval(interval);
@@ -348,7 +305,9 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           visible={showWalletConnectedModal}
           onClose={() => setShowWalletConnectedModal(false)}
           onNetworkSelect={() => setShowWalletConnectedModal(false)}
-          onRefreshBalance={fetchBalance}
+          onRefreshBalance={() => {
+            // Balance is handled by wallet context
+          }}
         />
       </>
     );

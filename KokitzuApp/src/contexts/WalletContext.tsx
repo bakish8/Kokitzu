@@ -19,6 +19,7 @@ import {
   getCurrentNetwork as getWalletNetwork,
 } from "../services/walletconnect";
 import { useNetwork } from "./NetworkContext";
+import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { Linking, Alert, Platform } from "react-native";
 
 interface WalletContextType {
@@ -33,6 +34,7 @@ interface WalletContextType {
   walletConnectUri: string | null;
   connectionStatus: "waiting" | "connecting" | "connected" | "failed";
   provider: any;
+  refreshBalance: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -51,6 +53,14 @@ interface WalletProviderProps {
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const { currentNetwork, networkConfig } = useNetwork();
+
+  // WalletConnect modal hook
+  const {
+    isConnected: wcConnected,
+    address: wcAddress,
+    provider: wcProvider,
+  } = useWalletConnectModal();
+
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
@@ -82,7 +92,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             "🌐 WalletContext: Refreshing balance for",
             currentNetwork
           );
-          const realBalance = await getWalletBalance(walletAddress);
+          const realBalance = await getWalletBalance(
+            walletAddress,
+            undefined,
+            currentNetwork
+          );
           setBalance(realBalance);
           console.log(
             "🌐 WalletContext: Balance refreshed:",
@@ -97,8 +111,45 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       };
 
       refreshBalance();
+    } else if (wcConnected && wcAddress) {
+      // For WalletConnect, also refresh balance when network changes
+      const refreshBalance = async () => {
+        try {
+          console.log(
+            "🌐 WalletContext: Refreshing WalletConnect balance for",
+            currentNetwork
+          );
+          const realBalance = await getWalletBalance(
+            wcAddress,
+            undefined,
+            currentNetwork
+          );
+          setBalance(realBalance);
+          console.log(
+            "🌐 WalletContext: WalletConnect balance refreshed:",
+            realBalance,
+            "for",
+            currentNetwork
+          );
+        } catch (error) {
+          console.error(
+            "🌐 WalletContext: Error refreshing WalletConnect balance:",
+            error
+          );
+          setBalance("0.0000");
+        }
+      };
+
+      refreshBalance();
     }
-  }, [currentNetwork, networkConfig.rpcUrl, isConnected, walletAddress]);
+  }, [
+    currentNetwork,
+    networkConfig.rpcUrl,
+    isConnected,
+    walletAddress,
+    wcConnected,
+    wcAddress,
+  ]);
 
   useEffect(() => {
     loadStoredWallet();
@@ -118,7 +169,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setProvider(new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl));
 
         // Get real balance for current network
-        const realBalance = await getWalletBalance(storedAddress);
+        const realBalance = await getWalletBalance(
+          storedAddress,
+          undefined,
+          currentNetwork
+        );
         setBalance(realBalance);
         console.log(
           "Loaded stored wallet:",
@@ -209,7 +264,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           await AsyncStorage.setItem("walletSession", JSON.stringify(session));
 
           // Get real balance for current network
-          const realBalance = await getWalletBalance(address);
+          const realBalance = await getWalletBalance(
+            address,
+            undefined,
+            currentNetwork
+          );
           setBalance(realBalance);
           setConnectionStatus("connected");
           console.log(
@@ -295,7 +354,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
           // Get real balance for current network
           console.log("WalletContext: Fetching balance for", currentNetwork);
-          const realBalance = await getWalletBalance(address);
+          const realBalance = await getWalletBalance(
+            address,
+            undefined,
+            currentNetwork
+          );
           setBalance(realBalance);
           console.log(
             "WalletContext: Connected to wallet:",
@@ -390,6 +453,43 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshBalance = async () => {
+    try {
+      if (isConnected && walletAddress) {
+        console.log("🔄 Refreshing balance for", currentNetwork);
+        const realBalance = await getWalletBalance(
+          walletAddress,
+          undefined,
+          currentNetwork
+        );
+        setBalance(realBalance);
+        console.log(
+          "💰 Balance refreshed:",
+          realBalance,
+          "for",
+          currentNetwork
+        );
+      } else if (wcConnected && wcAddress) {
+        console.log("🔄 Refreshing WalletConnect balance for", currentNetwork);
+        const realBalance = await getWalletBalance(
+          wcAddress,
+          undefined,
+          currentNetwork
+        );
+        setBalance(realBalance);
+        console.log(
+          "💰 WalletConnect balance refreshed:",
+          realBalance,
+          "for",
+          currentNetwork
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error refreshing balance:", error);
+      setBalance("0.0000");
+    }
+  };
+
   return (
     <WalletContext.Provider
       value={{
@@ -404,6 +504,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         walletConnectUri,
         connectionStatus,
         provider,
+        refreshBalance,
       }}
     >
       {children}
