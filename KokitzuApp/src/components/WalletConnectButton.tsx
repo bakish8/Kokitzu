@@ -8,6 +8,7 @@ import {
   Modal,
   Alert,
   ScrollView,
+  Image,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
@@ -402,10 +403,16 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
                 style={styles.connectionOption}
                 onPress={() => handleConnect("metamask")}
               >
-                <MaterialCommunityIcons
+                {/* <MaterialCommunityIcons
                   name="ethereum"
                   size={32}
                   color="#f6851b"
+                /> */}
+                {/* add MetaMask-icon-fox icon in here */}
+                {/* @ts-ignore */}
+                <Image
+                  source={require("../../assets/MetaMask_Fox.png")}
+                  style={styles.connectionOptionIcon}
                 />
                 <View style={styles.connectionOptionText}>
                   <Text style={styles.connectionOptionTitle}>MetaMask</Text>
@@ -419,10 +426,9 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
                 style={styles.connectionOption}
                 onPress={() => handleConnect("walletconnect")}
               >
-                <MaterialCommunityIcons
-                  name="qrcode-scan"
-                  size={32}
-                  color="#3b82f6"
+                <Image
+                  source={require("../../assets/walletconnect.png")}
+                  style={styles.connectionOptionIcon}
                 />
                 <View style={styles.connectionOptionText}>
                   <Text style={styles.connectionOptionTitle}>
@@ -450,6 +456,10 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
+  connectionOptionIcon: {
+    width: 24,
+    height: 24,
+  },
   debugContainer: {
     position: "absolute",
     bottom: 0,
