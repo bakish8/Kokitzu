@@ -151,6 +151,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     wcAddress,
   ]);
 
+  // Sync WalletConnect modal state to wallet context
+  useEffect(() => {
+    if (wcConnected && wcAddress) {
+      setIsConnected(true);
+      setWalletAddress(wcAddress);
+      setProvider(wcProvider);
+      setConnectionStatus("connected");
+    } else if (!wcConnected) {
+      setIsConnected(false);
+      setWalletAddress(null);
+      setProvider(null);
+      setConnectionStatus("waiting");
+    }
+  }, [wcConnected, wcAddress, wcProvider]);
+
   useEffect(() => {
     loadStoredWallet();
   }, []);

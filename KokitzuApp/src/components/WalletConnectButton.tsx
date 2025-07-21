@@ -180,13 +180,20 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     }
   };
 
+  // Fix: Ensure disconnect clears all wallet states
   const handleDisconnect = async () => {
     try {
-      if (provider) {
+      if (provider && provider.disconnect) {
         await provider.disconnect();
       }
       disconnectWallet();
       setCurrentChain(networkConfig.chainId);
+      // Manually clear WalletConnect modal state if possible
+      if (typeof window !== "undefined" && window.localStorage) {
+        // WalletConnect v2 uses this key, but may vary by implementation
+        window.localStorage.removeItem("walletconnect");
+        window.localStorage.removeItem("WALLETCONNECT_DEEPLINK_CHOICE");
+      }
       setTimeout(() => {
         console.log("[DEBUG] After disconnect:", {
           wcConnected,
@@ -195,34 +202,16 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           isConnected,
         });
       }, 500);
-    } catch (error: any) {
+      // Force a re-render by toggling modal state
+      setShowWalletConnectedModal(false);
+      setShowModal(false);
+    } catch (error) {
       console.error("❌ Error disconnecting:", error);
-      // If the error is 'No matching key', forcibly reset all state
-      if (error?.message && error.message.includes("No matching key")) {
-        disconnectWallet();
-        setCurrentChain(networkConfig.chainId);
-        // There is no direct setter for wcAddress or wcConnected, but we can try to reload the app state
-        // Optionally, you could trigger a full reload here if needed:
-        // if (typeof window !== 'undefined' && window.location) window.location.reload();
-        setTimeout(() => {
-          console.log("[DEBUG] Forced reset after 'No matching key':", {
-            wcConnected,
-            wcAddress,
-            walletAddress,
-            isConnected,
-          });
-        }, 500);
-      }
+      disconnectWallet();
+      setCurrentChain(networkConfig.chainId);
+      setShowWalletConnectedModal(false);
+      setShowModal(false);
     }
-  };
-
-  const handleNetworkSelect = async (network: NetworkType) => {
-    console.log("🌐 Network selection clicked:", network);
-    setShowNetworkModal(false);
-    await switchNetwork(network);
-
-    // Balance will be automatically refreshed by wallet context
-    console.log("🔄 Network switched to:", network);
   };
 
   const formatAddress = (address: string) => {
@@ -291,7 +280,18 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     }
   }, [isWalletConnected]);
 
-  if (isWalletConnected && connectedAddress && connectedAddress !== "Unknown") {
+  // Debug: Log connection state before rendering
+  console.log("WalletConnectButton render:", {
+    isWalletConnected,
+    connectedAddress,
+    wcConnected,
+    wcAddress,
+    isConnected,
+    walletAddress,
+  });
+
+  // Only show connected UI if app wallet context is connected
+  if (isConnected && walletAddress) {
     return (
       <>
         <TouchableOpacity
@@ -301,7 +301,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           <MaterialCommunityIcons name="wallet" size={20} color="#10b981" />
           <View style={styles.addressContainer}>
             <Text style={styles.connectedButtonText}>
-              {formatAddress(connectedAddress)}
+              {formatAddress(walletAddress || "")}
             </Text>
             {displayBalance && (
               <Text style={styles.balanceText}>
@@ -342,7 +342,6 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
         />
         <Text style={styles.connectButtonText}>Connect Wallet</Text>
       </TouchableOpacity>
-
       {/* Wallet Selection Modal */}
       <Modal
         visible={showModal && modalView === "wallet"}
@@ -455,6 +454,20 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
+  debugContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    padding: 10,
+    zIndex: 1000,
+  },
+  debugItem: {
+    color: "white",
+    fontSize: 12,
+    marginBottom: 4,
+  },
   connectButton: {
     backgroundColor: "#3b82f6",
     flexDirection: "row",
