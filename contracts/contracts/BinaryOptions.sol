@@ -193,12 +193,23 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
 
     /**
      * @dev Calculate if the option is won based on strike price and final price
+     * Requires minimum 0.1% price movement to avoid ties from identical prices
      */
     function _calculateWin(uint256 strikePrice, uint256 finalPrice, bool isCall) internal pure returns (bool) {
+        // If prices are identical, it's a push (refund scenario)
+        if (strikePrice == finalPrice) {
+            return false; // Will be handled as a tie/push
+        }
+        
+        // Calculate minimum movement threshold (0.1% of strike price)
+        uint256 minMovement = (strikePrice * 10) / 10000; // 0.1% = 10/10000
+        
         if (isCall) {
-            return finalPrice > strikePrice;
+            // For UP bets: final price must be at least 0.1% higher
+            return finalPrice >= strikePrice + minMovement;
         } else {
-            return finalPrice < strikePrice;
+            // For DOWN bets: final price must be at least 0.1% lower  
+            return finalPrice <= strikePrice - minMovement;
         }
     }
 
