@@ -17,6 +17,7 @@ import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import WalletConnectedModal from "./WalletConnectedModal";
 import NetworkSelectionModal from "./NetworkSelectionModal";
 import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
+import COLORS from "../constants/colors";
 
 interface WalletConnectButtonProps {
   onConnected?: (address: string, signer: any) => void;
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   connectedButton: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: "#051923",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   connectedButtonText: {
-    color: "#10b981",
+    color: `${COLORS.accent}`,
     fontWeight: "600",
     fontSize: 14,
   },

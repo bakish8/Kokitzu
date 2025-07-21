@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Image,
+  ImageBackground,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -33,6 +34,7 @@ import UnifiedHeader from "../components/UnifiedHeader";
 import { useEthPrice } from "../utils/currencyUtils";
 import { FONTS } from "../constants/fonts";
 import { TIMEFRAMES } from "../constants/timeframes";
+import COLORS from "../constants/colors";
 
 const LivePricesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,70 +208,89 @@ const LivePricesScreen: React.FC = () => {
     );
   }
 
+  const backgroundImage = require("../../assets/geometric-neon-hexagonal-bipyramid-background-vector/v882-mind-04-e.jpg");
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <UnifiedHeader />
-      </Animated.View>
+    <ImageBackground
+      source={backgroundImage}
+      style={{ flex: 1 }}
+      resizeMode="cover"
+    >
+      <View
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: COLORS.overlay,
+          zIndex: 0,
+        }}
+      />
+      <View style={styles.container}>
+        {/* Header */}
+        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+          <UnifiedHeader />
+        </Animated.View>
 
-      {/* Search Bar */}
-      <Animated.View style={[styles.searchContainer, searchAnimatedStyle]}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search cryptocurrencies..."
-          placeholderTextColor="#666"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </Animated.View>
+        {/* Search Bar */}
+        <Animated.View style={[styles.searchContainer, searchAnimatedStyle]}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search cryptocurrencies..."
+            placeholderTextColor={COLORS.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </Animated.View>
 
-      {/* Content */}
-      <Animated.View style={[styles.scrollView, contentAnimatedStyle]}>
-        <ScrollView
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-        >
-          {loading && !data ? (
-            // Loading skeleton
-            <View style={styles.cardsContainer}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <SkeletonCryptoCard key={i} />
-              ))}
-            </View>
-          ) : (
-            // Crypto cards
-            <View style={styles.cardsContainer}>
-              {filteredCryptoData.map((crypto: CryptoPrice, index: number) => (
-                <CryptoCard
-                  key={crypto.id}
-                  crypto={crypto}
-                  onTradeUp={handleTradeUp}
-                  onTradeDown={handleTradeDown}
-                  index={index}
-                  selectedTimeframe={selectedTimeframe}
-                />
-              ))}
-              {filteredCryptoData.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No cryptocurrencies found
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-        </ScrollView>
-      </Animated.View>
-    </View>
+        {/* Content */}
+        <Animated.View style={[styles.scrollView, contentAnimatedStyle]}>
+          <ScrollView
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            }
+          >
+            {loading && !data ? (
+              // Loading skeleton
+              <View style={styles.cardsContainer}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <SkeletonCryptoCard key={i} />
+                ))}
+              </View>
+            ) : (
+              // Crypto cards
+              <View style={styles.cardsContainer}>
+                {filteredCryptoData.map(
+                  (crypto: CryptoPrice, index: number) => (
+                    <CryptoCard
+                      key={crypto.id}
+                      crypto={crypto}
+                      onTradeUp={handleTradeUp}
+                      onTradeDown={handleTradeDown}
+                      index={index}
+                      selectedTimeframe={selectedTimeframe}
+                    />
+                  )
+                )}
+                {filteredCryptoData.length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>
+                      No cryptocurrencies found
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f23",
   },
   header: {
     flexDirection: "row",
@@ -277,10 +298,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: "#1a1a2e",
-    borderBottomWidth: 1,
-    borderBottomColor: "#2a2a3e",
+    paddingBottom: 12,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -311,10 +329,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   refreshButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -329,15 +347,15 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   searchInput: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontFamily: FONTS.REGULAR,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   timeframeContainer: {
     paddingHorizontal: 24,
@@ -346,33 +364,33 @@ const styles = StyleSheet.create({
   timeframeLabel: {
     fontSize: 14,
     fontFamily: FONTS.MEDIUM,
-    color: "#cccccc",
+    color: COLORS.textMuted,
     marginBottom: 8,
   },
   timeframeScrollView: {
     flexGrow: 0,
   },
   timeframeOption: {
-    backgroundColor: "transparent",
+    backgroundColor: COLORS.card,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: "#444",
+    borderColor: COLORS.border,
     alignItems: "center",
   },
   selectedTimeframeOption: {
-    backgroundColor: "#3b82f6",
-    borderColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
   },
   timeframeOptionText: {
     fontSize: 12,
     fontFamily: FONTS.MEDIUM,
-    color: "#999999",
+    color: COLORS.textMuted,
   },
   selectedTimeframeOptionText: {
-    color: "#ffffff",
+    color: COLORS.neonCardText,
   },
   scrollView: {
     flex: 1,
@@ -385,24 +403,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.background,
     paddingHorizontal: 20,
   },
   errorTitle: {
     fontSize: 24,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 10,
   },
   errorMessage: {
     fontSize: 16,
     fontFamily: FONTS.REGULAR,
-    color: "#cccccc",
+    color: COLORS.textMuted,
     textAlign: "center",
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
@@ -419,25 +437,53 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 16,
     fontFamily: FONTS.REGULAR,
-    color: "#666666",
+    color: COLORS.textMuted,
   },
   debugContainer: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: "#2a2a3e",
+    borderBottomColor: COLORS.border,
   },
   debugText: {
     fontSize: 12,
-    color: "#00ff00",
+    color: COLORS.success,
     fontFamily: "monospace",
   },
   debugError: {
     fontSize: 12,
-    color: "#ff0000",
+    color: COLORS.error,
     fontFamily: "monospace",
     marginTop: 5,
+  },
+  buyButton: {
+    backgroundColor: COLORS.neonCard,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    flex: 1,
+    marginRight: 8,
+  },
+  buyButtonText: {
+    color: COLORS.neonCardText,
+    fontFamily: FONTS.BOLD,
+    fontSize: 18,
+  },
+  sellButton: {
+    backgroundColor: COLORS.error,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    flex: 1,
+    marginLeft: 8,
+  },
+  sellButtonText: {
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.BOLD,
+    fontSize: 18,
   },
 });
 

@@ -21,6 +21,7 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from "react-native-reanimated";
+import COLORS from "../constants/colors";
 
 interface CryptoCardProps {
   crypto: CryptoPrice;
@@ -297,12 +298,15 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   card: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#333",
+    backgroundColor: COLORS.card2,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: COLORS.cardGlow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.7,
+    shadowRadius: 16,
+    elevation: 8,
   },
   cardHeader: {
     flexDirection: "row",
@@ -314,24 +318,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cryptoName: {
+    color: COLORS.textPrimary,
     fontSize: 18,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
     marginBottom: 4,
   },
   cryptoSymbol: {
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontFamily: FONTS.MEDIUM,
-    color: "#666666",
     textTransform: "uppercase",
   },
   priceContainer: {
     alignItems: "flex-end",
   },
   price: {
+    color: COLORS.textPrimary,
     fontSize: 20,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
     marginBottom: 4,
   },
   changeContainer: {
@@ -348,7 +352,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(239, 68, 68, 0.1)",
   },
   changeText: {
-    fontSize: 12,
+    color: COLORS.accent, // neon for price change
+    fontSize: 14,
     fontFamily: FONTS.SEMI_BOLD,
     marginLeft: 4,
   },
@@ -438,8 +443,9 @@ const styles = StyleSheet.create({
     minWidth: 50,
   },
   selectedTimeframe: {
-    backgroundColor: "#3b82f6",
-    borderColor: "#3b82f6",
+    backgroundColor: "#00ffe7",
+    borderColor: "#00ffe7",
+    color: "",
   },
   timeframeText: {
     fontSize: 11,
@@ -448,7 +454,7 @@ const styles = StyleSheet.create({
   },
   selectedTimeframeText: {
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: "rgba(20, 32, 44, 0.98)",
   },
   timeframePayout: {
     fontSize: 9,
@@ -457,7 +463,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   selectedTimeframePayout: {
-    color: "#ffffff",
+    color: "rgba(20, 32, 44, 0.98)",
   },
   tradeButtonText: {
     color: "#ffffff",

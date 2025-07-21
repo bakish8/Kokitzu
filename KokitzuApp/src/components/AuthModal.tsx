@@ -12,6 +12,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useShake } from "../utils/animations";
 import { FONTS } from "../constants/fonts";
+import COLORS from "../constants/colors";
 
 interface AuthModalProps {
   visible: boolean;
@@ -163,13 +164,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modal: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.background,
     borderRadius: 16,
     padding: 24,
     width: "90%",
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.accent,
   },
   header: {
     alignItems: "center",
@@ -178,28 +179,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
     fontFamily: FONTS.REGULAR,
-    color: "#666666",
+    color: COLORS.textSecondary,
     textAlign: "center",
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontFamily: FONTS.REGULAR,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.accent,
   },
   errorContainer: {
     backgroundColor: "rgba(239, 68, 68, 0.1)",
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   submitButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#666666",
   },
   submitButtonText: {
-    color: "#ffffff",
+    color: COLORS.neonCardText,
     fontSize: 16,
     fontFamily: FONTS.BOLD,
   },
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   toggleButtonText: {
-    color: "#3b82f6",
+    color: COLORS.accent,
     fontSize: 14,
     fontFamily: FONTS.REGULAR,
   },

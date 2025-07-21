@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Image, StyleSheet } from "react-native";
 import WalletConnectButton from "./WalletConnectButton";
+import COLORS from "../constants/colors";
 
 interface UnifiedHeaderProps {
   showLogo?: boolean;
@@ -32,7 +33,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#1a1a2e",
   },
   headerLeft: {
     flex: 1,
@@ -43,8 +43,9 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   logo: {
-    width: 120,
-    height: 32,
+    width: 140,
+    height: 40,
+    tintColor: COLORS.accent,
   },
   headerButtons: {
     flexDirection: "row",

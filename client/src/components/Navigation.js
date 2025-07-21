@@ -7,6 +7,7 @@ function Navigation({
   setIsDarkMode,
   isRefreshing,
   handleRefresh,
+  activeTab,
   setActiveTab,
   coinsData, // add coinsData prop
   searchQuery, // add searchQuery prop
@@ -105,6 +106,64 @@ function Navigation({
           <div className="brand-subtitle pro-logo-subtitle">
             Crypto Options Trading
           </div>
+        </div>
+
+        {/* Desktop Navigation Links */}
+        <div className="desktop-nav-links">
+          <Link
+            to="/"
+            className={`nav-link ${activeTab === "prices" ? "active" : ""}`}
+            onClick={() => setActiveTab("prices")}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M3 3v18h18" />
+              <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" />
+            </svg>
+            Live Prices
+          </Link>
+          <Link
+            to="/betting"
+            className={`nav-link ${activeTab === "betting" ? "active" : ""}`}
+            onClick={() => setActiveTab("betting")}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+            Binary Options
+          </Link>
+          <Link
+            to="/portfolio"
+            className={`nav-link ${activeTab === "portfolio" ? "active" : ""}`}
+            onClick={() => setActiveTab("portfolio")}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            Portfolio
+          </Link>
         </div>
 
         {/* Search Bar with Suggestions */}

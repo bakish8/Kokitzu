@@ -1,8 +1,17 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { TIMEFRAMES } from "../constants/timeframes";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
+import {
+  useEthPrice,
+  formatUsd,
+  formatUsdWithEth,
+  ethToUsd,
+  usdToEth,
+} from "../utils/currencyUtils";
+import PriceChart from "./PriceChart";
+import priceDataService from "../services/priceDataService";
 
 function BinaryOptions({
   coinsData,
@@ -30,6 +39,39 @@ function BinaryOptions({
   const navigate = useNavigate();
   const { isConnected, balance, walletAddress } = useWallet();
   const { currentNetwork, networkConfig } = useNetwork();
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
+
+  // Calculate bet amount value
+  const betAmountValue = parseFloat(betAmount) || 0;
+
+  // Chart state
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
+
+  // Fetch price history for chart
+  useEffect(() => {
+    const fetchPriceHistory = async () => {
+      if (selectedCrypto) {
+        setIsLoadingChart(true);
+        try {
+          const data = await priceDataService.getPriceHistory(
+            selectedCrypto,
+            selectedTimeframe
+          );
+          setPriceHistory(data);
+        } catch (error) {
+          console.error("Error fetching price history:", error);
+          setPriceHistory([]);
+        } finally {
+          setIsLoadingChart(false);
+        }
+      }
+    };
+
+    fetchPriceHistory();
+  }, [selectedCrypto, selectedTimeframe]);
 
   const formatAddress = (address) => {
     if (!address) return "Unknown";
@@ -80,6 +122,37 @@ function BinaryOptions({
               </div>
             </div>
 
+            {/* Price Chart */}
+            {selectedCrypto && (
+              <div className="form-section">
+                <label>
+                  {(() => {
+                    const label =
+                      priceDataService.getTimeframeLabel(selectedTimeframe);
+                    console.log(
+                      "📊 Chart Title Update:",
+                      selectedTimeframe,
+                      "->",
+                      label
+                    );
+                    return label;
+                  })()}
+                </label>
+                <div className="chart-container">
+                  {isLoadingChart ? (
+                    <div className="chart-loading">Loading chart...</div>
+                  ) : (
+                    <PriceChart
+                      data={priceHistory}
+                      color="#3b82f6"
+                      height={120}
+                      isMini={false}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bet Direction & Amount Row */}
             <div className="form-row">
               <div className="form-section">
@@ -125,7 +198,7 @@ function BinaryOptions({
               </div>
 
               <div className="form-section">
-                <label>Bet Amount</label>
+                <label>Bet Amount (USD)</label>
                 <div className="amount-input">
                   <span className="currency">$</span>
                   <input
@@ -135,8 +208,17 @@ function BinaryOptions({
                     min="10"
                     max="10000"
                     step="10"
+                    placeholder="Enter amount in USD"
                   />
                 </div>
+                {betAmount && ethPrice > 0 && (
+                  <div className="usd-equivalent-container">
+                    <div className="usd-equivalent-text">
+                      Ξ {usdToEth(parseFloat(betAmount), ethPrice).toFixed(4)}{" "}
+                      ETH
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -166,28 +248,38 @@ function BinaryOptions({
             {/* Bet Summary */}
             <div className="bet-summary">
               <div className="summary-item">
+                <span>Bet Amount:</span>
+                <span className="payout-amount">
+                  {formatUsd(betAmountValue)}
+                </span>
+              </div>
+              <div className="summary-item">
+                <span>ETH Equivalent:</span>
+                <span className="profit-amount">
+                  Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
+                </span>
+              </div>
+              <div className="summary-item">
                 <span>Potential Payout:</span>
                 <span className="payout-amount">
-                  $
-                  {(
-                    betAmount *
-                    parseFloat(
-                      getSelectedTimeframeInfo()?.payout.replace("x", "")
-                    )
-                  ).toFixed(2)}
+                  {formatUsd(
+                    betAmountValue *
+                      parseFloat(
+                        getSelectedTimeframeInfo()?.payout.replace("x", "")
+                      )
+                  )}
                 </span>
               </div>
               <div className="summary-item">
                 <span>Profit:</span>
                 <span className="profit-amount">
-                  $
-                  {(
-                    betAmount *
-                    (parseFloat(
-                      getSelectedTimeframeInfo()?.payout.replace("x", "")
-                    ) -
-                      1)
-                  ).toFixed(2)}
+                  {formatUsd(
+                    betAmountValue *
+                      (parseFloat(
+                        getSelectedTimeframeInfo()?.payout.replace("x", "")
+                      ) -
+                        1)
+                  )}
                 </span>
               </div>
             </div>
@@ -203,8 +295,9 @@ function BinaryOptions({
                       </div>
                       {balance && (
                         <div className="wallet-balance">
-                          Balance: {parseFloat(balance).toFixed(4)}{" "}
-                          {getChainName(networkConfig.chainId)}
+                          Balance:{" "}
+                          {formatUsd(ethToUsd(parseFloat(balance), ethPrice))}{" "}
+                          (Ξ {parseFloat(balance).toFixed(4)})
                         </div>
                       )}
                     </div>

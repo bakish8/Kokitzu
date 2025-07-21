@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import Svg, { Path, Line, Circle } from "react-native-svg";
+import COLORS from "../constants/colors";
 
 interface PriceChartProps {
   data: number[];
@@ -12,7 +13,7 @@ interface PriceChartProps {
 
 const PriceChart: React.FC<PriceChartProps> = ({
   data,
-  color = "#3b82f6",
+  color = COLORS.accent,
   height = 120,
   width,
   isMini = false,
@@ -66,7 +67,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
       <Svg width={chartWidth} height={chartHeight}>
         <Path
           d={pathData}
-          stroke={color}
+          stroke={"#00ffe7"}
           strokeWidth={isMini ? 1.5 : 2}
           fill="none"
           strokeLinecap="round"

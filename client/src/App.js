@@ -301,6 +301,7 @@ function App() {
                     setIsDarkMode={setIsDarkMode}
                     isRefreshing={isRefreshing}
                     handleRefresh={handleRefresh}
+                    activeTab={activeTab}
                     setActiveTab={setActiveTab}
                     coinsData={coinsData}
                     searchQuery={searchQuery}

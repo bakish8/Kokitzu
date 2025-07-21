@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Image,
+  ImageBackground,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -44,6 +45,7 @@ import {
 import PriceChart from "../components/PriceChart";
 import priceDataService from "../services/priceDataService";
 import { FONTS } from "../constants/fonts";
+import COLORS from "../constants/colors";
 
 const BinaryOptionsScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
@@ -495,451 +497,489 @@ const BinaryOptionsScreen: React.FC = () => {
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
+  const backgroundImage = require("../../assets/geometric-neon-hexagonal-bipyramid-background-vector/v882-mind-04-e.jpg");
+
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <UnifiedHeader />
-      </Animated.View>
-
-      {/* Crypto Selection */}
-      <Animated.View style={[styles.section, cryptoSelectionAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>
-          Select Cryptocurrency
-          {selectedCrypto && (
-            <Text style={styles.selectedIndicator}>
-              {" "}
-              • {selectedCrypto} selected
-            </Text>
-          )}
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.cryptoList}
-        >
-          {coinsData?.coins?.map((coin: Coin) => (
-            <TouchableOpacity
-              key={coin.id}
-              style={[
-                styles.cryptoOption,
-                selectedCrypto === coin.symbol && styles.selectedCrypto,
-              ]}
-              onPress={() => setSelectedCrypto(coin.symbol)}
-            >
-              <Text
-                style={[
-                  styles.cryptoOptionText,
-                  selectedCrypto === coin.symbol && styles.selectedCryptoText,
-                ]}
-              >
-                {coin.symbol}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </Animated.View>
-
-      {/* Current Price */}
-      {currentCrypto && (
-        <Animated.View style={[styles.section, priceSectionAnimatedStyle]}>
-          <Text style={styles.sectionTitle}>Current Price</Text>
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>
-              ${currentCrypto.price.toLocaleString()}
-            </Text>
-          </View>
-
-          {/* Price Chart */}
-          {priceHistory.length > 0 && (
-            <View style={styles.chartContainer}>
-              <Text style={styles.chartTitle}>
-                {(() => {
-                  const label =
-                    priceDataService.getTimeframeLabel(selectedTimeframe);
-                  console.log(
-                    "📊 Chart Title Update:",
-                    selectedTimeframe,
-                    "->",
-                    label
-                  );
-                  return label;
-                })()}
-              </Text>
-              <PriceChart
-                data={priceHistory}
-                color="#3b82f6"
-                height={120}
-                isMini={false}
-              />
-            </View>
-          )}
+    <ImageBackground
+      source={backgroundImage}
+      style={{ flex: 1 }}
+      resizeMode="cover"
+    >
+      <View
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: COLORS.overlay,
+          zIndex: 0,
+        }}
+      />
+      <View style={styles.container}>
+        {/* Header */}
+        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+          <UnifiedHeader />
         </Animated.View>
-      )}
-
-      {/* Timeframe Selection */}
-      <Animated.View style={[styles.section, timeframeAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Select Timeframe</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.timeframeList}
-        >
-          {TIMEFRAMES.map((timeframe) => (
-            <TouchableOpacity
-              key={timeframe.value}
-              style={[
-                styles.timeframeOption,
-                selectedTimeframe === timeframe.value &&
-                  styles.selectedTimeframe,
-              ]}
-              onPress={() => {
-                console.log("⏰ Timeframe Selected:", timeframe.value);
-                setSelectedTimeframe(timeframe.value);
-              }}
-            >
-              <Text
-                style={[
-                  styles.timeframeLabel,
-                  selectedTimeframe === timeframe.value &&
-                    styles.selectedTimeframeText,
-                ]}
-              >
-                {timeframe.label}
-              </Text>
-              <Text
-                style={[
-                  styles.timeframePayout,
-                  selectedTimeframe === timeframe.value &&
-                    styles.selectedTimeframeText,
-                ]}
-              >
-                {timeframe.payout}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </Animated.View>
-
-      {/* Bet Amount */}
-      <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>
-          Bet Amount ({networkConfig.nativeCurrency.symbol})
-        </Text>
-
-        <View style={styles.betInputContainer}>
-          <View style={styles.betInputWrapper}>
-            <Text style={styles.currencySymbol}>$</Text>
-            <TextInput
-              style={[
-                styles.betInput,
-                hasInsufficientBalance && styles.betInputError,
-                shouldShowLoading && styles.betInputLoading,
-              ]}
-              value={betAmount}
-              onChangeText={setBetAmount}
-              keyboardType="numeric"
-              placeholder={
-                shouldShowLoading ? "Loading balance..." : "Enter amount in USD"
-              }
-              placeholderTextColor="#666"
-              editable={!shouldShowLoading}
-            />
-          </View>
-          <TouchableOpacity
-            style={[
-              styles.maxButton,
-              (maxSafeBet <= 0 || shouldShowLoading) &&
-                styles.maxButtonDisabled,
-            ]}
-            onPress={setBetAmountToMaxSafe}
-            disabled={maxSafeBet <= 0 || shouldShowLoading}
-          >
-            <Text
-              style={[
-                styles.maxButtonText,
-                (maxSafeBet <= 0 || shouldShowLoading) &&
-                  styles.maxButtonTextDisabled,
-              ]}
-            >
-              Max
+        {/* Content */}
+        <ScrollView style={{ flex: 1 }}>
+          {/* Crypto Selection */}
+          <Animated.View style={[styles.section, cryptoSelectionAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>
+              Select Cryptocurrency
+              {selectedCrypto && (
+                <Text style={styles.selectedIndicator}>
+                  {" "}
+                  • {selectedCrypto} selected
+                </Text>
+              )}
             </Text>
-          </TouchableOpacity>
-        </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.cryptoList}
+            >
+              {coinsData?.coins?.map((coin: Coin) => (
+                <TouchableOpacity
+                  key={coin.id}
+                  style={[
+                    styles.cryptoOption,
+                    selectedCrypto === coin.symbol && styles.selectedCrypto,
+                  ]}
+                  onPress={() => setSelectedCrypto(coin.symbol)}
+                >
+                  <Text
+                    style={[
+                      styles.cryptoOptionText,
+                      selectedCrypto === coin.symbol &&
+                        styles.selectedCryptoText,
+                    ]}
+                  >
+                    {coin.symbol}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Animated.View>
 
-        {/* ETH Equivalent Display */}
-        {isWalletConnected &&
-          !shouldShowLoading &&
-          betAmount &&
-          parseFloat(betAmount) > 0 && (
-            <View style={styles.usdEquivalentContainer}>
-              <MaterialCommunityIcons
-                name="ethereum"
-                size={14}
-                color="#3b82f6"
-              />
-              <Text style={styles.usdEquivalentText}>
-                Ξ {usdToEth(parseFloat(betAmount), ethPrice).toFixed(4)} ETH
-              </Text>
-            </View>
+          {/* Current Price */}
+          {currentCrypto && (
+            <Animated.View style={[styles.section, priceSectionAnimatedStyle]}>
+              <Text style={styles.sectionTitle}>Current Price</Text>
+              <View style={styles.priceContainer}>
+                <Text style={styles.price}>
+                  ${currentCrypto.price.toLocaleString()}
+                </Text>
+              </View>
+
+              {/* Price Chart */}
+              {priceHistory.length > 0 && (
+                <View style={styles.chartContainer}>
+                  <Text style={styles.chartTitle}>
+                    {(() => {
+                      const label =
+                        priceDataService.getTimeframeLabel(selectedTimeframe);
+                      console.log(
+                        "📊 Chart Title Update:",
+                        selectedTimeframe,
+                        "->",
+                        label
+                      );
+                      return label;
+                    })()}
+                  </Text>
+                  <PriceChart
+                    data={priceHistory}
+                    color={COLORS.accent}
+                    height={120}
+                    isMini={false}
+                  />
+                </View>
+              )}
+            </Animated.View>
           )}
 
-        {/* Balance Warning */}
-        {isWalletConnected && hasInsufficientBalance && !shouldShowLoading && (
-          <View style={styles.balanceWarning}>
-            <MaterialCommunityIcons
-              name="alert-circle"
-              size={16}
-              color="#ef4444"
-            />
-            <Text style={styles.balanceWarningText}>
-              Insufficient balance. You only have{" "}
-              {formatUsd(ethToUsd(currentBalance, ethPrice))} (Ξ{" "}
-              {currentBalance.toFixed(4)}) on {currentNetwork}
-            </Text>
-          </View>
-        )}
-
-        {/* Gas Fee Info */}
-        {isWalletConnected && (
-          <View style={styles.gasInfo}>
-            <MaterialCommunityIcons name="gas-station" size={14} color="#666" />
-            <Text style={styles.gasInfoText}>
-              Gas fees (~0.001 {getChainName(networkConfig.chainId)}) will be
-              added to your bet amount on {currentNetwork}
-            </Text>
-          </View>
-        )}
-
-        {/* Max Safe Bet Info */}
-        {isWalletConnected && currentBalance > 0 && (
-          <View style={styles.maxBetInfo}>
-            <MaterialCommunityIcons
-              name="lightbulb-outline"
-              size={14}
-              color="#10b981"
-            />
-            <Text style={styles.maxBetInfoText}>
-              Max safe bet: {formatUsd(maxSafeBetUsd)} (Ξ{" "}
-              {maxSafeBetEth.toFixed(4)}) (90% of balance) on {currentNetwork}
-            </Text>
-          </View>
-        )}
-      </Animated.View>
-
-      {/* Bet Type */}
-      <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Bet Direction</Text>
-        <View style={styles.betTypeContainer}>
-          <TouchableOpacity
-            style={[styles.betTypeButton, betType === "UP" && styles.upButton]}
-            onPress={() => setBetType("UP")}
-          >
-            <MaterialCommunityIcons
-              name="trending-up"
-              size={24}
-              color={betType === "UP" ? "#fff" : "#10b981"}
-            />
-            <Text
-              style={[
-                styles.betTypeText,
-                betType === "UP" && styles.upButtonText,
-              ]}
+          {/* Timeframe Selection */}
+          <Animated.View style={[styles.section, timeframeAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>Select Timeframe</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.timeframeList}
             >
-              BUY
+              {TIMEFRAMES.map((timeframe) => (
+                <TouchableOpacity
+                  key={timeframe.value}
+                  style={[
+                    styles.timeframeOption,
+                    selectedTimeframe === timeframe.value &&
+                      styles.selectedTimeframe,
+                  ]}
+                  onPress={() => {
+                    console.log("⏰ Timeframe Selected:", timeframe.value);
+                    setSelectedTimeframe(timeframe.value);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.timeframeLabel,
+                      selectedTimeframe === timeframe.value &&
+                        styles.selectedTimeframeText,
+                    ]}
+                  >
+                    {timeframe.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.timeframePayout,
+                      selectedTimeframe === timeframe.value &&
+                        styles.selectedTimeframeText,
+                    ]}
+                  >
+                    {timeframe.payout}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Animated.View>
+
+          {/* Bet Amount */}
+          <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>
+              Bet Amount ({networkConfig.nativeCurrency.symbol})
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+
+            <View style={styles.betInputContainer}>
+              <View style={styles.betInputWrapper}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <TextInput
+                  style={[
+                    styles.betInput,
+                    hasInsufficientBalance && styles.betInputError,
+                    shouldShowLoading && styles.betInputLoading,
+                  ]}
+                  value={betAmount}
+                  onChangeText={setBetAmount}
+                  keyboardType="numeric"
+                  placeholder={
+                    shouldShowLoading
+                      ? "Loading balance..."
+                      : "Enter amount in USD"
+                  }
+                  placeholderTextColor={COLORS.textMuted}
+                  editable={!shouldShowLoading}
+                />
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.maxButton,
+                  (maxSafeBet <= 0 || shouldShowLoading) &&
+                    styles.maxButtonDisabled,
+                ]}
+                onPress={setBetAmountToMaxSafe}
+                disabled={maxSafeBet <= 0 || shouldShowLoading}
+              >
+                <Text
+                  style={[
+                    styles.maxButtonText,
+                    (maxSafeBet <= 0 || shouldShowLoading) &&
+                      styles.maxButtonTextDisabled,
+                  ]}
+                >
+                  Max
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ETH Equivalent Display */}
+            {isWalletConnected &&
+              !shouldShowLoading &&
+              betAmount &&
+              parseFloat(betAmount) > 0 && (
+                <View style={styles.usdEquivalentContainer}>
+                  <MaterialCommunityIcons
+                    name="ethereum"
+                    size={14}
+                    color={COLORS.accent}
+                  />
+                  <Text style={styles.usdEquivalentText}>
+                    Ξ {usdToEth(parseFloat(betAmount), ethPrice).toFixed(4)} ETH
+                  </Text>
+                </View>
+              )}
+
+            {/* Balance Warning */}
+            {isWalletConnected &&
+              hasInsufficientBalance &&
+              !shouldShowLoading && (
+                <View style={styles.balanceWarning}>
+                  <MaterialCommunityIcons
+                    name="alert-circle"
+                    size={16}
+                    color={COLORS.error}
+                  />
+                  <Text style={styles.balanceWarningText}>
+                    Insufficient balance. You only have{" "}
+                    {formatUsd(ethToUsd(currentBalance, ethPrice))} (Ξ{" "}
+                    {currentBalance.toFixed(4)}) on {currentNetwork}
+                  </Text>
+                </View>
+              )}
+
+            {/* Gas Fee Info */}
+            {isWalletConnected && (
+              <View style={styles.gasInfo}>
+                <MaterialCommunityIcons
+                  name="gas-station"
+                  size={14}
+                  color={COLORS.textMuted}
+                />
+                <Text style={styles.gasInfoText}>
+                  Gas fees (~0.001 {getChainName(networkConfig.chainId)}) will
+                  be added to your bet amount on {currentNetwork}
+                </Text>
+              </View>
+            )}
+
+            {/* Max Safe Bet Info */}
+            {isWalletConnected && currentBalance > 0 && (
+              <View style={styles.maxBetInfo}>
+                <MaterialCommunityIcons
+                  name="lightbulb-outline"
+                  size={14}
+                  color={COLORS.success}
+                />
+                <Text style={styles.maxBetInfoText}>
+                  Max safe bet: {formatUsd(maxSafeBetUsd)} (Ξ{" "}
+                  {maxSafeBetEth.toFixed(4)}) (90% of balance) on{" "}
+                  {currentNetwork}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Bet Type */}
+          <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>Bet Direction</Text>
+            <View style={styles.betTypeContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.betTypeButton,
+                  betType === "UP" && styles.upButton,
+                ]}
+                onPress={() => setBetType("UP")}
+              >
+                <MaterialCommunityIcons
+                  name="trending-up"
+                  size={24}
+                  color={betType === "UP" ? COLORS.textPrimary : COLORS.success}
+                />
+                <Text
+                  style={[
+                    styles.betTypeText,
+                    betType === "UP" && styles.upButtonText,
+                  ]}
+                >
+                  BUY
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.betTypeButton,
+                  betType === "DOWN" && styles.downButton,
+                ]}
+                onPress={() => setBetType("DOWN")}
+              >
+                <MaterialCommunityIcons
+                  name="trending-down"
+                  size={24}
+                  color={betType === "DOWN" ? COLORS.textPrimary : COLORS.error}
+                />
+                <Text
+                  style={[
+                    styles.betTypeText,
+                    betType === "DOWN" && styles.downButtonText,
+                  ]}
+                >
+                  SELL
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+
+          {/* Profit Summary Card */}
+          <Animated.View
+            style={[styles.profitSummaryContainer, placeBetButtonAnimatedStyle]}
+          >
+            <View style={styles.profitSummaryCard}>
+              <Text style={styles.profitSummaryTitle}>Trade Summary</Text>
+
+              <View style={styles.profitSummaryRow}>
+                <Text style={styles.profitSummaryLabel}>Investment:</Text>
+                <View style={styles.profitSummaryValue}>
+                  <Text style={styles.profitSummaryAmount}>
+                    {formatUsd(betAmountValue)}
+                  </Text>
+                  <Text style={styles.profitSummaryEquivalent}>
+                    Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.profitSummaryRow}>
+                <Text style={styles.profitSummaryLabel}>Direction:</Text>
+                <View
+                  style={[
+                    styles.directionBadge,
+                    betType === "UP"
+                      ? styles.upDirectionBadge
+                      : styles.downDirectionBadge,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={betType === "UP" ? "trending-up" : "trending-down"}
+                    size={16}
+                    color={COLORS.textPrimary}
+                  />
+                  <Text style={styles.directionText}>{betType}</Text>
+                </View>
+              </View>
+
+              <View style={styles.profitSummaryRow}>
+                <Text style={styles.profitSummaryLabel}>Timeframe:</Text>
+                <Text style={styles.profitSummaryValueText}>
+                  {
+                    TIMEFRAMES.find((tf) => tf.value === selectedTimeframe)
+                      ?.label
+                  }
+                </Text>
+              </View>
+
+              <View style={styles.profitSummaryRow}>
+                <Text style={styles.profitSummaryLabel}>Asset:</Text>
+                <Text style={styles.profitSummaryValueText}>
+                  {selectedCrypto}
+                </Text>
+              </View>
+
+              <View style={styles.profitSummaryDivider} />
+
+              <View style={styles.profitSummaryRow}>
+                <Text style={styles.profitSummaryLabel}>Potential Profit:</Text>
+                <View style={styles.profitSummaryValue}>
+                  <Text style={styles.profitSummaryProfit}>
+                    +
+                    {formatUsd(
+                      betAmountValue *
+                        (getPayoutMultiplier(selectedTimeframe) - 1)
+                    )}
+                  </Text>
+                  <Text style={styles.profitSummaryProfitEquivalent}>
+                    +Ξ{" "}
+                    {(
+                      usdToEth(betAmountValue, ethPrice) *
+                      (getPayoutMultiplier(selectedTimeframe) - 1)
+                    ).toFixed(4)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.profitSummaryRow}>
+                <Text style={styles.profitSummaryLabel}>Potential Loss:</Text>
+                <View style={styles.profitSummaryValue}>
+                  <Text style={styles.profitSummaryLoss}>
+                    -{formatUsd(betAmountValue)}
+                  </Text>
+                  <Text style={styles.profitSummaryLossEquivalent}>
+                    -Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Place Bet Button */}
+          <Animated.View
             style={[
-              styles.betTypeButton,
-              betType === "DOWN" && styles.downButton,
+              styles.placeBetButtonContainer,
+              placeBetButtonAnimatedStyle,
             ]}
-            onPress={() => setBetType("DOWN")}
           >
-            <MaterialCommunityIcons
-              name="trending-down"
-              size={24}
-              color={betType === "DOWN" ? "#fff" : "#ef4444"}
-            />
-            <Text
+            <TouchableOpacity
               style={[
-                styles.betTypeText,
-                betType === "DOWN" && styles.downButtonText,
+                styles.placeBetButton,
+                ((!wcConnected && !isConnected) ||
+                  hasInsufficientBalance ||
+                  shouldShowLoading) &&
+                  styles.placeBetButtonDisabled,
               ]}
-            >
-              SELL
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-
-      {/* Profit Summary Card */}
-      <Animated.View
-        style={[styles.profitSummaryContainer, placeBetButtonAnimatedStyle]}
-      >
-        <View style={styles.profitSummaryCard}>
-          <Text style={styles.profitSummaryTitle}>Trade Summary</Text>
-
-          <View style={styles.profitSummaryRow}>
-            <Text style={styles.profitSummaryLabel}>Investment:</Text>
-            <View style={styles.profitSummaryValue}>
-              <Text style={styles.profitSummaryAmount}>
-                {formatUsd(betAmountValue)}
-              </Text>
-              <Text style={styles.profitSummaryEquivalent}>
-                Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.profitSummaryRow}>
-            <Text style={styles.profitSummaryLabel}>Direction:</Text>
-            <View
-              style={[
-                styles.directionBadge,
-                betType === "UP"
-                  ? styles.upDirectionBadge
-                  : styles.downDirectionBadge,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={betType === "UP" ? "trending-up" : "trending-down"}
-                size={16}
-                color="#ffffff"
-              />
-              <Text style={styles.directionText}>{betType}</Text>
-            </View>
-          </View>
-
-          <View style={styles.profitSummaryRow}>
-            <Text style={styles.profitSummaryLabel}>Timeframe:</Text>
-            <Text style={styles.profitSummaryValueText}>
-              {TIMEFRAMES.find((tf) => tf.value === selectedTimeframe)?.label}
-            </Text>
-          </View>
-
-          <View style={styles.profitSummaryRow}>
-            <Text style={styles.profitSummaryLabel}>Asset:</Text>
-            <Text style={styles.profitSummaryValueText}>{selectedCrypto}</Text>
-          </View>
-
-          <View style={styles.profitSummaryDivider} />
-
-          <View style={styles.profitSummaryRow}>
-            <Text style={styles.profitSummaryLabel}>Potential Profit:</Text>
-            <View style={styles.profitSummaryValue}>
-              <Text style={styles.profitSummaryProfit}>
-                +
-                {formatUsd(
-                  betAmountValue * (getPayoutMultiplier(selectedTimeframe) - 1)
-                )}
-              </Text>
-              <Text style={styles.profitSummaryProfitEquivalent}>
-                +Ξ{" "}
-                {(
-                  usdToEth(betAmountValue, ethPrice) *
-                  (getPayoutMultiplier(selectedTimeframe) - 1)
-                ).toFixed(4)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.profitSummaryRow}>
-            <Text style={styles.profitSummaryLabel}>Potential Loss:</Text>
-            <View style={styles.profitSummaryValue}>
-              <Text style={styles.profitSummaryLoss}>
-                -{formatUsd(betAmountValue)}
-              </Text>
-              <Text style={styles.profitSummaryLossEquivalent}>
-                -Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Place Bet Button */}
-      <Animated.View
-        style={[styles.placeBetButtonContainer, placeBetButtonAnimatedStyle]}
-      >
-        <TouchableOpacity
-          style={[
-            styles.placeBetButton,
-            ((!wcConnected && !isConnected) ||
-              hasInsufficientBalance ||
-              shouldShowLoading) &&
-              styles.placeBetButtonDisabled,
-          ]}
-          onPress={handlePlaceBet}
-          disabled={
-            (!wcConnected && !isConnected) ||
-            hasInsufficientBalance ||
-            shouldShowLoading
-          }
-        >
-          <Text
-            style={[
-              styles.placeBetButtonText,
-              ((!wcConnected && !isConnected) ||
+              onPress={handlePlaceBet}
+              disabled={
+                (!wcConnected && !isConnected) ||
                 hasInsufficientBalance ||
-                shouldShowLoading) &&
-                styles.placeBetButtonTextDisabled,
-            ]}
-          >
-            {!wcConnected && !isConnected
-              ? "Connect Wallet to Bet"
-              : shouldShowLoading
-              ? "Loading Balance..."
-              : hasInsufficientBalance
-              ? "Insufficient Balance"
-              : "Place Bet"}
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Smart Contract Info */}
-      {/* <SmartContractInfo /> */}
-
-      {/* Active Bets */}
-      <Animated.View style={[styles.section, activeBetsAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Active Bets</Text>
-        {activeBetsData?.activeBets?.map((bet: Bet) => (
-          <View key={bet.id} style={styles.activeBetCard}>
-            <View style={styles.betHeader}>
-              <Text style={styles.betSymbol}>{bet.cryptoSymbol}</Text>
+                shouldShowLoading
+              }
+            >
               <Text
                 style={[
-                  styles.betType,
-                  bet.betType === "UP" ? styles.upText : styles.downText,
+                  styles.placeBetButtonText,
+                  ((!wcConnected && !isConnected) ||
+                    hasInsufficientBalance ||
+                    shouldShowLoading) &&
+                    styles.placeBetButtonTextDisabled,
                 ]}
               >
-                {bet.betType}
+                {!wcConnected && !isConnected
+                  ? "Connect Wallet to Bet"
+                  : shouldShowLoading
+                  ? "Loading Balance..."
+                  : hasInsufficientBalance
+                  ? "Insufficient Balance"
+                  : "Place Bet"}
               </Text>
-            </View>
-            <View style={styles.betDetails}>
-              <Text style={styles.betAmount}>${bet.amount}</Text>
-              <Text style={styles.betTimeframe}>
-                {TIMEFRAMES.find((tf) => tf.value === bet.timeframe)?.label}
-              </Text>
-              <Text style={styles.betTimeLeft}>
-                {getTimeLeft(bet.expiresAt)}
-              </Text>
-            </View>
-          </View>
-        ))}
-        {(!activeBetsData?.activeBets ||
-          activeBetsData.activeBets.length === 0) && (
-          <Text style={styles.noBetsText}>No active bets</Text>
-        )}
-      </Animated.View>
-    </ScrollView>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Smart Contract Info */}
+          {/* <SmartContractInfo /> */}
+
+          {/* Active Bets */}
+          <Animated.View style={[styles.section, activeBetsAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>Active Bets</Text>
+            {activeBetsData?.activeBets?.map((bet: Bet) => (
+              <View key={bet.id} style={styles.activeBetCard}>
+                <View style={styles.betHeader}>
+                  <Text style={styles.betSymbol}>{bet.cryptoSymbol}</Text>
+                  <Text
+                    style={[
+                      styles.betType,
+                      bet.betType === "UP" ? styles.upText : styles.downText,
+                    ]}
+                  >
+                    {bet.betType}
+                  </Text>
+                </View>
+                <View style={styles.betDetails}>
+                  <Text style={styles.betAmount}>${bet.amount}</Text>
+                  <Text style={styles.betTimeframe}>
+                    {TIMEFRAMES.find((tf) => tf.value === bet.timeframe)?.label}
+                  </Text>
+                  <Text style={styles.betTimeLeft}>
+                    {getTimeLeft(bet.expiresAt)}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {(!activeBetsData?.activeBets ||
+              activeBetsData.activeBets.length === 0) && (
+              <Text style={styles.noBetsText}>No active bets</Text>
+            )}
+          </Animated.View>
+        </ScrollView>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f23",
   },
   header: {
     flexDirection: "row",
@@ -947,10 +987,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: "#1a1a2e",
-    borderBottomWidth: 1,
-    borderBottomColor: "#2a2a3e",
+    paddingBottom: 12,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -981,7 +1018,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   section: {
     paddingHorizontal: 24,
@@ -990,39 +1027,39 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 12,
   },
   selectedIndicator: {
-    color: "#3b82f6",
+    color: COLORS.accent,
     fontSize: 14,
   },
   cryptoList: {
     flexDirection: "row",
   },
   cryptoOption: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   selectedCrypto: {
-    backgroundColor: "#3b82f6",
-    borderColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
   },
   cryptoOptionText: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontFamily: FONTS.SEMI_BOLD,
   },
   selectedCryptoText: {
-    color: "#ffffff",
+    color: COLORS.neonCardText,
     fontFamily: FONTS.SEMI_BOLD,
   },
   priceContainer: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -1030,47 +1067,47 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 24,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   timeframeList: {
     flexDirection: "row",
   },
   timeframeOption: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
     alignItems: "center",
   },
   selectedTimeframe: {
-    backgroundColor: "#3b82f6",
-    borderColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
+    borderColor: COLORS.accent,
   },
   timeframeLabel: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontFamily: FONTS.SEMI_BOLD,
     fontSize: 14,
   },
   timeframePayout: {
-    color: "#666666",
+    color: COLORS.textMuted,
     fontSize: 12,
     marginTop: 4,
   },
   selectedTimeframeText: {
-    color: "#ffffff",
+    color: COLORS.neonCardText,
   },
   betInput: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   betTypeContainer: {
     flexDirection: "row",
@@ -1078,51 +1115,51 @@ const styles = StyleSheet.create({
   },
   betTypeButton: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
     marginHorizontal: 4,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   upButton: {
-    backgroundColor: "#10b981",
-    borderColor: "#10b981",
+    backgroundColor: COLORS.success,
+    borderColor: COLORS.success,
   },
   downButton: {
-    backgroundColor: "#ef4444",
-    borderColor: "#ef4444",
+    backgroundColor: COLORS.error,
+    borderColor: COLORS.error,
   },
   betTypeText: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontFamily: FONTS.SEMI_BOLD,
     marginTop: 8,
   },
   upButtonText: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   downButtonText: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   placeBetButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
   },
   placeBetButtonText: {
-    color: "#ffffff",
+    color: COLORS.neonCardText,
     fontSize: 18,
     fontFamily: FONTS.BOLD,
   },
   activeBetCard: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   betHeader: {
     flexDirection: "row",
@@ -1133,7 +1170,7 @@ const styles = StyleSheet.create({
   betSymbol: {
     fontSize: 16,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   betType: {
     fontSize: 14,
@@ -1144,11 +1181,11 @@ const styles = StyleSheet.create({
   },
   upText: {
     backgroundColor: "rgba(16, 185, 129, 0.2)",
-    color: "#10b981",
+    color: COLORS.success,
   },
   downText: {
     backgroundColor: "rgba(239, 68, 68, 0.2)",
-    color: "#ef4444",
+    color: COLORS.error,
   },
   betDetails: {
     flexDirection: "row",
@@ -1158,20 +1195,20 @@ const styles = StyleSheet.create({
   betAmount: {
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   betTimeframe: {
     fontSize: 14,
-    color: "#666666",
+    color: COLORS.textMuted,
   },
   betTimeLeft: {
     fontSize: 14,
-    color: "#3b82f6",
+    color: COLORS.accent,
     fontFamily: FONTS.SEMI_BOLD,
   },
   noBetsText: {
     textAlign: "center",
-    color: "#666666",
+    color: COLORS.textMuted,
     fontSize: 16,
     fontStyle: "italic",
   },
@@ -1183,11 +1220,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   balanceText: {
-    color: "#666666",
+    color: COLORS.textMuted,
     fontSize: 14,
   },
   betInputError: {
-    borderColor: "#ef4444",
+    borderColor: COLORS.error,
     borderWidth: 2,
   },
   balanceWarning: {
@@ -1197,7 +1234,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   balanceWarningText: {
-    color: "#ef4444",
+    color: COLORS.error,
     fontSize: 12,
   },
   gasInfo: {
@@ -1207,15 +1244,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   gasInfoText: {
-    color: "#666666",
+    color: COLORS.textMuted,
     fontSize: 12,
   },
   placeBetButtonDisabled: {
-    backgroundColor: "#666666",
+    backgroundColor: COLORS.textMuted,
     opacity: 0.6,
   },
   placeBetButtonTextDisabled: {
-    color: "#cccccc",
+    color: COLORS.textSecondary,
   },
   refreshButton: {
     padding: 4,
@@ -1226,15 +1263,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   maxButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: COLORS.accent,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
   },
   maxButtonText: {
-    color: "#ffffff",
-    fontSize: 12,
+    color: COLORS.neonCardText,
+    fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
+    paddingTop: 14,
+    paddingBottom: 14,
   },
   maxBetInfo: {
     flexDirection: "row",
@@ -1243,18 +1282,18 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   maxBetInfoText: {
-    color: "#10b981",
+    color: COLORS.success,
     fontSize: 12,
   },
   betInputLoading: {
     opacity: 0.6,
   },
   maxButtonDisabled: {
-    backgroundColor: "#666666",
+    backgroundColor: COLORS.textMuted,
     opacity: 0.6,
   },
   maxButtonTextDisabled: {
-    color: "#cccccc",
+    color: COLORS.textSecondary,
   },
   usdEquivalentContainer: {
     flexDirection: "row",
@@ -1263,7 +1302,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   usdEquivalentText: {
-    color: "#10b981",
+    color: COLORS.success,
     fontSize: 12,
     fontWeight: "600",
   },
@@ -1272,15 +1311,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   currencySymbol: {
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     fontSize: 16,
     fontWeight: "600",
     marginRight: 8,
@@ -1295,11 +1334,11 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   profitSummaryCard: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -1312,7 +1351,7 @@ const styles = StyleSheet.create({
   profitSummaryTitle: {
     fontSize: 18,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 16,
     textAlign: "center",
   },
@@ -1325,7 +1364,7 @@ const styles = StyleSheet.create({
   profitSummaryLabel: {
     fontSize: 14,
     fontFamily: FONTS.MEDIUM,
-    color: "#cccccc",
+    color: COLORS.textSecondary,
   },
   profitSummaryValue: {
     alignItems: "flex-end",
@@ -1333,16 +1372,16 @@ const styles = StyleSheet.create({
   profitSummaryValueText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   profitSummaryAmount: {
     fontSize: 16,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   profitSummaryEquivalent: {
     fontSize: 12,
-    color: "#666666",
+    color: COLORS.textMuted,
     marginTop: 2,
   },
   directionBadge: {
@@ -1362,31 +1401,31 @@ const styles = StyleSheet.create({
   directionText: {
     fontSize: 12,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   profitSummaryDivider: {
     height: 1,
-    backgroundColor: "#333",
+    backgroundColor: COLORS.border,
     marginVertical: 12,
   },
   profitSummaryProfit: {
     fontSize: 16,
     fontFamily: FONTS.BOLD,
-    color: "#10b981",
+    color: COLORS.success,
   },
   profitSummaryProfitEquivalent: {
     fontSize: 12,
-    color: "#10b981",
+    color: COLORS.success,
     marginTop: 2,
   },
   profitSummaryLoss: {
     fontSize: 16,
     fontFamily: FONTS.BOLD,
-    color: "#ef4444",
+    color: COLORS.error,
   },
   profitSummaryLossEquivalent: {
     fontSize: 12,
-    color: "#ef4444",
+    color: COLORS.error,
     marginTop: 2,
   },
   chartContainer: {
@@ -1396,7 +1435,7 @@ const styles = StyleSheet.create({
   chartTitle: {
     fontSize: 14,
     fontFamily: FONTS.MEDIUM,
-    color: "#cccccc",
+    color: COLORS.textSecondary,
     marginBottom: 8,
   },
 });

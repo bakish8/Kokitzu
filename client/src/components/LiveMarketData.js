@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import PriceChart from "./PriceChart";
+import priceDataService from "../services/priceDataService";
+import { TIMEFRAMES } from "../constants/timeframes";
 
 function LiveMarketData({
   filteredCryptoData,
@@ -11,6 +14,11 @@ function LiveMarketData({
   setBetType,
 }) {
   const navigate = useNavigate();
+
+  // Chart data state
+  const [chartData, setChartData] = useState({});
+  const [loadingCharts, setLoadingCharts] = useState({});
+  const [selectedTimeframes, setSelectedTimeframes] = useState({});
 
   const getCryptoIcon = (symbol) => {
     const iconMap = {
@@ -35,6 +43,71 @@ function LiveMarketData({
       XMR: "XMR",
     };
     return iconMap[symbol] || symbol;
+  };
+
+  // Initialize default timeframes for new cryptos
+  useEffect(() => {
+    const newTimeframes = {};
+    filteredCryptoData.forEach((crypto) => {
+      if (!selectedTimeframes[crypto.symbol]) {
+        newTimeframes[crypto.symbol] = "ONE_HOUR";
+      }
+    });
+    if (Object.keys(newTimeframes).length > 0) {
+      setSelectedTimeframes((prev) => ({ ...prev, ...newTimeframes }));
+    }
+  }, [filteredCryptoData, selectedTimeframes]);
+
+  // Fetch chart data for crypto cards
+  useEffect(() => {
+    const fetchChartData = async () => {
+      const newChartData = {};
+      const newLoadingCharts = {};
+
+      for (const crypto of filteredCryptoData) {
+        const timeframe = selectedTimeframes[crypto.symbol] || "ONE_HOUR";
+        newLoadingCharts[crypto.symbol] = true;
+        try {
+          const data = await priceDataService.getPriceHistory(
+            crypto.symbol,
+            timeframe
+          );
+          newChartData[crypto.symbol] = data;
+        } catch (error) {
+          console.error(
+            `Error fetching chart data for ${crypto.symbol}:`,
+            error
+          );
+          newChartData[crypto.symbol] = [];
+        } finally {
+          newLoadingCharts[crypto.symbol] = false;
+        }
+      }
+
+      setChartData(newChartData);
+      setLoadingCharts(newLoadingCharts);
+    };
+
+    if (filteredCryptoData.length > 0) {
+      fetchChartData();
+    }
+  }, [filteredCryptoData, selectedTimeframes]);
+
+  // Handle timeframe change for a specific crypto
+  const handleTimeframeChange = async (symbol, newTimeframe) => {
+    setSelectedTimeframes((prev) => ({ ...prev, [symbol]: newTimeframe }));
+
+    // Fetch new chart data for this crypto
+    setLoadingCharts((prev) => ({ ...prev, [symbol]: true }));
+    try {
+      const data = await priceDataService.getPriceHistory(symbol, newTimeframe);
+      setChartData((prev) => ({ ...prev, [symbol]: data }));
+    } catch (error) {
+      console.error(`Error fetching chart data for ${symbol}:`, error);
+      setChartData((prev) => ({ ...prev, [symbol]: [] }));
+    } finally {
+      setLoadingCharts((prev) => ({ ...prev, [symbol]: false }));
+    }
   };
 
   return (
@@ -110,15 +183,64 @@ function LiveMarketData({
                   </div>
 
                   <div className="sparkline">
-                    <svg width="100%" height="30" viewBox="0 0 100 30">
-                      <path
-                        d="M0,15 Q25,5 50,15 T100,15"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        fill="none"
-                        className="sparkline-path"
+                    {loadingCharts[crypto.symbol] ? (
+                      <div className="mini-chart-loading">...</div>
+                    ) : (
+                      <PriceChart
+                        data={
+                          Array.isArray(chartData[crypto.symbol]) &&
+                          chartData[crypto.symbol].length > 0
+                            ? chartData[crypto.symbol]
+                            : [
+                                1, 2, 3, 2, 4, 3, 5, 4, 6, 5, 7, 6, 8, 7, 9, 8,
+                                10, 9, 8, 7, 6, 5, 4, 3,
+                              ]
+                        }
+                        color={
+                          Array.isArray(chartData[crypto.symbol]) &&
+                          chartData[crypto.symbol].length > 0
+                            ? priceChange?.direction === "up"
+                              ? "#10b981"
+                              : "#ef4444"
+                            : "#888"
+                        }
+                        height={40}
+                        width={120}
+                        isMini={true}
                       />
-                    </svg>
+                    )}
+                  </div>
+
+                  {/* Individual Timeframe Selection */}
+                  <div className="crypto-timeframe-selector">
+                    <div className="timeframe-scroll">
+                      <div className="timeframe-selector">
+                        {TIMEFRAMES.map((timeframe) => (
+                          <button
+                            key={timeframe.value}
+                            className={`timeframe-option ${
+                              selectedTimeframes[crypto.symbol] ===
+                              timeframe.value
+                                ? "selected"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handleTimeframeChange(
+                                crypto.symbol,
+                                timeframe.value
+                              )
+                            }
+                          >
+                            <span className="timeframe-label">
+                              {timeframe.label}
+                            </span>
+                            <span className="timeframe-payout">
+                              {timeframe.payout}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div
                     style={{

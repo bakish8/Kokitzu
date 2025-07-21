@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
+  ImageBackground,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -28,6 +29,9 @@ import {
   ethToUsd,
 } from "../utils/currencyUtils";
 import { FONTS } from "../constants/fonts";
+import COLORS from "../constants/colors";
+
+const backgroundImage = require("../../assets/geometric-neon-hexagonal-bipyramid-background-vector/v882-mind-04-e.jpg");
 
 const PortfolioScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
@@ -184,191 +188,231 @@ const PortfolioScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
+    <ImageBackground
+      source={backgroundImage}
+      style={{ flex: 1 }}
+      resizeMode="cover"
     >
-      {/* Header */}
-      <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <UnifiedHeader />
-      </Animated.View>
+      <View
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: COLORS.overlay,
+          zIndex: 0,
+        }}
+      />
+      <View style={styles.container}>
+        {/* Header */}
+        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+          <UnifiedHeader />
+        </Animated.View>
+        {/* Content */}
+        <ScrollView
+          style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        >
+          {/* Stats Cards */}
+          <Animated.View
+            style={[styles.statsContainer, statsCardsAnimatedStyle]}
+          >
+            <View style={styles.statCard}>
+              <MaterialCommunityIcons
+                name="wallet"
+                size={24}
+                color={COLORS.accent}
+              />
+              <Text style={styles.statValue}>
+                {formatCurrency(stats.netProfit)}
+              </Text>
+              <Text style={styles.statLabel}>Net Profit</Text>
+              <Text style={styles.statSubtext}>
+                (Ξ {ethToUsd(stats.netProfit, ethPrice).toFixed(4)})
+              </Text>
+            </View>
+            <View style={styles.statCard}>
+              <MaterialCommunityIcons
+                name="trophy"
+                size={24}
+                color={COLORS.success}
+              />
+              <Text style={styles.statValue}>
+                {formatPercentage(stats.winRate)}
+              </Text>
+              <Text style={styles.statLabel}>Win Rate</Text>
+            </View>
+            <View style={styles.statCard}>
+              <MaterialCommunityIcons
+                name="chart-line"
+                size={24}
+                color={COLORS.warning}
+              />
+              <Text style={styles.statValue}>{stats.totalBets}</Text>
+              <Text style={styles.statLabel}>Total Bets</Text>
+            </View>
+          </Animated.View>
 
-      {/* Stats Cards */}
-      <Animated.View style={[styles.statsContainer, statsCardsAnimatedStyle]}>
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="wallet" size={24} color="#3b82f6" />
-          <Text style={styles.statValue}>
-            {formatCurrency(stats.netProfit)}
-          </Text>
-          <Text style={styles.statLabel}>Net Profit</Text>
-          <Text style={styles.statSubtext}>
-            (Ξ {ethToUsd(stats.netProfit, ethPrice).toFixed(4)})
-          </Text>
-        </View>
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="trophy" size={24} color="#10b981" />
-          <Text style={styles.statValue}>
-            {formatPercentage(stats.winRate)}
-          </Text>
-          <Text style={styles.statLabel}>Win Rate</Text>
-        </View>
-        <View style={styles.statCard}>
-          <MaterialCommunityIcons name="chart-line" size={24} color="#f59e0b" />
-          <Text style={styles.statValue}>{stats.totalBets}</Text>
-          <Text style={styles.statLabel}>Total Bets</Text>
-        </View>
-      </Animated.View>
-
-      {/* Detailed Stats */}
-      <Animated.View style={[styles.section, performanceAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Performance Overview</Text>
-        <View style={styles.detailedStats}>
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Total Wagered</Text>
-            <Text style={styles.statRowValue}>
-              {formatCurrency(stats.totalWagered)}
-            </Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Total Won</Text>
-            <Text style={styles.statRowValue}>
-              {formatCurrency(stats.totalWon)}
-            </Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Total Wagered (ETH)</Text>
-            <Text style={styles.statRowValue}>
-              Ξ {ethToUsd(stats.totalWagered, ethPrice).toFixed(4)}
-            </Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Total Won (ETH)</Text>
-            <Text style={styles.statRowValue}>
-              Ξ {ethToUsd(stats.totalWon, ethPrice).toFixed(4)}
-            </Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Wins</Text>
-            <Text style={[styles.statRowValue, styles.winText]}>
-              {stats.wins}
-            </Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statRowLabel}>Losses</Text>
-            <Text style={[styles.statRowValue, styles.lossText]}>
-              {stats.losses}
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Bet History */}
-      <Animated.View style={[styles.section, historyAnimatedStyle]}>
-        <Text style={styles.sectionTitle}>Bet History</Text>
-        {betHistoryLoading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading bet history...</Text>
-          </View>
-        ) : (
-          <View style={styles.betHistoryContainer}>
-            {betHistory?.betHistory?.map((bet: Bet) => (
-              <View key={bet.id} style={styles.betHistoryCard}>
-                <View style={styles.betHistoryHeader}>
-                  <View style={styles.betInfo}>
-                    <Text style={styles.betSymbol}>{bet.cryptoSymbol}</Text>
-                    <Text style={styles.betDate}>
-                      {new Date(bet.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.resultBadge,
-                      bet.result === "WIN" ? styles.winBadge : styles.lossBadge,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.resultText,
-                        bet.result === "WIN" ? styles.winText : styles.lossText,
-                      ]}
-                    >
-                      {bet.result || "PENDING"}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.betHistoryDetails}>
-                  <View style={styles.betDetailRow}>
-                    <Text style={styles.betDetailLabel}>Amount:</Text>
-                    <Text style={styles.betDetailValue}>
-                      {formatCurrency(bet.amount)}
-                    </Text>
-                  </View>
-                  <View style={styles.betDetailRow}>
-                    <Text style={styles.betDetailLabel}>Type:</Text>
-                    <Text
-                      style={[
-                        styles.betDetailValue,
-                        bet.betType === "UP" ? styles.upText : styles.downText,
-                      ]}
-                    >
-                      {bet.betType}
-                    </Text>
-                  </View>
-                  <View style={styles.betDetailRow}>
-                    <Text style={styles.betDetailLabel}>Entry Price:</Text>
-                    <Text style={styles.betDetailValue}>
-                      {formatCurrency(bet.entryPrice)}
-                    </Text>
-                  </View>
-                  {bet.exitPrice && (
-                    <View style={styles.betDetailRow}>
-                      <Text style={styles.betDetailLabel}>Exit Price:</Text>
-                      <Text style={styles.betDetailValue}>
-                        {formatCurrency(bet.exitPrice)}
-                      </Text>
-                    </View>
-                  )}
-                  {bet.payout && (
-                    <View style={styles.betDetailRow}>
-                      <Text style={styles.betDetailLabel}>Payout:</Text>
-                      <Text
-                        style={[
-                          styles.betDetailValue,
-                          bet.result === "WIN"
-                            ? styles.winText
-                            : styles.lossText,
-                        ]}
-                      >
-                        {formatCurrency(bet.payout)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            ))}
-            {(!betHistory?.betHistory ||
-              betHistory.betHistory.length === 0) && (
-              <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="history" size={48} color="#666" />
-                <Text style={styles.emptyStateText}>No bet history yet</Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Start trading to see your bet history here
+          {/* Detailed Stats */}
+          <Animated.View style={[styles.section, performanceAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>Performance Overview</Text>
+            <View style={styles.detailedStats}>
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Total Wagered</Text>
+                <Text style={styles.statRowValue}>
+                  {formatCurrency(stats.totalWagered)}
                 </Text>
               </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Total Won</Text>
+                <Text style={styles.statRowValue}>
+                  {formatCurrency(stats.totalWon)}
+                </Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Total Wagered (ETH)</Text>
+                <Text style={styles.statRowValue}>
+                  Ξ {ethToUsd(stats.totalWagered, ethPrice).toFixed(4)}
+                </Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Total Won (ETH)</Text>
+                <Text style={styles.statRowValue}>
+                  Ξ {ethToUsd(stats.totalWon, ethPrice).toFixed(4)}
+                </Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Wins</Text>
+                <Text style={[styles.statRowValue, styles.winText]}>
+                  {stats.wins}
+                </Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statRowLabel}>Losses</Text>
+                <Text style={[styles.statRowValue, styles.lossText]}>
+                  {stats.losses}
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Bet History */}
+          <Animated.View style={[styles.section, historyAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>Bet History</Text>
+            {betHistoryLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Loading bet history...</Text>
+              </View>
+            ) : (
+              <View style={styles.betHistoryContainer}>
+                {betHistory?.betHistory?.map((bet: Bet) => (
+                  <View key={bet.id} style={styles.betHistoryCard}>
+                    <View style={styles.betHistoryHeader}>
+                      <View style={styles.betInfo}>
+                        <Text style={styles.betSymbol}>{bet.cryptoSymbol}</Text>
+                        <Text style={styles.betDate}>
+                          {new Date(bet.createdAt).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.resultBadge,
+                          bet.result === "WIN"
+                            ? styles.winBadge
+                            : styles.lossBadge,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.resultText,
+                            bet.result === "WIN"
+                              ? styles.winText
+                              : styles.lossText,
+                          ]}
+                        >
+                          {bet.result || "PENDING"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.betHistoryDetails}>
+                      <View style={styles.betDetailRow}>
+                        <Text style={styles.betDetailLabel}>Amount:</Text>
+                        <Text style={styles.betDetailValue}>
+                          {formatCurrency(bet.amount)}
+                        </Text>
+                      </View>
+                      <View style={styles.betDetailRow}>
+                        <Text style={styles.betDetailLabel}>Type:</Text>
+                        <Text
+                          style={[
+                            styles.betDetailValue,
+                            bet.betType === "UP"
+                              ? styles.upText
+                              : styles.downText,
+                          ]}
+                        >
+                          {bet.betType}
+                        </Text>
+                      </View>
+                      <View style={styles.betDetailRow}>
+                        <Text style={styles.betDetailLabel}>Entry Price:</Text>
+                        <Text style={styles.betDetailValue}>
+                          {formatCurrency(bet.entryPrice)}
+                        </Text>
+                      </View>
+                      {bet.exitPrice && (
+                        <View style={styles.betDetailRow}>
+                          <Text style={styles.betDetailLabel}>Exit Price:</Text>
+                          <Text style={styles.betDetailValue}>
+                            {formatCurrency(bet.exitPrice)}
+                          </Text>
+                        </View>
+                      )}
+                      {bet.payout && (
+                        <View style={styles.betDetailRow}>
+                          <Text style={styles.betDetailLabel}>Payout:</Text>
+                          <Text
+                            style={[
+                              styles.betDetailValue,
+                              bet.result === "WIN"
+                                ? styles.winText
+                                : styles.lossText,
+                            ]}
+                          >
+                            {formatCurrency(bet.payout)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))}
+                {(!betHistory?.betHistory ||
+                  betHistory.betHistory.length === 0) && (
+                  <View style={styles.emptyState}>
+                    <MaterialCommunityIcons
+                      name="history"
+                      size={48}
+                      color={COLORS.textMuted}
+                    />
+                    <Text style={styles.emptyStateText}>
+                      No bet history yet
+                    </Text>
+                    <Text style={styles.emptyStateSubtext}>
+                      Start trading to see your bet history here
+                    </Text>
+                  </View>
+                )}
+              </View>
             )}
-          </View>
-        )}
-      </Animated.View>
-    </ScrollView>
+          </Animated.View>
+        </ScrollView>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f0f23",
   },
   header: {
     flexDirection: "row",
@@ -376,10 +420,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: "#1a1a2e",
-    borderBottomWidth: 1,
-    borderBottomColor: "#2a2a3e",
+    paddingBottom: 12,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -410,7 +451,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   statsContainer: {
     flexDirection: "row",
@@ -420,29 +461,29 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginHorizontal: 4,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   statValue: {
     fontSize: 20,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginTop: 8,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: "#666666",
+    color: COLORS.textSecondary,
     textAlign: "center",
   },
   statSubtext: {
     fontSize: 10,
-    color: "#10b981",
+    color: COLORS.success,
     textAlign: "center",
     marginTop: 2,
   },
@@ -453,15 +494,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 16,
   },
   detailedStats: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   statRow: {
     flexDirection: "row",
@@ -469,38 +510,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: COLORS.border,
   },
   statRowLabel: {
     fontSize: 14,
-    color: "#cccccc",
+    color: COLORS.textSecondary,
   },
   statRowValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   winText: {
-    color: "#10b981",
+    color: COLORS.success,
   },
   lossText: {
-    color: "#ef4444",
+    color: COLORS.error,
   },
   upText: {
-    color: "#10b981",
+    color: COLORS.success,
   },
   downText: {
-    color: "#ef4444",
+    color: COLORS.error,
   },
   betHistoryContainer: {
     gap: 12,
   },
   betHistoryCard: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.card2,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.border,
   },
   betHistoryHeader: {
     flexDirection: "row",
@@ -514,12 +555,12 @@ const styles = StyleSheet.create({
   betSymbol: {
     fontSize: 16,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
   betDate: {
     fontSize: 12,
-    color: "#666666",
+    color: COLORS.textSecondary,
   },
   resultBadge: {
     paddingHorizontal: 8,
@@ -546,12 +587,12 @@ const styles = StyleSheet.create({
   },
   betDetailLabel: {
     fontSize: 14,
-    color: "#666666",
+    color: COLORS.textSecondary,
   },
   betDetailValue: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   loadingContainer: {
     alignItems: "center",
@@ -559,7 +600,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: "#666666",
+    color: COLORS.textMuted,
   },
   emptyState: {
     alignItems: "center",
@@ -567,13 +608,13 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 18,
-    color: "#666666",
+    color: COLORS.textMuted,
     marginTop: 16,
     fontWeight: "600",
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: "#666666",
+    color: COLORS.textMuted,
     marginTop: 8,
     textAlign: "center",
   },

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
+import COLORS from "../constants/colors";
 
 interface NetworkSelectionModalProps {
   visible: boolean;
@@ -173,14 +174,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.background,
     borderRadius: 16,
     padding: 24,
     width: "90%",
     maxWidth: 400,
     maxHeight: "80%",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.accent,
   },
   modalHeader: {
     flexDirection: "row",
@@ -196,7 +197,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   backButton: {
     flexDirection: "row",
@@ -204,12 +205,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     borderRadius: 8,
     marginBottom: 20,
   },
   backButtonText: {
-    color: "#3b82f6",
+    color: COLORS.accent,
     fontWeight: "600",
     fontSize: 14,
   },
@@ -225,7 +226,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   networkList: {
     maxHeight: 300,
@@ -233,15 +234,15 @@ const styles = StyleSheet.create({
   networkItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.accent,
     marginBottom: 8,
   },
   selectedNetworkItem: {
-    borderColor: "#3b82f6",
+    borderColor: COLORS.accent,
     backgroundColor: "rgba(59, 130, 246, 0.1)",
   },
   networkInfo: {
@@ -256,16 +257,16 @@ const styles = StyleSheet.create({
   networkName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 2,
   },
   networkChainId: {
     fontSize: 12,
-    color: "#666",
+    color: COLORS.textSecondary,
   },
   testnetBadge: {
     fontSize: 10,
-    color: "#f59e0b",
+    color: COLORS.neonCardText,
     fontWeight: "600",
     marginTop: 2,
   },
@@ -276,11 +277,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#333",
+    borderTopColor: COLORS.accent,
   },
   footerText: {
     fontSize: 12,
-    color: "#666",
+    color: COLORS.textSecondary,
     textAlign: "center",
   },
 });

@@ -16,6 +16,7 @@ import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
 import { FONTS } from "../constants/fonts";
+import COLORS from "../constants/colors";
 
 interface WalletConnectedModalProps {
   visible: boolean;
@@ -40,16 +41,6 @@ const WalletConnectedModal: React.FC<WalletConnectedModalProps> = ({
 
   // Get ETH price for USD conversion
   const ethPrice = useEthPrice();
-
-  // Debug logging
-  console.log("🔍 WalletConnectedModal Debug:", {
-    walletAddress,
-    currentNetwork,
-    networkConfig: networkConfig?.name,
-    isConnected,
-    balance,
-    hasProvider: !!provider,
-  });
 
   const formatAddress = (address: string) => {
     if (!address) return "Unknown";
@@ -497,14 +488,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: COLORS.background,
     borderRadius: 16,
     padding: 24,
     width: "90%",
     maxWidth: 400,
     maxHeight: "80%",
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.accent,
   },
   modalHeader: {
     flexDirection: "row",
@@ -520,7 +511,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontFamily: FONTS.BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   backButton: {
     flexDirection: "row",
@@ -528,7 +519,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     borderRadius: 8,
     marginBottom: 20,
   },
@@ -549,7 +540,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   infoItem: {
     flexDirection: "row",
@@ -557,19 +548,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     borderRadius: 8,
     marginBottom: 8,
   },
   infoLabel: {
     fontSize: 14,
     fontFamily: FONTS.MEDIUM,
-    color: "#666",
+    color: COLORS.textSecondary,
   },
   infoValue: {
     fontSize: 14,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
   },
   networkInfo: {
     flexDirection: "row",
@@ -581,7 +572,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 16,
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     borderRadius: 8,
     marginBottom: 8,
     gap: 12,
@@ -592,13 +583,13 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 12,
     fontFamily: FONTS.REGULAR,
-    color: "#666",
+    color: COLORS.textSecondary,
   },
   networkSection: {
     flex: 1,
@@ -609,11 +600,11 @@ const styles = StyleSheet.create({
   networkItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0f0f23",
+    backgroundColor: COLORS.card,
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#333",
+    borderColor: COLORS.accent,
     marginBottom: 8,
   },
   selectedNetworkItem: {
@@ -627,13 +618,13 @@ const styles = StyleSheet.create({
   networkName: {
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
-    color: "#ffffff",
+    color: COLORS.textPrimary,
     marginBottom: 2,
   },
   networkChainId: {
     fontSize: 12,
     fontFamily: FONTS.REGULAR,
-    color: "#666",
+    color: COLORS.textSecondary,
   },
   testnetBadge: {
     fontSize: 10,
@@ -648,19 +639,19 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#333",
+    borderTopColor: COLORS.accent,
   },
   footerText: {
     fontSize: 12,
     fontFamily: FONTS.REGULAR,
-    color: "#666",
+    color: COLORS.textSecondary,
     textAlign: "center",
   },
   disabledActionItem: {
     opacity: 0.5,
   },
   disabledText: {
-    color: "#666",
+    color: COLORS.textSecondary,
   },
 });
 

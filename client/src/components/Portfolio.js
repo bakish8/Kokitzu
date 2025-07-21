@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useEthPrice, formatUsd, ethToUsd } from "../utils/currencyUtils";
+import PriceChart from "./PriceChart";
+import priceDataService from "../services/priceDataService";
 
 function Portfolio({
   userStats,
@@ -7,6 +10,38 @@ function Portfolio({
   getTimeLeft,
   currentPrice,
 }) {
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
+
+  // Chart state for performance overview
+  const [performanceData, setPerformanceData] = useState([]);
+  const [isLoadingPerformance, setIsLoadingPerformance] = useState(false);
+
+  // Generate performance data based on bet history
+  useEffect(() => {
+    const generatePerformanceData = () => {
+      if (betHistoryData?.betHistory?.length > 0) {
+        const data = betHistoryData.betHistory
+          .slice(-20) // Last 20 bets
+          .map((bet, index) => {
+            const profit = bet.result === "WIN" ? bet.payout : -bet.amount;
+            return profit;
+          });
+        setPerformanceData(data);
+      } else {
+        // Generate mock data if no bet history
+        const mockData = Array.from(
+          { length: 20 },
+          () => (Math.random() - 0.4) * 100 // Slightly positive bias
+        );
+        setPerformanceData(mockData);
+      }
+      setIsLoadingPerformance(false);
+    };
+
+    setIsLoadingPerformance(true);
+    generatePerformanceData();
+  }, [betHistoryData]);
   return (
     <div className="portfolio-container content-fade-in" data-active={true}>
       <div className="portfolio-header">
@@ -76,7 +111,9 @@ function Portfolio({
               <div className="stat-content">
                 <h3>Total Wagered</h3>
                 <div className="stat-value">
-                  ${(userStats?.userStats?.totalWagered || 0).toLocaleString()}
+                  {formatUsd(
+                    ethToUsd(userStats?.userStats?.totalWagered || 0, ethPrice)
+                  )}
                 </div>
               </div>
             </div>
@@ -103,7 +140,9 @@ function Portfolio({
                       : "negative"
                   }`}
                 >
-                  ${(userStats?.userStats?.netProfit || 0).toFixed(2)}
+                  {formatUsd(
+                    ethToUsd(userStats?.userStats?.netProfit || 0, ethPrice)
+                  )}
                 </div>
               </div>
             </div>
@@ -120,20 +159,18 @@ function Portfolio({
             </div>
           </div>
           <div className="chart-placeholder">
-            {betHistoryData?.betHistory?.length > 0 ? (
-              <PerformanceChart bets={betHistoryData.betHistory} />
+            {isLoadingPerformance ? (
+              <div className="chart-loading">Loading performance data...</div>
             ) : (
-              <svg width="100%" height="300" viewBox="0 0 400 300">
-                <text
-                  x="50%"
-                  y="50%"
-                  textAnchor="middle"
-                  fill="#888"
-                  fontSize="18"
-                >
-                  No data
-                </text>
-              </svg>
+              <div className="chart-container">
+                <PriceChart
+                  data={performanceData}
+                  color="#3b82f6"
+                  height={200}
+                  width={400}
+                  isMini={false}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -263,90 +300,6 @@ function Portfolio({
         )}
       </div>
     </div>
-  );
-}
-
-function PerformanceChart({ bets }) {
-  // Sort bets by date
-  const sorted = [...bets].sort(
-    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-  );
-  // Calculate cumulative profit
-  let cumulative = 0;
-  const points = sorted.map((bet, i) => {
-    const profit = bet.result === "WIN" ? bet.payout - bet.amount : -bet.amount;
-    cumulative += profit;
-    return { x: i, y: cumulative, date: bet.createdAt, profit };
-  });
-  if (points.length < 2) {
-    // Not enough data for a line
-    return (
-      <svg width="100%" height="300" viewBox="0 0 400 300">
-        <text x="50%" y="50%" textAnchor="middle" fill="#888" fontSize="18">
-          Not enough data
-        </text>
-      </svg>
-    );
-  }
-  // Scale points to SVG
-  const maxY = Math.max(...points.map((p) => p.y), 0);
-  const minY = Math.min(...points.map((p) => p.y), 0);
-  const rangeY = maxY - minY || 1;
-  const chartW = 380,
-    chartH = 260,
-    padX = 10,
-    padY = 20;
-  const scaleX = (i) => padX + i * (chartW / (points.length - 1));
-  const scaleY = (y) => padY + chartH - ((y - minY) / rangeY) * chartH;
-  const pathD = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${scaleX(i)},${scaleY(p.y)}`)
-    .join(" ");
-  return (
-    <svg width="100%" height="300" viewBox={`0 0 400 300`}>
-      <defs>
-        <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop
-            offset="0%"
-            stopColor="var(--accent-primary)"
-            stopOpacity="0.3"
-          />
-          <stop
-            offset="100%"
-            stopColor="var(--accent-primary)"
-            stopOpacity="0"
-          />
-        </linearGradient>
-      </defs>
-      <path
-        d={pathD}
-        stroke="var(--accent-primary)"
-        strokeWidth="3"
-        fill="none"
-        className="chart-line"
-      />
-      <polyline
-        points={points.map((p, i) => `${scaleX(i)},${scaleY(p.y)}`).join(" ")}
-        fill="url(#chartGradient)"
-        opacity="0.1"
-        className="chart-area"
-      />
-      {points.map((p, i) => (
-        <circle
-          key={i}
-          cx={scaleX(i)}
-          cy={scaleY(p.y)}
-          r="4"
-          className="data-point"
-        />
-      ))}
-      {/* Y axis labels */}
-      <text x={padX} y={scaleY(maxY) - 5} fill="#aaa" fontSize="12">
-        {maxY.toFixed(2)}
-      </text>
-      <text x={padX} y={scaleY(minY) + 15} fill="#aaa" fontSize="12">
-        {minY.toFixed(2)}
-      </text>
-    </svg>
   );
 }
 

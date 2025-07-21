@@ -28,6 +28,7 @@ import { WalletProvider } from "./src/contexts/WalletContext";
 import { NetworkProvider } from "./src/contexts/NetworkContext";
 import AuthModal from "./src/components/AuthModal";
 import usePerformanceMonitor from "./src/hooks/usePerformanceMonitor";
+import COLORS from "./src/constants/colors";
 
 // Simple crypto polyfill for React Native
 if (typeof global.crypto === "undefined") {
@@ -110,10 +111,10 @@ function AppContent() {
             },
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: "#1a1a2e",
+              backgroundColor: "#051923",
               borderTopColor: "#333",
             },
-            tabBarActiveTintColor: "#3b82f6",
+            tabBarActiveTintColor: `${COLORS.accent}`,
             tabBarInactiveTintColor: "#666",
           })}
         >

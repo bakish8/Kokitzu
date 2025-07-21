@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork, NETWORKS } from "../contexts/NetworkContext";
 import NetworkSelectionModal from "./NetworkSelectionModal";
+import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
 
 const WalletConnectButton = () => {
   const {
@@ -19,6 +20,9 @@ const WalletConnectButton = () => {
   const [showModal, setShowModal] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [modalView, setModalView] = useState("wallet"); // "wallet" or "network"
+
+  // Get ETH price for USD conversion
+  const ethPrice = useEthPrice();
 
   // Handle modal open/close with body scroll lock
   const handleModalOpen = () => {
@@ -127,8 +131,7 @@ const WalletConnectButton = () => {
               </div>
               {balance && (
                 <div className="wallet-balance">
-                  {parseFloat(balance).toFixed(4)}{" "}
-                  {getChainName(networkConfig.chainId)}
+                  {formatEthWithUsd(parseFloat(balance), ethPrice, false)}
                 </div>
               )}
             </div>
@@ -210,9 +213,7 @@ const WalletConnectButton = () => {
                     <span className="info-label">Balance:</span>
                     <span className="info-value">
                       {balance
-                        ? `${parseFloat(balance).toFixed(4)} ${getChainName(
-                            networkConfig.chainId
-                          )}`
+                        ? formatEthWithUsd(parseFloat(balance), ethPrice, false)
                         : "Loading..."}
                     </span>
                   </div>
