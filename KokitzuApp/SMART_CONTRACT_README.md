@@ -1,3 +1,41 @@
+# Smart Contract Integration Guide
+
+## What is the Contract ABI?
+
+The ABI (Application Binary Interface) is a JSON file that describes the interface of your smart contract. It allows applications (like your server or frontend) to interact with the contract on the blockchain, regardless of the network (Ethereum mainnet, Sepolia, etc.).
+
+## Why do you need the ABI?
+
+- The ABI tells your app how to encode/decode function calls and events for the contract.
+- It is required for both reading from and writing to the contract using libraries like ethers.js or web3.js.
+
+## How to Get the ABI (for both Ethereum and Sepolia)
+
+1. **Compile the Contract:**
+   - In your `/contracts` directory, run:
+     ```
+     npx hardhat compile
+     ```
+2. **Locate the ABI:**
+   - After compiling, find the ABI in the generated artifact:
+     - Path: `artifacts/contracts/BinaryOptions.sol/BinaryOptions.json`
+   - The ABI is the value of the `abi` key in this JSON file.
+3. **Deploy the Contract:**
+   - Deploy to your desired network (mainnet or Sepolia):
+     ```
+     npx hardhat run scripts/deploy.js --network sepolia
+     npx hardhat run scripts/deploy.js --network mainnet
+     ```
+   - The deployment script will print the contract address. Save this address for your server/frontend config.
+4. **Note:**
+   - The ABI is the same for both networks if the contract code is unchanged. Only the contract address will differ between networks.
+
+## Example Usage
+
+- Use the ABI and the correct contract address in your server or frontend to interact with the contract on the selected network.
+
+---
+
 # 🚀 Kokitzu Binary Options Trading System
 
 A complete decentralized binary options trading platform built on Ethereum with React Native integration.
@@ -311,3 +349,12 @@ This software is for educational and entertainment purposes. Trading binary opti
 ---
 
 **🚀 Ready to start trading? Deploy the contract and integrate with your app!**
+
+## What does it mean for the server to sign transactions?
+
+- When your server interacts with the smart contract to write data (e.g., placing a bet), it must sign the transaction with a private key. This proves ownership and authorizes the action on-chain.
+- The private key should belong to a dedicated server wallet (never a user wallet).
+- **Security Best Practices:**
+  - Never hardcode the private key in your codebase.
+  - Store it in environment variables or a secure secrets manager.
+  - Restrict access to the key and use a separate wallet for production and testing.
