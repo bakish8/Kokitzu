@@ -30,6 +30,7 @@ import {
 import { TIMEFRAMES } from "../constants/timeframes";
 import { Coin, CryptoPrice, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
@@ -114,6 +115,14 @@ const BinaryOptionsScreen: React.FC = () => {
   // Add refs for horizontal carousels
   const cryptoScrollRef = useRef<ScrollView>(null);
   const timeframeScrollRef = useRef<ScrollView>(null);
+
+  // State for scroll indicators
+  const [cryptoScrollX, setCryptoScrollX] = useState(0);
+  const [cryptoContentWidth, setCryptoContentWidth] = useState(0);
+  const [cryptoLayoutWidth, setCryptoLayoutWidth] = useState(0);
+  const [timeframeScrollX, setTimeframeScrollX] = useState(0);
+  const [timeframeContentWidth, setTimeframeContentWidth] = useState(0);
+  const [timeframeLayoutWidth, setTimeframeLayoutWidth] = useState(0);
 
   // Animated background color for header
   const headerBgAnimatedStyle = useAnimatedStyle(() => ({
@@ -588,33 +597,77 @@ const BinaryOptionsScreen: React.FC = () => {
                 </Text>
               )}
             </Text>
-            <ScrollView
-              ref={cryptoScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.cryptoList}
-            >
-              {coinsData?.coins?.map((coin: Coin) => (
-                <TouchableOpacity
-                  key={coin.id}
-                  style={[
-                    styles.cryptoOption,
-                    selectedCrypto === coin.symbol && styles.selectedCrypto,
-                  ]}
-                  onPress={() => setSelectedCrypto(coin.symbol)}
+            <View style={{ position: "relative" }}>
+              {/* Left Fade + Arrow */}
+              {cryptoScrollX > 5 && (
+                <LinearGradient
+                  colors={["rgba(20,20,30,0.7)", "rgba(20,20,30,0)"]}
+                  style={styles.leftFade}
+                  pointerEvents="none"
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
                 >
-                  <Text
+                  <MaterialCommunityIcons
+                    name="chevron-left"
+                    size={28}
+                    color={COLORS.textMuted}
+                    style={{ opacity: 0.6 }}
+                  />
+                </LinearGradient>
+              )}
+              {/* Right Fade + Arrow */}
+              {cryptoContentWidth - cryptoLayoutWidth - cryptoScrollX > 5 && (
+                <LinearGradient
+                  colors={["rgba(20,20,30,0)", "rgba(20,20,30,0.7)"]}
+                  style={styles.rightFade}
+                  pointerEvents="none"
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={28}
+                    color={COLORS.textMuted}
+                    style={{ opacity: 0.6 }}
+                  />
+                </LinearGradient>
+              )}
+              <ScrollView
+                ref={cryptoScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.cryptoList}
+                onScroll={(e) =>
+                  setCryptoScrollX(e.nativeEvent.contentOffset.x)
+                }
+                onContentSizeChange={(w) => setCryptoContentWidth(w)}
+                onLayout={(e) =>
+                  setCryptoLayoutWidth(e.nativeEvent.layout.width)
+                }
+                scrollEventThrottle={16}
+              >
+                {coinsData?.coins?.map((coin: Coin) => (
+                  <TouchableOpacity
+                    key={coin.id}
                     style={[
-                      styles.cryptoOptionText,
-                      selectedCrypto === coin.symbol &&
-                        styles.selectedCryptoText,
+                      styles.cryptoOption,
+                      selectedCrypto === coin.symbol && styles.selectedCrypto,
                     ]}
+                    onPress={() => setSelectedCrypto(coin.symbol)}
                   >
-                    {coin.symbol}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                    <Text
+                      style={[
+                        styles.cryptoOptionText,
+                        selectedCrypto === coin.symbol &&
+                          styles.selectedCryptoText,
+                      ]}
+                    >
+                      {coin.symbol}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </Animated.View>
 
           {/* Current Price */}
@@ -657,46 +710,91 @@ const BinaryOptionsScreen: React.FC = () => {
           {/* Timeframe Selection */}
           <Animated.View style={[styles.section, timeframeAnimatedStyle]}>
             <Text style={styles.sectionTitle}>Select Timeframe</Text>
-            <ScrollView
-              ref={timeframeScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.timeframeList}
-            >
-              {TIMEFRAMES.map((timeframe) => (
-                <TouchableOpacity
-                  key={timeframe.value}
-                  style={[
-                    styles.timeframeOption,
-                    selectedTimeframe === timeframe.value &&
-                      styles.selectedTimeframe,
-                  ]}
-                  onPress={() => {
-                    console.log("⏰ Timeframe Selected:", timeframe.value);
-                    setSelectedTimeframe(timeframe.value);
-                  }}
+            <View style={{ position: "relative" }}>
+              {/* Left Fade + Arrow */}
+              {timeframeScrollX > 5 && (
+                <LinearGradient
+                  colors={["rgba(20,20,30,0.7)", "rgba(20,20,30,0)"]}
+                  style={styles.leftFade}
+                  pointerEvents="none"
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
                 >
-                  <Text
+                  <MaterialCommunityIcons
+                    name="chevron-left"
+                    size={28}
+                    color={COLORS.textMuted}
+                    style={{ opacity: 0.6 }}
+                  />
+                </LinearGradient>
+              )}
+              {/* Right Fade + Arrow */}
+              {timeframeContentWidth - timeframeLayoutWidth - timeframeScrollX >
+                5 && (
+                <LinearGradient
+                  colors={["rgba(20,20,30,0)", "rgba(20,20,30,0.7)"]}
+                  style={styles.rightFade}
+                  pointerEvents="none"
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={28}
+                    color={COLORS.textMuted}
+                    style={{ opacity: 0.6 }}
+                  />
+                </LinearGradient>
+              )}
+              <ScrollView
+                ref={timeframeScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.timeframeList}
+                onScroll={(e) =>
+                  setTimeframeScrollX(e.nativeEvent.contentOffset.x)
+                }
+                onContentSizeChange={(w) => setTimeframeContentWidth(w)}
+                onLayout={(e) =>
+                  setTimeframeLayoutWidth(e.nativeEvent.layout.width)
+                }
+                scrollEventThrottle={16}
+              >
+                {TIMEFRAMES.map((timeframe) => (
+                  <TouchableOpacity
+                    key={timeframe.value}
                     style={[
-                      styles.timeframeLabel,
+                      styles.timeframeOption,
                       selectedTimeframe === timeframe.value &&
-                        styles.selectedTimeframeText,
+                        styles.selectedTimeframe,
                     ]}
+                    onPress={() => {
+                      console.log("⏰ Timeframe Selected:", timeframe.value);
+                      setSelectedTimeframe(timeframe.value);
+                    }}
                   >
-                    {timeframe.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.timeframePayout,
-                      selectedTimeframe === timeframe.value &&
-                        styles.selectedTimeframeText,
-                    ]}
-                  >
-                    {timeframe.payout}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                    <Text
+                      style={[
+                        styles.timeframeLabel,
+                        selectedTimeframe === timeframe.value &&
+                          styles.selectedTimeframeText,
+                      ]}
+                    >
+                      {timeframe.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.timeframePayout,
+                        selectedTimeframe === timeframe.value &&
+                          styles.selectedTimeframeText,
+                      ]}
+                    >
+                      {timeframe.payout}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </Animated.View>
 
           {/* Bet Amount */}
@@ -1497,6 +1595,50 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.MEDIUM,
     color: COLORS.textSecondary,
     marginBottom: 8,
+  },
+  leftArrowContainer: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    zIndex: 10,
+    width: 28,
+    alignItems: "center",
+    pointerEvents: "none",
+  },
+  rightArrowContainer: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    zIndex: 10,
+    width: 28,
+    alignItems: "center",
+    pointerEvents: "none",
+  },
+  leftFade: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 40,
+    justifyContent: "center",
+    alignItems: "flex-start",
+    zIndex: 10,
+    pointerEvents: "none",
+  },
+  rightFade: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 40,
+    justifyContent: "center",
+    alignItems: "flex-end",
+    zIndex: 10,
+    pointerEvents: "none",
   },
 });
 
