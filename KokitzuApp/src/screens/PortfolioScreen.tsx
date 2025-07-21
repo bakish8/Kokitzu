@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Image,
   ImageBackground,
+  StatusBar,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -214,6 +215,7 @@ const PortfolioScreen: React.FC = () => {
       style={{ flex: 1 }}
       resizeMode="cover"
     >
+      <StatusBar barStyle="light-content" />
       <View
         style={{
           ...StyleSheet.absoluteFillObject,

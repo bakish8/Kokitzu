@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ApolloProvider } from "@apollo/client";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { View, Text } from "react-native";
+import { View, Text, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { WalletConnectModal } from "@walletconnect/modal-react-native";
 import {
@@ -202,22 +202,25 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ApolloProvider client={apolloClient}>
-        <NetworkProvider>
-          <AuthProvider>
-            <WalletProvider>
-              <TradingProvider>
-                <AppContent />
-                <WalletConnectModal
-                  projectId={projectId}
-                  providerMetadata={providerMetadata}
-                />
-              </TradingProvider>
-            </WalletProvider>
-          </AuthProvider>
-        </NetworkProvider>
-      </ApolloProvider>
-    </GestureHandlerRootView>
+    <>
+      <StatusBar barStyle="light-content" />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ApolloProvider client={apolloClient}>
+          <NetworkProvider>
+            <AuthProvider>
+              <WalletProvider>
+                <TradingProvider>
+                  <AppContent />
+                  <WalletConnectModal
+                    projectId={projectId}
+                    providerMetadata={providerMetadata}
+                  />
+                </TradingProvider>
+              </WalletProvider>
+            </AuthProvider>
+          </NetworkProvider>
+        </ApolloProvider>
+      </GestureHandlerRootView>
+    </>
   );
 }

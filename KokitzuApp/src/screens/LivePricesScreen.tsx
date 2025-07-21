@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
   ImageBackground,
+  StatusBar,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -237,6 +238,7 @@ const LivePricesScreen: React.FC = () => {
       style={{ flex: 1 }}
       resizeMode="cover"
     >
+      <StatusBar barStyle="light-content" />
       <View
         style={{
           ...StyleSheet.absoluteFillObject,

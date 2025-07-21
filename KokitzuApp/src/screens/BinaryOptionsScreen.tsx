@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   ImageBackground,
+  StatusBar,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -566,6 +567,7 @@ const BinaryOptionsScreen: React.FC = () => {
       style={{ flex: 1 }}
       resizeMode="cover"
     >
+      <StatusBar barStyle="light-content" />
       <View
         style={{
           ...StyleSheet.absoluteFillObject,
