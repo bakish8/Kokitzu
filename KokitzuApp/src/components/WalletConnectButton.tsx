@@ -187,10 +187,32 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       }
       disconnectWallet();
       setCurrentChain(networkConfig.chainId);
-    } catch (error) {
+      setTimeout(() => {
+        console.log("[DEBUG] After disconnect:", {
+          wcConnected,
+          wcAddress,
+          walletAddress,
+          isConnected,
+        });
+      }, 500);
+    } catch (error: any) {
       console.error("❌ Error disconnecting:", error);
-      disconnectWallet();
-      setCurrentChain(networkConfig.chainId);
+      // If the error is 'No matching key', forcibly reset all state
+      if (error?.message && error.message.includes("No matching key")) {
+        disconnectWallet();
+        setCurrentChain(networkConfig.chainId);
+        // There is no direct setter for wcAddress or wcConnected, but we can try to reload the app state
+        // Optionally, you could trigger a full reload here if needed:
+        // if (typeof window !== 'undefined' && window.location) window.location.reload();
+        setTimeout(() => {
+          console.log("[DEBUG] Forced reset after 'No matching key':", {
+            wcConnected,
+            wcAddress,
+            walletAddress,
+            isConnected,
+          });
+        }, 500);
+      }
     }
   };
 

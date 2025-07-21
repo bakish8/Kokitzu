@@ -801,19 +801,19 @@ const BinaryOptionsScreen: React.FC = () => {
 
           {/* Bet Amount */}
           <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-            <Text style={styles.sectionTitle}>
-              Bet Amount ({networkConfig.nativeCurrency.symbol})
-            </Text>
+            <Text style={styles.sectionTitle}>Bet Amount</Text>
 
             <View style={styles.betInputContainer}>
-              <View style={styles.betInputWrapper}>
+              <View
+                style={[
+                  styles.betInputWrapper,
+                  hasInsufficientBalance && styles.betInputWrapperError,
+                  shouldShowLoading && styles.betInputWrapperLoading,
+                ]}
+              >
                 <Text style={styles.currencySymbol}>$</Text>
                 <TextInput
-                  style={[
-                    styles.betInput,
-                    hasInsufficientBalance && styles.betInputError,
-                    shouldShowLoading && styles.betInputLoading,
-                  ]}
+                  style={[styles.betInput]}
                   value={betAmount}
                   onChangeText={setBetAmount}
                   keyboardType="numeric"
@@ -1260,14 +1260,31 @@ const styles = StyleSheet.create({
     color: COLORS.neonCardText,
   },
   betInput: {
-    backgroundColor: COLORS.card2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 0,
     color: COLORS.textPrimary,
     fontSize: 16,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    flex: 1,
+  },
+  betInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    backgroundColor: COLORS.card2,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  betInputWrapperError: {
+    borderColor: COLORS.error,
+    borderWidth: 2,
+  },
+  betInputWrapperLoading: {
+    opacity: 0.6,
   },
   betTypeContainer: {
     flexDirection: "row",
@@ -1383,10 +1400,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 14,
   },
-  betInputError: {
-    borderColor: COLORS.error,
-    borderWidth: 2,
-  },
   balanceWarning: {
     flexDirection: "row",
     alignItems: "center",
@@ -1432,8 +1445,6 @@ const styles = StyleSheet.create({
     color: COLORS.neonCardText,
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
-    paddingTop: 14,
-    paddingBottom: 14,
   },
   maxBetInfo: {
     flexDirection: "row",
@@ -1467,17 +1478,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  betInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    backgroundColor: COLORS.card2,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
   currencySymbol: {
     color: COLORS.textPrimary,
     fontSize: 16,
