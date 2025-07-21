@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -110,6 +110,10 @@ const BinaryOptionsScreen: React.FC = () => {
 
   // Add shared value for scroll position
   const scrollY = useSharedValue(0);
+
+  // Add refs for horizontal carousels
+  const cryptoScrollRef = useRef<ScrollView>(null);
+  const timeframeScrollRef = useRef<ScrollView>(null);
 
   // Animated background color for header
   const headerBgAnimatedStyle = useAnimatedStyle(() => ({
@@ -520,6 +524,33 @@ const BinaryOptionsScreen: React.FC = () => {
 
   const backgroundImage = require("../../assets/geometric-neon-hexagonal-bipyramid-background-vector/v882-mind-04-e.jpg");
 
+  // Center selected crypto in carousel
+  useEffect(() => {
+    if (!coinsData?.coins || !selectedCrypto) return;
+    const index = coinsData.coins.findIndex(
+      (coin: Coin) => coin.symbol === selectedCrypto
+    );
+    if (index === -1) return;
+    // Estimate item width + marginRight (from styles: 16+8=24, but paddingHorizontal is 16, marginRight is 8)
+    const ITEM_WIDTH = 16 + 8 + 60; // padding + margin + text width estimate
+    const scrollTo = Math.max(0, index * ITEM_WIDTH - 120); // 120 is half screen width estimate
+    setTimeout(() => {
+      cryptoScrollRef.current?.scrollTo({ x: scrollTo, animated: true });
+    }, 300);
+  }, [coinsData?.coins, selectedCrypto]);
+
+  // Center selected timeframe in carousel
+  useEffect(() => {
+    const index = TIMEFRAMES.findIndex((tf) => tf.value === selectedTimeframe);
+    if (index === -1) return;
+    // Estimate item width + marginRight (from styles: 16+8=24, but paddingHorizontal is 16, marginRight is 8)
+    const ITEM_WIDTH = 100; // estimate for timeframe option
+    const scrollTo = Math.max(0, index * ITEM_WIDTH - 120); // 120 is half screen width estimate
+    setTimeout(() => {
+      timeframeScrollRef.current?.scrollTo({ x: scrollTo, animated: true });
+    }, 300);
+  }, [selectedTimeframe]);
+
   return (
     <ImageBackground
       source={backgroundImage}
@@ -558,6 +589,7 @@ const BinaryOptionsScreen: React.FC = () => {
               )}
             </Text>
             <ScrollView
+              ref={cryptoScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.cryptoList}
@@ -626,6 +658,7 @@ const BinaryOptionsScreen: React.FC = () => {
           <Animated.View style={[styles.section, timeframeAnimatedStyle]}>
             <Text style={styles.sectionTitle}>Select Timeframe</Text>
             <ScrollView
+              ref={timeframeScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.timeframeList}
