@@ -1,6 +1,16 @@
 # BinaryOptions Smart Contract Deployment Guide
 
-This guide will help you deploy the BinaryOptions smart contract to Ethereum networks and integrate it with your React Native app.
+## ⚠️ **IMPORTANT UPDATE** ⚠️
+
+**The contract has been fixed with proper Sepolia price feeds!**
+
+**Previous Issue**: The original contract was using Mainnet Chainlink price feeds while deploying to Sepolia, causing asset configuration failures.
+
+**✅ Fixed**: Now uses correct Sepolia testnet price feeds and will configure BTC, ETH, LINK, and MATIC automatically on deployment.
+
+---
+
+This guide will help you deploy the BinaryOptions smart contract to Ethereum networks and integrate it with your applications.
 
 ## 🚀 Quick Start
 
@@ -31,20 +41,53 @@ ETHERSCAN_API_KEY=your_etherscan_api_key_here
 ### 3. Compile Contracts
 
 ```bash
-npm run compile
+npm run compile or npx hardhat compile
 ```
 
-### 4. Deploy to Testnet (Recommended First)
+### 4. Deploy to Sepolia Testnet (Recommended)
 
 ```bash
-# Deploy to Sepolia testnet
+# Deploy to Sepolia testnet with pre-configured assets
 npm run deploy:sepolia
-
-# Or deploy to Goerli testnet
-npm run deploy:goerli
 ```
 
-### 5. Deploy to Mainnet
+**What happens during deployment:**
+
+- ✅ Contract deploys with your address as owner
+- ✅ **BTC** asset configured (0.0001-1 ETH, 2% fee)
+- ✅ **ETH** asset configured (0.001-2 ETH, 1.5% fee)
+- ✅ **LINK** asset configured (0.005-1.5 ETH, 2% fee)
+- ✅ **MATIC** asset configured (0.01-2 ETH, 2.5% fee)
+- ✅ All assets active and ready for betting immediately!
+
+### 5. Update Server Configuration
+
+After successful deployment, update your server's `.env` file:
+
+```bash
+# Replace with your new contract address
+CONTRACT_ADDRESS=0xYourNewContractAddress
+```
+
+### 6. Test the Deployment
+
+```bash
+# In your server directory
+npm run configure-assets
+# Should show: "✅ BTC already configured: { isActive: true }"
+```
+
+### 7. Deploy to Mainnet (Production)
+
+⚠️ **Before mainnet deployment**, update the price feeds in `BinaryOptions.sol` constructor to use **mainnet addresses**:
+
+```solidity
+// Replace Sepolia feeds with Mainnet feeds:
+_setupAsset("ETH", 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419, 0.001 ether, 2 ether, 150);
+_setupAsset("BTC", 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c, 0.0001 ether, 1 ether, 200);
+```
+
+Then deploy:
 
 ```bash
 npm run deploy:mainnet

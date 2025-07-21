@@ -6,25 +6,67 @@ async function main() {
   // Get the contract factory
   const BinaryOptions = await hre.ethers.getContractFactory("BinaryOptions");
 
+  // Get the deployer's address
+  const [deployer] = await hre.ethers.getSigners();
+
   // Deploy the contract
-  const binaryOptions = await BinaryOptions.deploy();
+  const binaryOptions = await BinaryOptions.deploy(deployer.address);
 
   // Wait for deployment to complete
-  await binaryOptions.deployed();
+  await binaryOptions.waitForDeployment();
 
-  console.log("✅ BinaryOptions deployed to:", binaryOptions.address);
+  console.log(
+    "✅ BinaryOptions deployed to:",
+    await binaryOptions.getAddress()
+  );
   console.log("📋 Contract Details:");
   console.log("   - Network:", hre.network.name);
-  console.log("   - Address:", binaryOptions.address);
+  console.log("   - Address:", await binaryOptions.getAddress());
   console.log("   - Owner:", await binaryOptions.owner());
+
+  // Verify that assets were configured properly during deployment
+  console.log("\n🔍 Verifying pre-configured assets...");
+  try {
+    const btcConfig = await binaryOptions.assetConfigs("BTC");
+    const ethConfig = await binaryOptions.assetConfigs("ETH");
+    const linkConfig = await binaryOptions.assetConfigs("LINK");
+    const maticConfig = await binaryOptions.assetConfigs("MATIC");
+
+    console.log("📊 Asset Configuration Status:");
+    console.log(
+      `   - BTC:   isActive=${btcConfig.isActive}, priceFeed=${btcConfig.priceFeed}`
+    );
+    console.log(
+      `   - ETH:   isActive=${ethConfig.isActive}, priceFeed=${ethConfig.priceFeed}`
+    );
+    console.log(
+      `   - LINK:  isActive=${linkConfig.isActive}, priceFeed=${linkConfig.priceFeed}`
+    );
+    console.log(
+      `   - MATIC: isActive=${maticConfig.isActive}, priceFeed=${maticConfig.priceFeed}`
+    );
+
+    if (
+      btcConfig.isActive &&
+      ethConfig.isActive &&
+      linkConfig.isActive &&
+      maticConfig.isActive
+    ) {
+      console.log("✅ All assets pre-configured successfully!");
+    } else {
+      console.log("⚠️  Some assets may not be configured properly!");
+    }
+  } catch (error) {
+    console.log("❌ Failed to verify asset configurations:", error.message);
+  }
 
   // Verify the contract on Etherscan (if not on local network)
   if (hre.network.name !== "hardhat" && hre.network.name !== "localhost") {
     console.log("🔍 Verifying contract on Etherscan...");
     try {
       await hre.run("verify:verify", {
-        address: binaryOptions.address,
-        constructorArguments: [],
+        address: await binaryOptions.getAddress(),
+        constructorArguments: [deployer.address],
       });
       console.log("✅ Contract verified on Etherscan");
     } catch (error) {
@@ -35,8 +77,8 @@ async function main() {
   // Save deployment info
   const deploymentInfo = {
     network: hre.network.name,
-    contractAddress: binaryOptions.address,
-    deployer: await binaryOptions.signer.getAddress(),
+    contractAddress: await binaryOptions.getAddress(),
+    deployer: deployer.address,
     timestamp: new Date().toISOString(),
   };
 
