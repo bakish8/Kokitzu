@@ -291,13 +291,6 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     }
   }, [isWalletConnected]);
 
-  // Debug modal state
-  console.log("🔍 Modal states:", {
-    showModal,
-    showNetworkModal,
-    isNetworkSwitching,
-  });
-
   if (isWalletConnected && connectedAddress && connectedAddress !== "Unknown") {
     return (
       <>

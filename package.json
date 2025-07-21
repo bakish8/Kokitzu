@@ -19,6 +19,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "babel-plugin-transform-import-meta": "^2.3.3",
     "concurrently": "^8.2.2"
   },
   "dependencies": {
