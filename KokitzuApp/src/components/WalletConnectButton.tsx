@@ -354,50 +354,6 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Network Selection Section */}
-            <View style={styles.networkSection}>
-              <Text style={styles.sectionTitle}>Network</Text>
-              <TouchableOpacity
-                style={[
-                  styles.networkSelector,
-                  { borderColor: getNetworkColor(currentNetwork) },
-                ]}
-                onPress={() => {
-                  console.log(
-                    "🔘 Network selector clicked, showing network modal"
-                  );
-                  setModalView("network");
-                }}
-                disabled={isNetworkSwitching}
-              >
-                <View style={styles.networkInfo}>
-                  <MaterialCommunityIcons
-                    name={getNetworkIcon(currentNetwork)}
-                    size={20}
-                    color={getNetworkColor(currentNetwork)}
-                  />
-                  <View style={styles.networkDetails}>
-                    <Text style={styles.networkName}>{networkConfig.name}</Text>
-                  </View>
-                </View>
-                <View style={styles.networkActions}>
-                  {isNetworkSwitching && (
-                    <MaterialCommunityIcons
-                      name="loading"
-                      size={16}
-                      color={getNetworkColor(currentNetwork)}
-                      style={styles.spinning}
-                    />
-                  )}
-                  <MaterialCommunityIcons
-                    name="chevron-down"
-                    size={20}
-                    color="#666"
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
-
             <View style={styles.connectionOptions}>
               <TouchableOpacity
                 style={styles.connectionOption}
@@ -446,7 +402,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
 
       {/* Network Selection Modal */}
       <NetworkSelectionModal
-        visible={showModal && modalView === "network"}
+        visible={modalView === "network"}
         onClose={() => setShowModal(false)}
         onBack={() => setModalView("wallet")}
         isConnected={false}
@@ -519,7 +475,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#1a1a2e",
+    backgroundColor: `${COLORS.background}`,
     borderRadius: 16,
     padding: 24,
     width: "90%",
