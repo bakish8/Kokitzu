@@ -15,6 +15,8 @@ import Animated, {
   withSpring,
   withTiming,
   withDelay,
+  interpolateColor,
+  useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import { useQuery } from "@apollo/client";
 import { useFocusEffect } from "@react-navigation/native";
@@ -49,6 +51,25 @@ const PortfolioScreen: React.FC = () => {
   const performanceTranslateY = useSharedValue(30);
   const historyOpacity = useSharedValue(0);
   const historyTranslateY = useSharedValue(30);
+
+  // Add shared value for scroll position
+  const scrollY = useSharedValue(0);
+
+  // Animated background color for header
+  const headerBgAnimatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      scrollY.value,
+      [0, 60],
+      ["rgba(5,25,35,0)", "#051923"]
+    ),
+  }));
+
+  // Scroll handler
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => ({
@@ -202,15 +223,19 @@ const PortfolioScreen: React.FC = () => {
       />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <Animated.View
+          style={[styles.header, headerAnimatedStyle, headerBgAnimatedStyle]}
+        >
           <UnifiedHeader />
         </Animated.View>
         {/* Content */}
-        <ScrollView
+        <Animated.ScrollView
           style={{ flex: 1 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         >
           {/* Stats Cards */}
           <Animated.View
@@ -404,7 +429,7 @@ const PortfolioScreen: React.FC = () => {
               </View>
             )}
           </Animated.View>
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
     </ImageBackground>
   );

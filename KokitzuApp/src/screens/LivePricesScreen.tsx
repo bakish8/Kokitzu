@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  // ScrollView, // replaced by Animated.ScrollView for main content
   TextInput,
   TouchableOpacity,
   RefreshControl,
@@ -19,6 +19,8 @@ import Animated, {
   withDelay,
   interpolate,
   Extrapolate,
+  interpolateColor,
+  useAnimatedScrollHandler,
 } from "react-native-reanimated";
 
 import { useQuery } from "@apollo/client";
@@ -70,6 +72,25 @@ const LivePricesScreen: React.FC = () => {
   const searchTranslateY = useSharedValue(30);
   const contentOpacity = useSharedValue(0);
   const contentTranslateY = useSharedValue(50);
+
+  // Add shared value for scroll position
+  const scrollY = useSharedValue(0);
+
+  // Animated background color for header
+  const headerBgAnimatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      scrollY.value,
+      [0, 60],
+      ["rgba(5,25,35,0)", "#051923"]
+    ),
+  }));
+
+  // Scroll handler
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => ({
@@ -225,10 +246,11 @@ const LivePricesScreen: React.FC = () => {
       />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <Animated.View
+          style={[styles.header, headerAnimatedStyle, headerBgAnimatedStyle]}
+        >
           <UnifiedHeader />
         </Animated.View>
-
         {/* Search Bar */}
         <Animated.View style={[styles.searchContainer, searchAnimatedStyle]}>
           <TextInput
@@ -239,16 +261,17 @@ const LivePricesScreen: React.FC = () => {
             onChangeText={setSearchQuery}
           />
         </Animated.View>
-
         {/* Content */}
         <Animated.View style={[styles.scrollView, contentAnimatedStyle]}>
-          <ScrollView
+          <Animated.ScrollView
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
               />
             }
+            onScroll={onScroll}
+            scrollEventThrottle={16}
           >
             {loading && !data ? (
               // Loading skeleton
@@ -281,7 +304,7 @@ const LivePricesScreen: React.FC = () => {
                 )}
               </View>
             )}
-          </ScrollView>
+          </Animated.ScrollView>
         </Animated.View>
       </View>
     </ImageBackground>

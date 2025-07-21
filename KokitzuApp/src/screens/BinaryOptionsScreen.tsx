@@ -16,6 +16,8 @@ import Animated, {
   withSpring,
   withTiming,
   withDelay,
+  interpolateColor,
+  useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import { useQuery, useMutation } from "@apollo/client";
 import { useFocusEffect } from "@react-navigation/native";
@@ -105,6 +107,25 @@ const BinaryOptionsScreen: React.FC = () => {
   const placeBetButtonTranslateY = useSharedValue(30);
   const activeBetsOpacity = useSharedValue(0);
   const activeBetsTranslateY = useSharedValue(30);
+
+  // Add shared value for scroll position
+  const scrollY = useSharedValue(0);
+
+  // Animated background color for header
+  const headerBgAnimatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      scrollY.value,
+      [0, 60],
+      ["rgba(5,25,35,0)", "#051923"]
+    ),
+  }));
+
+  // Scroll handler
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   // Animated styles
   const headerAnimatedStyle = useAnimatedStyle(() => ({
@@ -514,11 +535,17 @@ const BinaryOptionsScreen: React.FC = () => {
       />
       <View style={styles.container}>
         {/* Header */}
-        <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <Animated.View
+          style={[styles.header, headerAnimatedStyle, headerBgAnimatedStyle]}
+        >
           <UnifiedHeader />
         </Animated.View>
         {/* Content */}
-        <ScrollView style={{ flex: 1 }}>
+        <Animated.ScrollView
+          style={{ flex: 1 }}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
           {/* Crypto Selection */}
           <Animated.View style={[styles.section, cryptoSelectionAnimatedStyle]}>
             <Text style={styles.sectionTitle}>
@@ -971,7 +998,7 @@ const BinaryOptionsScreen: React.FC = () => {
               <Text style={styles.noBetsText}>No active bets</Text>
             )}
           </Animated.View>
-        </ScrollView>
+        </Animated.ScrollView>
       </View>
     </ImageBackground>
   );
