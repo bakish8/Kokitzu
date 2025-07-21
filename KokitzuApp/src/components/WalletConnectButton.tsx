@@ -335,11 +335,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
         style={styles.connectButton}
         onPress={() => setShowModal(true)}
       >
-        <MaterialCommunityIcons
-          name="wallet-outline"
-          size={20}
-          color="#ffffff"
-        />
+        <MaterialCommunityIcons name="wallet-outline" size={20} />
         <Text style={styles.connectButtonText}>Connect Wallet</Text>
       </TouchableOpacity>
       {/* Wallet Selection Modal */}
@@ -469,7 +465,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   connectButton: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: `${COLORS.accent}`,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -478,7 +474,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   connectButtonText: {
-    color: "#ffffff",
     fontWeight: "600",
     fontSize: 14,
   },
