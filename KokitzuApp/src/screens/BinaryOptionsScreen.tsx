@@ -487,12 +487,13 @@ const BinaryOptionsScreen: React.FC = () => {
     }
 
     // Add a small buffer for gas fees (0.001 ETH)
+    const betAmountEth = usdToEth(betAmountValue, ethPrice);
     const gasBuffer = 0.001;
-    if (betAmountValue + gasBuffer > currentBalance) {
+    if (betAmountEth + gasBuffer > currentBalance) {
       Alert.alert(
         "Insufficient Balance for Gas",
         `You need at least ${formatBalance(
-          betAmountValue + gasBuffer
+          betAmountEth + gasBuffer
         )} ${getChainName(
           networkConfig.chainId
         )} (including gas fees) on ${currentNetwork}. Current balance: ${formatBalance(
