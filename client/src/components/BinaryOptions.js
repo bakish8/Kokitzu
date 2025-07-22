@@ -416,7 +416,14 @@ function BinaryOptions({
                         </div>
                       </div>
                       <div className="bet-details">
-                        <div className="bet-amount">${bet.amount}</div>
+                        <div className="bet-amount-container">
+                          <div className="bet-amount">
+                            {formatUsd(ethToUsd(bet.amount, ethPrice))}
+                          </div>
+                          <div className="bet-amount-eth">
+                            Ξ {bet.amount.toFixed(4)} ETH
+                          </div>
+                        </div>
                         <div className="bet-timeframe">
                           {bet.timeframe.replace("_", " ")}
                         </div>

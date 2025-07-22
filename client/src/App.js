@@ -164,25 +164,39 @@ function App() {
     }
   }, [refetch]);
 
-  const handlePlaceBet = useCallback(async () => {
-    try {
-      await placeBet({
-        variables: {
-          input: {
-            cryptoSymbol: selectedCrypto,
-            betType: betType,
-            amount: parseFloat(betAmount),
-            timeframe: selectedTimeframe,
+  const handlePlaceBet = useCallback(
+    async (useBlockchain = false, walletAddress = null) => {
+      try {
+        console.log("🔗 Placing bet with parameters:", {
+          cryptoSymbol: selectedCrypto,
+          betType: betType,
+          amount: parseFloat(betAmount),
+          timeframe: selectedTimeframe,
+          useBlockchain,
+          walletAddress,
+        });
+
+        await placeBet({
+          variables: {
+            input: {
+              cryptoSymbol: selectedCrypto,
+              betType: betType,
+              amount: parseFloat(betAmount),
+              timeframe: selectedTimeframe,
+              useBlockchain: useBlockchain,
+              walletAddress: walletAddress,
+            },
           },
-        },
-      });
-      setShowBetModal(false);
-      setBetAmount(100);
-    } catch (error) {
-      console.error("Error placing bet:", error);
-      alert(error.message);
-    }
-  }, [placeBet, selectedCrypto, betType, betAmount, selectedTimeframe]);
+        });
+        setShowBetModal(false);
+        setBetAmount(100);
+      } catch (error) {
+        console.error("Error placing bet:", error);
+        alert(error.message);
+      }
+    },
+    [placeBet, selectedCrypto, betType, betAmount, selectedTimeframe]
+  );
 
   const getPriceChange = useCallback(
     (symbol, currentPrice) => {
@@ -225,16 +239,36 @@ function App() {
     }
   }, [coinsData, selectedCrypto]);
 
+  // Timer update for Active Bets
+  const [timerTick, setTimerTick] = useState(0);
+
   // Helper for timer with memoization
-  const getTimeLeft = useCallback((expiresAt) => {
-    const now = new Date();
-    const expiry = new Date(expiresAt);
-    const diff = expiry - now;
-    if (diff <= 0) return "Expired";
-    const min = Math.floor(diff / 60000);
-    const sec = Math.floor((diff % 60000) / 1000);
-    return `${min}:${sec.toString().padStart(2, "0")}`;
-  }, []);
+  const getTimeLeft = useCallback(
+    (expiresAt) => {
+      // Reference timerTick to force re-render every second
+      const now = new Date(Date.now() + timerTick * 0);
+      const expiry = new Date(expiresAt);
+      const diff = expiry - now;
+
+      if (diff <= 0) return "Expired";
+
+      const totalSeconds = Math.floor(diff / 1000);
+      const min = Math.floor(totalSeconds / 60);
+      const sec = totalSeconds % 60;
+
+      // For timeframes longer than 1 hour, show hours too
+      if (min >= 60) {
+        const hours = Math.floor(min / 60);
+        const remainingMin = min % 60;
+        return `${hours}:${remainingMin.toString().padStart(2, "0")}:${sec
+          .toString()
+          .padStart(2, "0")}`;
+      }
+
+      return `${min}:${sec.toString().padStart(2, "0")}`;
+    },
+    [timerTick]
+  ); // Add timerTick as dependency
 
   const getCurrentCrypto = useCallback(() => {
     return data?.cryptoPrices?.find(
@@ -245,9 +279,6 @@ function App() {
   const getSelectedTimeframeInfo = useCallback(() => {
     return TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
   }, [selectedTimeframe]);
-
-  // Timer update for Active Bets
-  const [, setTimerTick] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setTimerTick((tick) => tick + 1);
@@ -423,7 +454,6 @@ function App() {
                   <footer className="footer">
                     <div className="footer-content">
                       <div className="footer-links">
-                        <span>Powered by CoinGecko</span>
                         <span>•</span>
                         <span>Binary Options Trading</span>
                       </div>

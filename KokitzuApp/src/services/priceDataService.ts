@@ -172,14 +172,7 @@ class PriceDataService {
 
     const serviceKey = timeframeMap[timeframe] || timeframe;
     const config = this.getTimeframeConfig(serviceKey);
-    console.log(
-      "🔍 Timeframe mapping:",
-      timeframe,
-      "->",
-      serviceKey,
-      "->",
-      config.label
-    );
+
     return config.label;
   }
 

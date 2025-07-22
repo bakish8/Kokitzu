@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "configure-assets": "node configure-assets.js",
+    "execute-expired": "node execute-expired-bets.js"
   },
   "dependencies": {
     "apollo-server-express": "^3.12.1",

@@ -282,14 +282,6 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   }, [isWalletConnected]);
 
   // Debug: Log connection state before rendering
-  console.log("WalletConnectButton render:", {
-    isWalletConnected,
-    connectedAddress,
-    wcConnected,
-    wcAddress,
-    isConnected,
-    walletAddress,
-  });
 
   // Only show connected UI if app wallet context is connected
   if (isConnected && walletAddress) {

@@ -65,8 +65,8 @@ const BinaryOptionsScreen: React.FC = () => {
     updateBetAmountToMaxSafe,
   } = useTrading();
 
-  // Get wallet balance for verification
-  const { balance, isConnected, provider } = useWallet();
+  // Get wallet balance and address for verification
+  const { balance, isConnected, provider, walletAddress } = useWallet();
   const { currentNetwork, networkConfig } = useNetwork();
 
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
@@ -456,11 +456,11 @@ const BinaryOptionsScreen: React.FC = () => {
   };
 
   const handlePlaceBet = async () => {
-    // Check if wallet is connected (same logic as header)
-    if (!isWalletConnected) {
+    // Check if wallet is connected and address is available for blockchain betting
+    if (!isWalletConnected || !walletAddress) {
       Alert.alert(
         "Wallet Not Connected",
-        "Please connect your wallet to place bets"
+        "Please connect your wallet to place blockchain bets. Address is required for smart contract interaction."
       );
       return;
     }
@@ -504,32 +504,87 @@ const BinaryOptionsScreen: React.FC = () => {
     }
 
     try {
-      await placeBet({
+      console.log("🔗 KokitzuApp: Placing BLOCKCHAIN bet...");
+      console.log(
+        `   └─ Wallet: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(
+          -4
+        )}`
+      );
+      console.log(`   └─ Asset: ${selectedCrypto} ${betType}`);
+      console.log(
+        `   └─ Amount: ${usdToEth(betAmountValue, ethPrice).toFixed(6)} ETH`
+      );
+      console.log(`   └─ Timeframe: ${selectedTimeframe}`);
+
+      const betResult = await placeBet({
         variables: {
           input: {
             cryptoSymbol: selectedCrypto,
             betType: betType,
-            amount: betAmountValue,
+            amount: usdToEth(betAmountValue, ethPrice), // Convert USD to ETH for blockchain
             timeframe: selectedTimeframe,
+            useBlockchain: true, // Always use blockchain
+            walletAddress: walletAddress, // Send connected wallet address
           },
         },
       });
-      Alert.alert("Success", "Bet placed successfully!");
+
+      console.log(
+        "✅ KokitzuApp: Blockchain bet placed successfully!",
+        betResult.data
+      );
+
+      // Show detailed success alert
+      const bet = betResult.data?.placeBet;
+      const successMessage = bet?.blockchain
+        ? `Blockchain bet placed!\nTransaction: ${bet.blockchain.transactionHash}\nOption ID: ${bet.blockchain.optionId}`
+        : "Bet placed successfully!";
+
+      Alert.alert("🔗 Blockchain Success", successMessage);
+
       // Reset to max safe bet instead of hardcoded 100
       updateBetAmountToMaxSafe(currentBalance);
     } catch (error) {
-      Alert.alert("Error", "Failed to place bet. Please try again.");
+      console.error("❌ KokitzuApp: Blockchain bet failed:", error);
+
+      // Enhanced error handling
+      let errorMessage = "Failed to place blockchain bet. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes("insufficient funds")) {
+          errorMessage =
+            "Insufficient funds for gas fees. Please add more ETH to your wallet.";
+        } else if (error.message.includes("user rejected")) {
+          errorMessage = "Transaction was rejected. Please try again.";
+        } else if (error.message.includes("network")) {
+          errorMessage = "Network error. Please check your connection.";
+        }
+      }
+
+      Alert.alert("❌ Blockchain Error", errorMessage);
     }
   };
 
   const getTimeLeft = (expiresAt: string) => {
     // Use timerTick to force recalculation every second
-    const now = new Date();
+    const now = new Date(Date.now() + timerTick * 0); // Reference timerTick to ensure re-render
     const expiry = new Date(expiresAt);
     const diff = expiry.getTime() - now.getTime();
+
     if (diff <= 0) return "Expired";
-    const min = Math.floor(diff / 60000);
-    const sec = Math.floor((diff % 60000) / 1000);
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const min = Math.floor(totalSeconds / 60);
+    const sec = totalSeconds % 60;
+
+    // For timeframes longer than 1 hour, show hours too
+    if (min >= 60) {
+      const hours = Math.floor(min / 60);
+      const remainingMin = min % 60;
+      return `${hours}:${remainingMin.toString().padStart(2, "0")}:${sec
+        .toString()
+        .padStart(2, "0")}`;
+    }
+
     return `${min}:${sec.toString().padStart(2, "0")}`;
   };
 
@@ -800,9 +855,31 @@ const BinaryOptionsScreen: React.FC = () => {
             </View>
           </Animated.View>
 
+          {/* Blockchain Status */}
+          {isWalletConnected && (
+            <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
+              <View style={styles.blockchainStatusContainer}>
+                <View style={styles.blockchainBadge}>
+                  <MaterialCommunityIcons
+                    name="ethereum"
+                    size={16}
+                    color={COLORS.success}
+                  />
+                  <Text style={styles.blockchainBadgeText}>
+                    Blockchain Mode
+                  </Text>
+                </View>
+                <Text style={styles.blockchainInfoText}>
+                  Bets placed on smart contract • Wallet:{" "}
+                  {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                </Text>
+              </View>
+            </Animated.View>
+          )}
+
           {/* Bet Amount */}
           <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-            <Text style={styles.sectionTitle}>Bet Amount</Text>
+            <Text style={styles.sectionTitle}>Bet Amount (ETH Blockchain)</Text>
 
             <View style={styles.betInputContainer}>
               <View
@@ -1087,46 +1164,74 @@ const BinaryOptionsScreen: React.FC = () => {
                 ]}
               >
                 {!wcConnected && !isConnected
-                  ? "Connect Wallet to Bet"
+                  ? "Connect Wallet for Blockchain Betting"
                   : shouldShowLoading
                   ? "Loading Balance..."
                   : hasInsufficientBalance
                   ? "Insufficient Balance"
-                  : "Place Bet"}
+                  : "🔗 Place Blockchain Bet"}
               </Text>
             </TouchableOpacity>
           </Animated.View>
 
           {/* Smart Contract Info */}
-          {/* <SmartContractInfo /> */}
 
           {/* Active Bets */}
           <Animated.View style={[styles.section, activeBetsAnimatedStyle]}>
             <Text style={styles.sectionTitle}>Active Bets</Text>
-            {activeBetsData?.activeBets?.map((bet: Bet) => (
-              <View key={bet.id} style={styles.activeBetCard}>
-                <View style={styles.betHeader}>
-                  <Text style={styles.betSymbol}>{bet.cryptoSymbol}</Text>
-                  <Text
-                    style={[
-                      styles.betType,
-                      bet.betType === "UP" ? styles.upText : styles.downText,
-                    ]}
-                  >
-                    {bet.betType}
-                  </Text>
+            {activeBetsData?.activeBets?.map((bet: Bet) => {
+              const timeLeft = getTimeLeft(bet.expiresAt);
+              const betAmountUsd = ethToUsd(bet.amount, ethPrice);
+
+              return (
+                <View key={bet.id} style={styles.activeBetCard}>
+                  <View style={styles.betHeader}>
+                    <Text style={styles.betSymbol}>{bet.cryptoSymbol}</Text>
+                    <Text
+                      style={[
+                        styles.betType,
+                        bet.betType === "UP" ? styles.upText : styles.downText,
+                      ]}
+                    >
+                      {bet.betType}
+                    </Text>
+                  </View>
+                  <View style={styles.betDetails}>
+                    <View style={styles.betAmountContainer}>
+                      <Text style={styles.betAmount}>
+                        {formatUsd(betAmountUsd)}
+                      </Text>
+                      <Text style={styles.betAmountEth}>
+                        Ξ {bet.amount.toFixed(4)} ETH
+                      </Text>
+                    </View>
+                    <Text style={styles.betTimeframe}>
+                      {
+                        TIMEFRAMES.find((tf) => tf.value === bet.timeframe)
+                          ?.label
+                      }
+                    </Text>
+                    <View style={styles.countdownContainer}>
+                      <MaterialCommunityIcons
+                        name="timer-outline"
+                        size={16}
+                        color={
+                          timeLeft === "Expired" ? COLORS.error : COLORS.accent
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.betTimeLeft,
+                          timeLeft === "Expired" && styles.expiredText,
+                        ]}
+                      >
+                        {timeLeft}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.betDetails}>
-                  <Text style={styles.betAmount}>${bet.amount}</Text>
-                  <Text style={styles.betTimeframe}>
-                    {TIMEFRAMES.find((tf) => tf.value === bet.timeframe)?.label}
-                  </Text>
-                  <Text style={styles.betTimeLeft}>
-                    {getTimeLeft(bet.expiresAt)}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
             {(!activeBetsData?.activeBets ||
               activeBetsData.activeBets.length === 0) && (
               <Text style={styles.noBetsText}>No active bets</Text>
@@ -1368,21 +1473,38 @@ const styles = StyleSheet.create({
   betDetails: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    marginTop: 4,
+  },
+  betAmountContainer: {
+    alignItems: "flex-start",
   },
   betAmount: {
     fontSize: 16,
     fontFamily: FONTS.SEMI_BOLD,
     color: COLORS.textPrimary,
   },
+  betAmountEth: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
   betTimeframe: {
     fontSize: 14,
     color: COLORS.textMuted,
+  },
+  countdownContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   betTimeLeft: {
     fontSize: 14,
     color: COLORS.accent,
     fontFamily: FONTS.SEMI_BOLD,
+  },
+  expiredText: {
+    color: COLORS.error,
   },
   noBetsText: {
     textAlign: "center",
@@ -1642,6 +1764,33 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     zIndex: 10,
     pointerEvents: "none",
+  },
+  // Blockchain status styles
+  blockchainStatusContainer: {
+    alignItems: "center",
+    gap: 8,
+  },
+  blockchainBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.3)",
+    gap: 6,
+  },
+  blockchainBadgeText: {
+    color: COLORS.success,
+    fontSize: 14,
+    fontFamily: FONTS.SEMI_BOLD,
+  },
+  blockchainInfoText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    textAlign: "center",
+    fontFamily: FONTS.REGULAR,
   },
 });
 

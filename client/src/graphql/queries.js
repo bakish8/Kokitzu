@@ -86,6 +86,16 @@ export const PLACE_BET = gql`
       status
       createdAt
       expiresAt
+      isBlockchainBet
+      optionId
+      transactionHash
+      walletAddress
+      blockchain {
+        optionId
+        transactionHash
+        blockNumber
+        gasUsed
+      }
     }
   }
 `;

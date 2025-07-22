@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test Blockchain Betting</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 20px;
+        border: 1px solid #ddd;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        cursor: pointer;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+      .info {
+        color: blue;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔗 Blockchain Betting Test Page</h1>
+
+    <div class="test-section">
+      <h2>Test Configuration</h2>
+      <p><strong>GraphQL Endpoint:</strong> http://localhost:4000/graphql</p>
+      <p>
+        <strong>Test Wallet:</strong> 0x742d35Cc6634C0532925a3b8D72Dc1E9C8b4c4C6
+      </p>
+      <p><strong>Network:</strong> Sepolia Testnet</p>
+    </div>
+
+    <div class="test-section">
+      <h2>📊 Test Contract Stats</h2>
+      <button onclick="testContractStats()">Get Contract Stats</button>
+      <div id="contractStatsResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>💾 Test Legacy Bet</h2>
+      <button onclick="testLegacyBet()">Place Legacy Bet</button>
+      <div id="legacyBetResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔗 Test Blockchain Bet</h2>
+      <button onclick="testBlockchainBet()">Place Blockchain Bet</button>
+      <div id="blockchainBetResult"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>📋 Server Logs</h2>
+      <p class="info">Check your server console for detailed logs!</p>
+      <textarea
+        id="logs"
+        placeholder="Server logs will appear here (copy from terminal)"
+      ></textarea>
+    </div>
+
+    <script>
+      const GRAPHQL_URL = "http://localhost:4000/graphql";
+
+      async function graphqlRequest(query, variables = {}) {
+        const response = await fetch(GRAPHQL_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query,
+            variables,
+          }),
+        });
+        return response.json();
+      }
+
+      async function testContractStats() {
+        console.log("🔍 Testing contract stats...");
+        const result = document.getElementById("contractStatsResult");
+        result.innerHTML = '<p class="info">Loading...</p>';
+
+        try {
+          const response = await graphqlRequest(`
+                    query {
+                        contractStats {
+                            totalOptions
+                            contractBalance
+                        }
+                    }
+                `);
+
+          if (response.errors) {
+            result.innerHTML = `<p class="error">Error: ${response.errors[0].message}</p>`;
+          } else {
+            result.innerHTML = `
+                        <p class="success">✅ Contract Stats Retrieved!</p>
+                        <p><strong>Total Options:</strong> ${response.data.contractStats.totalOptions}</p>
+                        <p><strong>Contract Balance:</strong> ${response.data.contractStats.contractBalance} ETH</p>
+                    `;
+          }
+        } catch (error) {
+          result.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+        }
+      }
+
+      async function testLegacyBet() {
+        console.log("💾 Testing legacy bet...");
+        const result = document.getElementById("legacyBetResult");
+        result.innerHTML = '<p class="info">Placing legacy bet...</p>';
+
+        try {
+          const response = await graphqlRequest(
+            `
+                    mutation PlaceBet($input: PlaceBetInput!) {
+                        placeBet(input: $input) {
+                            id
+                            cryptoSymbol
+                            betType
+                            amount
+                            isBlockchainBet
+                            transactionHash
+                        }
+                    }
+                `,
+            {
+              input: {
+                cryptoSymbol: "BTC",
+                betType: "UP",
+                amount: 50,
+                timeframe: "ONE_MINUTE",
+                useBlockchain: false,
+              },
+            }
+          );
+
+          if (response.errors) {
+            result.innerHTML = `<p class="error">Error: ${response.errors[0].message}</p>`;
+          } else {
+            const bet = response.data.placeBet;
+            result.innerHTML = `
+                        <p class="success">✅ Legacy Bet Placed!</p>
+                        <p><strong>Bet ID:</strong> ${bet.id}</p>
+                        <p><strong>Asset:</strong> ${bet.cryptoSymbol} ${
+              bet.betType
+            }</p>
+                        <p><strong>Amount:</strong> $${bet.amount}</p>
+                        <p><strong>Blockchain:</strong> ${
+                          bet.isBlockchainBet ? "Yes" : "No"
+                        }</p>
+                    `;
+          }
+        } catch (error) {
+          result.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+        }
+      }
+
+      async function testBlockchainBet() {
+        console.log("🔗 Testing blockchain bet...");
+        const result = document.getElementById("blockchainBetResult");
+        result.innerHTML = '<p class="info">Placing blockchain bet...</p>';
+
+        try {
+          const response = await graphqlRequest(
+            `
+                    mutation PlaceBet($input: PlaceBetInput!) {
+                        placeBet(input: $input) {
+                            id
+                            cryptoSymbol
+                            betType
+                            amount
+                            isBlockchainBet
+                            optionId
+                            transactionHash
+                            walletAddress
+                            blockchain {
+                                optionId
+                                transactionHash
+                                blockNumber
+                                gasUsed
+                            }
+                        }
+                    }
+                `,
+            {
+              input: {
+                cryptoSymbol: "BTC",
+                betType: "UP",
+                amount: 0.001, // ETH amount for blockchain
+                timeframe: "FIVE_MINUTES",
+                useBlockchain: true,
+                walletAddress: "0x742d35Cc6634C0532925a3b8D72Dc1E9C8b4c4C6",
+              },
+            }
+          );
+
+          if (response.errors) {
+            result.innerHTML = `<p class="error">❌ Error: ${response.errors[0].message}</p>`;
+            console.error("Blockchain bet error:", response.errors);
+          } else {
+            const bet = response.data.placeBet;
+            result.innerHTML = `
+                        <p class="success">✅ Blockchain Bet Placed!</p>
+                        <p><strong>Bet ID:</strong> ${bet.id}</p>
+                        <p><strong>Asset:</strong> ${bet.cryptoSymbol} ${
+              bet.betType
+            }</p>
+                        <p><strong>Amount:</strong> ${bet.amount} ETH</p>
+                        <p><strong>Blockchain:</strong> ${
+                          bet.isBlockchainBet ? "Yes ✅" : "No ❌"
+                        }</p>
+                        <p><strong>Option ID:</strong> ${
+                          bet.optionId || "N/A"
+                        }</p>
+                        <p><strong>Transaction:</strong> ${
+                          bet.transactionHash || "N/A"
+                        }</p>
+                        <p><strong>Wallet:</strong> ${
+                          bet.walletAddress || "N/A"
+                        }</p>
+                        ${
+                          bet.blockchain
+                            ? `
+                            <div style="background: #f0f8ff; padding: 10px; margin: 10px 0;">
+                                <h4>Blockchain Details:</h4>
+                                <p><strong>Option ID:</strong> ${bet.blockchain.optionId}</p>
+                                <p><strong>Transaction Hash:</strong> ${bet.blockchain.transactionHash}</p>
+                                <p><strong>Block Number:</strong> ${bet.blockchain.blockNumber}</p>
+                                <p><strong>Gas Used:</strong> ${bet.blockchain.gasUsed}</p>
+                            </div>
+                        `
+                            : ""
+                        }
+                    `;
+          }
+        } catch (error) {
+          result.innerHTML = `<p class="error">❌ Network Error: ${error.message}</p>`;
+          console.error("Network error:", error);
+        }
+      }
+
+      // Show initial instructions
+      console.log("🚀 Blockchain Betting Test Page Loaded!");
+      console.log("📋 Instructions:");
+      console.log("1. Make sure your server is running (npm run dev)");
+      console.log("2. Ensure you have proper .env configuration");
+      console.log("3. Check server console for detailed logs");
+      console.log("4. Test contract stats first, then try betting");
+    </script>
+  </body>
+</html>

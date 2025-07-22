@@ -24,12 +24,50 @@ export const typeDefs = gql`
     timeframe: Timeframe!
     entryPrice: Float!
     exitPrice: Float
-    targetPrice: Float!
+    targetPrice: Float
     status: BetStatus!
     createdAt: String!
     expiresAt: String!
     result: BetResult
     payout: Float
+    isBlockchainBet: Boolean!
+    optionId: String
+    transactionHash: String
+    blockNumber: Int
+    walletAddress: String
+    blockchain: BlockchainInfo
+  }
+
+  type BlockchainInfo {
+    optionId: String!
+    transactionHash: String!
+    blockNumber: Int!
+    gasUsed: String
+  }
+
+  type BlockchainOption {
+    id: String!
+    trader: String!
+    asset: String!
+    amount: String!
+    expiry: String!
+    isCall: Boolean!
+    executed: Boolean!
+    entryPrice: String!
+    exitPrice: String!
+    won: Boolean!
+  }
+
+  type ContractStats {
+    totalOptions: String!
+    contractBalance: String!
+  }
+
+  type ExecutionResult {
+    success: Boolean!
+    transactionHash: String!
+    blockNumber: Int!
+    gasUsed: String!
   }
 
   enum BetType {
@@ -68,6 +106,7 @@ export const typeDefs = gql`
     wins: Int!
     losses: Int!
     winRate: Float!
+    walletAddress: String
   }
 
   type BetStats {
@@ -90,6 +129,8 @@ export const typeDefs = gql`
     betType: BetType!
     amount: Float!
     timeframe: Timeframe!
+    walletAddress: String
+    useBlockchain: Boolean = false
   }
 
   type Query {
@@ -101,17 +142,29 @@ export const typeDefs = gql`
     activeBets(userId: String!): [Bet!]!
     betHistory(userId: String!): [Bet!]!
     leaderboard: [User!]!
+
+    # Blockchain-specific queries
+    contractStats: ContractStats!
+    blockchainBets(walletAddress: String!): [BlockchainOption!]!
   }
 
   type Mutation {
     placeBet(input: PlaceBetInput!): Bet!
+    executeBlockchainOption(optionId: String!): ExecutionResult!
+    configureAsset(
+      symbol: String!
+      priceFeed: String!
+      minAmount: Float!
+      maxAmount: Float!
+      feePercentage: Int!
+    ): Boolean!
     cancelBet(betId: String!): Boolean!
     updateBetResult(
       betId: String!
       result: BetResult!
       finalPrice: Float!
     ): Bet!
-    register(username: String!, password: String!): User!
+    register(username: String!, password: String!, walletAddress: String): User!
     login(username: String!, password: String!): AuthPayload!
   }
 
