@@ -60,6 +60,7 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
     event OptionExecuted(
         uint256 indexed optionId,
         bool isWon,
+        bool isPush,
         uint256 payout,
         uint256 finalPrice
     );
@@ -156,10 +157,19 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         require(finalPrice > 0, "Invalid price feed");
 
         bool isWon = _calculateWin(option.strikePrice, finalPrice, option.isCall);
+        bool isPush = (option.strikePrice == finalPrice); // Identical prices = tie
         uint256 payout = 0;
 
-        if (isWon) {
-            // Calculate payout: 80% of the bet amount (20% house edge)
+        if (isPush) {
+            // PUSH/TIE: Refund the original bet amount
+            payout = option.amount;
+            require(address(this).balance >= payout, "Insufficient contract balance");
+            
+            // Refund original bet to trader
+            (bool success, ) = option.trader.call{value: payout}("");
+            require(success, "Refund failed");
+        } else if (isWon) {
+            // WIN: Calculate payout: 80% of the bet amount (20% house edge)
             payout = (option.amount * 80) / 100;
             require(address(this).balance >= payout, "Insufficient contract balance");
             
@@ -167,12 +177,13 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
             (bool success, ) = option.trader.call{value: payout}("");
             require(success, "Transfer failed");
         }
+        // LOSS: No payout, keep the money
 
         option.isExecuted = true;
         option.isWon = isWon;
         option.payout = payout;
 
-        emit OptionExecuted(optionId, isWon, payout, finalPrice);
+        emit OptionExecuted(optionId, isWon, isPush, payout, finalPrice);
     }
 
     /**
