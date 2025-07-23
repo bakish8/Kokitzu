@@ -10,6 +10,9 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
+import { getSupportedAssets } from "../services/priceDataService";
+import { getCurrentNetworkName } from "../utils/networkUtils";
+import { useWallet } from "../contexts/WalletContext";
 
 interface NetworkSelectorProps {
   compact?: boolean;
@@ -21,6 +24,10 @@ const NetworkSelector: React.FC<NetworkSelectorProps> = ({
   const { currentNetwork, networkConfig, switchNetwork, isNetworkSwitching } =
     useNetwork();
   const [showModal, setShowModal] = useState(false);
+  const { provider } = useWallet();
+  const chainId = provider?.network?.chainId || 1;
+  const networkName = getCurrentNetworkName(chainId);
+  const supportedAssets = getSupportedAssets(networkName);
 
   const handleNetworkSelect = async (network: NetworkType) => {
     setShowModal(false);

@@ -40,7 +40,7 @@ const PortfolioScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [timerTick, setTimerTick] = useState(0);
 
-  // Get ETH price for USD conversion
+  // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
   const ethPrice = useEthPrice();
 
   // Animation values for entrance animations
@@ -145,8 +145,32 @@ const PortfolioScreen: React.FC = () => {
 
   const { data: userStats, refetch: refetchStats } = useQuery(GET_USER_STATS, {
     variables: { userId: "user-1" },
-    pollInterval: 10000,
+    pollInterval: 120000, // 2 minutes
   });
+
+  // Debug: Log portfolio USD conversions
+  useEffect(() => {
+    if (ethPrice > 0 && userStats?.userStats) {
+      const stats = userStats.userStats;
+      console.log("💰 PORTFOLIO USD CONVERSIONS:");
+      console.log(`   └─ Chainlink ETH Price: $${ethPrice.toLocaleString()}`);
+      console.log(
+        `   └─ Net Profit: $${stats.netProfit} = Ξ ${(
+          stats.netProfit / ethPrice
+        ).toFixed(4)} ETH`
+      );
+      console.log(
+        `   └─ Total Wagered: $${stats.totalWagered} = Ξ ${(
+          stats.totalWagered / ethPrice
+        ).toFixed(4)} ETH`
+      );
+      console.log(
+        `   └─ Total Won: $${stats.totalWon} = Ξ ${(
+          stats.totalWon / ethPrice
+        ).toFixed(4)} ETH`
+      );
+    }
+  }, [ethPrice, userStats]);
 
   const {
     data: betHistory,
@@ -154,7 +178,7 @@ const PortfolioScreen: React.FC = () => {
     refetch: refetchHistory,
   } = useQuery(GET_BET_HISTORY, {
     variables: { userId: "user-1" },
-    pollInterval: 10000,
+    pollInterval: 120000, // 2 minutes
   });
 
   const handleRefresh = async () => {
@@ -254,7 +278,7 @@ const PortfolioScreen: React.FC = () => {
               </Text>
               <Text style={styles.statLabel}>Net Profit</Text>
               <Text style={styles.statSubtext}>
-                (Ξ {ethToUsd(stats.netProfit, ethPrice).toFixed(4)})
+                (Ξ {(stats.netProfit / ethPrice).toFixed(4)})
               </Text>
             </View>
             <View style={styles.statCard}>
@@ -298,13 +322,13 @@ const PortfolioScreen: React.FC = () => {
               <View style={styles.statRow}>
                 <Text style={styles.statRowLabel}>Total Wagered (ETH)</Text>
                 <Text style={styles.statRowValue}>
-                  Ξ {ethToUsd(stats.totalWagered, ethPrice).toFixed(4)}
+                  Ξ {(stats.totalWagered / ethPrice).toFixed(4)}
                 </Text>
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statRowLabel}>Total Won (ETH)</Text>
                 <Text style={styles.statRowValue}>
-                  Ξ {ethToUsd(stats.totalWon, ethPrice).toFixed(4)}
+                  Ξ {(stats.totalWon / ethPrice).toFixed(4)}
                 </Text>
               </View>
               <View style={styles.statRow}>
@@ -408,6 +432,76 @@ const PortfolioScreen: React.FC = () => {
                             {formatCurrency(bet.payout)}
                           </Text>
                         </View>
+                      )}
+                      {/* 🔥 NEW: Blockchain bet information */}
+                      {bet.isBlockchainBet && (
+                        <>
+                          <View style={styles.blockchainBadgeContainer}>
+                            <View style={styles.blockchainBadge}>
+                              <MaterialCommunityIcons
+                                name="link-variant"
+                                size={14}
+                                color={COLORS.success}
+                              />
+                              <Text style={styles.blockchainBadgeText}>
+                                BLOCKCHAIN BET
+                              </Text>
+                            </View>
+                          </View>
+                          {bet.optionId && (
+                            <View style={styles.betDetailRow}>
+                              <Text style={styles.betDetailLabel}>
+                                Option ID:
+                              </Text>
+                              <Text style={styles.betDetailValue}>
+                                #{bet.optionId}
+                              </Text>
+                            </View>
+                          )}
+                          {bet.transactionHash && (
+                            <TouchableOpacity
+                              style={styles.betDetailRow}
+                              onPress={() => {
+                                // TODO: Open Etherscan link
+                                console.log(
+                                  `https://sepolia.etherscan.io/tx/${bet.transactionHash}`
+                                );
+                              }}
+                            >
+                              <Text style={styles.betDetailLabel}>
+                                Transaction:
+                              </Text>
+                              <Text
+                                style={[styles.betDetailValue, styles.linkText]}
+                              >
+                                {bet.transactionHash.substring(0, 10)}...
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                          <View style={styles.betDetailRow}>
+                            <Text style={styles.betDetailLabel}>Status:</Text>
+                            <Text
+                              style={[
+                                styles.betDetailValue,
+                                bet.status === "WON"
+                                  ? styles.winText
+                                  : bet.status === "LOST"
+                                  ? styles.lossText
+                                  : bet.status === "ACTIVE"
+                                  ? styles.pendingText
+                                  : styles.betDetailValue,
+                              ]}
+                            >
+                              {bet.status === "ACTIVE"
+                                ? "⏳ PENDING"
+                                : bet.status === "WON"
+                                ? "🎉 WON"
+                                : bet.status === "LOST"
+                                ? "❌ LOST"
+                                : bet.status || "UNKNOWN"}
+                            </Text>
+                          </View>
+                        </>
                       )}
                     </View>
                   </View>
@@ -644,6 +738,33 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 8,
     textAlign: "center",
+  },
+  // 🔥 NEW: Blockchain bet styles
+  blockchainBadgeContainer: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  blockchainBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.success + "20",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  blockchainBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.BOLD,
+    color: COLORS.success,
+    marginLeft: 4,
+  },
+  linkText: {
+    color: COLORS.accent,
+    textDecorationLine: "underline",
+  },
+  pendingText: {
+    color: COLORS.warning || "#FFA500",
   },
 });
 

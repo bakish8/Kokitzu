@@ -166,14 +166,23 @@ function App() {
 
   const handlePlaceBet = useCallback(
     async (useBlockchain = false, walletAddress = null) => {
+      // Blockchain bets are now handled directly by the BetConfirmationModal
+      // This function should only be used for legacy (in-memory) bets
+      if (useBlockchain) {
+        console.warn(
+          "⚠️ handlePlaceBet called for blockchain bet - this should be handled by the modal directly"
+        );
+        return;
+      }
+
       try {
-        console.log("🔗 Placing bet with parameters:", {
+        console.log("💾 Placing legacy bet with parameters:", {
           cryptoSymbol: selectedCrypto,
           betType: betType,
           amount: parseFloat(betAmount),
           timeframe: selectedTimeframe,
-          useBlockchain,
-          walletAddress,
+          useBlockchain: false, // Force to false for legacy bets
+          walletAddress: null, // No wallet for legacy bets
         });
 
         await placeBet({
@@ -183,8 +192,8 @@ function App() {
               betType: betType,
               amount: parseFloat(betAmount),
               timeframe: selectedTimeframe,
-              useBlockchain: useBlockchain,
-              walletAddress: walletAddress,
+              useBlockchain: false,
+              walletAddress: null,
             },
           },
         });

@@ -31,11 +31,23 @@ export interface Bet {
   timeframe: string;
   entryPrice: number;
   exitPrice?: number;
-  status: "ACTIVE" | "COMPLETED" | "CANCELLED";
+  status: "ACTIVE" | "WON" | "LOST" | "COMPLETED" | "CANCELLED";
   createdAt: string;
   expiresAt: string;
   result?: "WIN" | "LOSS";
   payout?: number;
+  // Blockchain-specific fields
+  isBlockchainBet?: boolean;
+  optionId?: string;
+  transactionHash?: string;
+  blockNumber?: number;
+  walletAddress?: string;
+  blockchain?: {
+    optionId: string;
+    transactionHash: string;
+    blockNumber: number;
+    gasUsed: string;
+  };
 }
 
 export interface User {

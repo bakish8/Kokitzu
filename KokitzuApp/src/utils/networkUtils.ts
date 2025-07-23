@@ -211,3 +211,16 @@ export const getPotentialIPs = async (): Promise<string[]> => {
 
   return potentialIPs;
 };
+
+export function getCurrentNetworkName(chainId: number | string): string {
+  const id = typeof chainId === "string" ? parseInt(chainId, 10) : chainId;
+  switch (id) {
+    case 1:
+      return "mainnet";
+    case 11155111:
+      return "sepolia";
+    // Add more networks as needed
+    default:
+      return "mainnet";
+  }
+}

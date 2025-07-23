@@ -119,7 +119,7 @@ async function verifyTransaction() {
     // Check if the transaction was to the correct contract
     const expectedContract =
       process.env.CONTRACT_ADDRESS ||
-      "0x192e65C1EaCfbE5d7A2f3C2CD287513713B283C6";
+      "0x1a0C27282be267d9554eA8c6cC0222a1B7B4B75d";
     if (tx.to.toLowerCase() !== expectedContract.toLowerCase()) {
       console.log(
         `\n⚠️ WARNING: Transaction was sent to ${tx.to} but expected ${expectedContract}`

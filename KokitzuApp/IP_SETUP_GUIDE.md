@@ -13,7 +13,7 @@ The app is configured to use the IP address: `192.168.10.116`
 Run the update script from the project root:
 
 ```bash
-node scripts/update-ip.js
+node scripts/update0xDa542310B4F1547998096a9AeB274773f41CB963.js
 ```
 
 This script will:
@@ -80,7 +80,7 @@ If the update script can't detect your IP:
 ## File Structure
 
 - `src/config/network.ts` - Main network configuration
-- `scripts/update-ip.js` - IP update utility
+- `scripts/update0xDa542310B4F1547998096a9AeB274773f41CB963.js` - IP update utility
 - `src/graphql/client.ts` - Apollo client configuration
 
 ## Development vs Production

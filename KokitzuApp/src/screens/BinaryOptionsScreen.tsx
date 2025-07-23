@@ -20,13 +20,16 @@ import Animated, {
   interpolateColor,
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   GET_COINS,
   GET_CRYPTO_PRICES,
   GET_ACTIVE_BETS,
+  GET_BET_HISTORY,
   PLACE_BET,
+  PREPARE_BLOCKCHAIN_TRANSACTION,
+  RECORD_BLOCKCHAIN_BET,
 } from "../graphql/queries";
 import { TIMEFRAMES } from "../constants/timeframes";
 import { Coin, CryptoPrice, Bet } from "../types";
@@ -39,6 +42,7 @@ import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 
 import UnifiedHeader from "../components/UnifiedHeader";
 import SmartContractInfo from "../components/SmartContractInfo";
+import SimpleCryptoModal from "../components/SimpleCryptoModal";
 import {
   useEthPrice,
   formatEthWithUsd,
@@ -50,6 +54,10 @@ import PriceChart from "../components/PriceChart";
 import priceDataService from "../services/priceDataService";
 import { FONTS } from "../constants/fonts";
 import COLORS from "../constants/colors";
+import { getSupportedAssets } from "../services/priceDataService";
+import { getCurrentNetworkName } from "../utils/networkUtils";
+import { apiService } from "../services/apiService";
+import { getApiUrl } from "../config/network";
 
 const BinaryOptionsScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
@@ -71,8 +79,27 @@ const BinaryOptionsScreen: React.FC = () => {
 
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
+
+  // 🔥 NEW: Real-time bet tracking state
+  const [activeBets, setActiveBets] = useState<
+    Array<{
+      betId: string;
+      optionId: string;
+      transactionHash: string;
+      cryptoSymbol: string;
+      betType: string;
+      amount: number;
+      expiresAt: string;
+      countdownInterval?: NodeJS.Timeout;
+      statusCheckInterval?: NodeJS.Timeout;
+    }>
+  >([]);
+
   // USD-only betting - no currency toggle needed
   const inputInUsd = true;
+
+  // 🚀 NEW: Crypto selector modal state
+  const [isCryptoSelectorVisible, setIsCryptoSelectorVisible] = useState(false);
 
   // Use the WalletConnect modal hook (same as header)
   const {
@@ -84,15 +111,26 @@ const BinaryOptionsScreen: React.FC = () => {
   // Debug connection status (same logic as header)
   const isWalletConnected = wcConnected || isConnected;
 
-  // Get ETH price for USD conversion
+  // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
   const ethPrice = useEthPrice();
 
-  console.log("🔗 BinaryOptionsScreen: Connection status:", {
-    wcConnected,
-    isConnected,
-    isWalletConnected,
-    currentNetwork,
-  });
+  // Debug: Log the USD conversion values
+  useEffect(() => {
+    if (ethPrice > 0 && betAmount && parseFloat(betAmount) > 0) {
+      const betAmountValue = parseFloat(betAmount);
+      const ethEquivalent = usdToEth(betAmountValue, ethPrice);
+      console.log("💰 USD CONVERSION DEBUG:");
+      console.log(`   └─ Chainlink ETH Price: $${ethPrice.toLocaleString()}`);
+      console.log(`   └─ Bet Amount: $${betAmountValue}`);
+      console.log(`   └─ ETH Equivalent: Ξ ${ethEquivalent.toFixed(6)} ETH`);
+      console.log(
+        `   └─ Back to USD: $${ethToUsd(ethEquivalent, ethPrice).toFixed(2)}`
+      );
+    }
+  }, [ethPrice, betAmount]);
+
+  // Apollo client for manual queries
+  const client = useApolloClient();
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -297,7 +335,7 @@ const BinaryOptionsScreen: React.FC = () => {
   const { data: cryptoData } = useQuery(GET_CRYPTO_PRICES);
   const { data: activeBetsData } = useQuery(GET_ACTIVE_BETS, {
     variables: { userId: "user-1" },
-    pollInterval: 5000,
+    pollInterval: 120000, // 2 minutes
   });
 
   const [placeBet] = useMutation(PLACE_BET, {
@@ -305,6 +343,8 @@ const BinaryOptionsScreen: React.FC = () => {
       { query: GET_ACTIVE_BETS, variables: { userId: "user-1" } },
     ],
   });
+
+  // 🔥 REMOVED: GraphQL mutations replaced with REST API calls
 
   const currentCrypto = useMemo(() => {
     return cryptoData?.cryptoPrices?.find(
@@ -449,13 +489,225 @@ const BinaryOptionsScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Get countdown time for active bets
+  const getActiveBetCountdown = (expiresAt: string) => {
+    // Reference timerTick to ensure re-render every second
+    const now = new Date(Date.now() + timerTick * 0);
+
+    // 🔥 FIX: Handle both ISO strings and Unix timestamps
+    let expiry: Date;
+    try {
+      // Check if it's a Unix timestamp (number as string)
+      const timestamp = parseInt(expiresAt, 10);
+
+      if (!isNaN(timestamp) && timestamp.toString() === expiresAt) {
+        // It's a Unix timestamp in milliseconds
+        console.log(`🕐 Parsing Unix timestamp: ${expiresAt}`);
+        expiry = new Date(timestamp);
+      } else {
+        // It's an ISO string
+        // console.log(`🕐 Parsing ISO string: ${expiresAt}`);
+        expiry = new Date(expiresAt);
+      }
+
+      // Check if date is valid
+      if (isNaN(expiry.getTime())) {
+        console.warn(`⚠️ Invalid expiry date: ${expiresAt}`);
+        return "⏰ INVALID";
+      }
+
+      // console.log(`✅ Successfully parsed expiry: ${expiry.toISOString()}`);
+    } catch (error) {
+      console.warn(`⚠️ Error parsing expiry date: ${expiresAt}`, error);
+      return "⏰ ERROR";
+    }
+
+    const timeLeft = expiry.getTime() - now.getTime();
+    console.log(
+      `⏰ Time left: ${timeLeft}ms (${Math.floor(timeLeft / 1000)}s)`
+    );
+
+    if (timeLeft <= 0) return "⏰ EXPIRED";
+
+    const totalSeconds = Math.floor(timeLeft / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    // Ensure no NaN values
+    if (isNaN(minutes) || isNaN(seconds)) {
+      console.warn(`⚠️ NaN in countdown calculation:`, {
+        timeLeft,
+        totalSeconds,
+        minutes,
+        seconds,
+        expiresAt,
+        now: now.toISOString(),
+        expiry: expiry.toISOString(),
+      });
+      return "⏰ ERROR";
+    }
+
+    return `⏰ ${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   // Function to set bet amount to max safe bet in USD
   const setBetAmountToMaxSafe = () => {
     const formattedMaxBet = maxSafeBetUsd.toFixed(2);
     setBetAmount(formattedMaxBet);
   };
 
-  const handlePlaceBet = async () => {
+  // 🔥 NEW: Real-time bet tracking functions
+  const startBetTracking = (bet: {
+    betId: string;
+    optionId: string;
+    transactionHash: string;
+    cryptoSymbol: string;
+    betType: string;
+    amount: number;
+    expiresAt: string;
+  }) => {
+    console.log("🎯 Starting real-time tracking for bet:", bet.betId);
+    console.log("📊 Bet tracking details:", {
+      betId: bet.betId,
+      optionId: bet.optionId,
+      transactionHash: bet.transactionHash,
+      cryptoSymbol: bet.cryptoSymbol,
+      betType: bet.betType,
+      amount: bet.amount,
+      expiresAt: bet.expiresAt,
+    });
+
+    // Create countdown timer
+    const countdownInterval = setInterval(() => {
+      const now = new Date();
+      const expiry = new Date(bet.expiresAt);
+      const timeLeft = expiry.getTime() - now.getTime();
+
+      if (timeLeft <= 0) {
+        console.log(`⏰ Bet ${bet.betId} has expired! Checking for results...`);
+        checkBetResults(bet.betId, bet.optionId);
+        clearInterval(countdownInterval);
+      } else {
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        console.log(
+          `⏰ Bet ${bet.betId} expires in ${minutes}:${seconds
+            .toString()
+            .padStart(2, "0")}`
+        );
+      }
+    }, 1000);
+
+    // Create status check interval (every 30 seconds)
+    const statusCheckInterval = setInterval(() => {
+      checkBetResults(bet.betId, bet.optionId);
+    }, 30000);
+
+    // Add to active bets tracking
+    console.log(`📝 Adding bet ${bet.betId} to activeBets array...`);
+    setActiveBets((prev) => {
+      const newActiveBets = [
+        ...prev,
+        {
+          ...bet,
+          countdownInterval,
+          statusCheckInterval,
+        },
+      ];
+
+      console.log(
+        `📊 Active bets array updated - now has ${newActiveBets.length} bets`
+      );
+      console.log(
+        `   └─ Bet IDs: ${newActiveBets.map((b) => b.betId).join(", ")}`
+      );
+
+      return newActiveBets;
+    });
+
+    // Schedule cleanup after expiry + 5 minutes (enough time for execution)
+    setTimeout(() => {
+      stopBetTracking(bet.betId);
+    }, new Date(bet.expiresAt).getTime() - Date.now() + 300000); // +5 minutes
+  };
+
+  const stopBetTracking = (betId: string) => {
+    console.log(`🛑 Stopping tracking for bet: ${betId}`);
+
+    setActiveBets((prev) => {
+      const bet = prev.find((b) => b.betId === betId);
+      if (bet) {
+        if (bet.countdownInterval) clearInterval(bet.countdownInterval);
+        if (bet.statusCheckInterval) clearInterval(bet.statusCheckInterval);
+      }
+      return prev.filter((b) => b.betId !== betId);
+    });
+  };
+
+  const checkBetResults = async (betId: string, optionId: string) => {
+    try {
+      console.log(
+        `🔍 Checking results for bet ${betId} (option ${optionId})...`
+      );
+
+      // Use REST API instead of GraphQL
+      const apiUrl = await getApiUrl();
+      const response = await fetch(`${apiUrl}/api/bets/${betId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      const bet = responseData.data;
+
+      if (bet) {
+        console.log(`🎯 Found bet ${betId}:`, {
+          status: bet.status,
+          result: bet.result,
+          entryPrice: bet.entryPrice,
+          exitPrice: bet.exitPrice,
+          payout: bet.payout,
+          optionId: bet.optionId,
+        });
+
+        if (bet.status !== "ACTIVE") {
+          console.log(`🎉 Bet ${betId} is complete! Status: ${bet.status}`);
+
+          // Show notification
+          Alert.alert(
+            bet.status === "WON"
+              ? "🎉 You Won!"
+              : bet.status === "LOST"
+              ? "😔 You Lost"
+              : "🔄 Bet Complete",
+            `${bet.cryptoSymbol} ${bet.betType} bet result:\n\n` +
+              `Status: ${bet.status}\n` +
+              `Entry: $${bet.entryPrice}\n` +
+              `Exit: $${bet.exitPrice || "N/A"}\n` +
+              `Payout: ${bet.payout || 0} ETH`,
+            [{ text: "View in Portfolio" }]
+          );
+
+          // Stop tracking this bet
+          stopBetTracking(betId);
+        } else {
+          console.log(`⏳ Bet ${betId} still active, continuing to track...`);
+        }
+      } else {
+        console.log(`❓ Bet ${betId} not found in server response`);
+      }
+    } catch (error) {
+      console.error(`❌ Error checking bet results for ${betId}:`, error);
+    }
+  };
+
+  const handlePlaceBetOLD_DISABLED = async () => {
     // Check if wallet is connected and address is available for blockchain betting
     if (!isWalletConnected || !walletAddress) {
       Alert.alert(
@@ -475,6 +727,15 @@ const BinaryOptionsScreen: React.FC = () => {
       return;
     }
 
+    // 🚨 Check if ETH price is loaded
+    if (!ethPrice || ethPrice <= 0) {
+      Alert.alert(
+        "Price Loading Error",
+        `ETH price not available: $${ethPrice}\n\nPlease wait for prices to load before betting.`
+      );
+      return;
+    }
+
     // Check if user has sufficient balance
     if (hasInsufficientBalance) {
       Alert.alert(
@@ -488,6 +749,21 @@ const BinaryOptionsScreen: React.FC = () => {
 
     // Add a small buffer for gas fees (0.001 ETH)
     const betAmountEth = usdToEth(betAmountValue, ethPrice);
+
+    // 🚨 SAFETY CHECK: Prevent ridiculous bet amounts
+    if (betAmountEth > 0.1) {
+      // More than 0.1 ETH (~$300) seems wrong
+      Alert.alert(
+        "⚠️ Conversion Error",
+        `Bet amount seems wrong: ${betAmountEth.toFixed(4)} ETH (~$${(
+          betAmountEth * ethPrice
+        ).toFixed(
+          0
+        )})\n\nExpected ~0.01 ETH for $40 bet.\n\nETH Price: $${ethPrice}\nInput: $${betAmountValue}\n\nPlease check the conversion.`
+      );
+      return;
+    }
+
     const gasBuffer = 0.001;
     if (betAmountEth + gasBuffer > currentBalance) {
       Alert.alert(
@@ -511,6 +787,20 @@ const BinaryOptionsScreen: React.FC = () => {
         )}`
       );
       console.log(`   └─ Asset: ${selectedCrypto} ${betType}`);
+
+      // 🚨 DEBUG: Show all values to identify conversion bug
+      console.log("🐛 DEBUG CURRENCY CONVERSION:");
+      console.log(`   └─ betAmount (input): ${betAmount}`);
+      console.log(`   └─ betAmountValue (parsed): ${betAmountValue}`);
+      console.log(`   └─ ethPrice: $${ethPrice}`);
+      console.log(
+        `   └─ Conversion: ${betAmountValue} USD ÷ ${ethPrice} = ${usdToEth(
+          betAmountValue,
+          ethPrice
+        )} ETH`
+      );
+      console.log(`   └─ Expected ~0.01 ETH for $40 bet`);
+
       console.log(
         `   └─ Amount: ${usdToEth(betAmountValue, ethPrice).toFixed(6)} ETH`
       );
@@ -561,6 +851,534 @@ const BinaryOptionsScreen: React.FC = () => {
       }
 
       Alert.alert("❌ Blockchain Error", errorMessage);
+    }
+  };
+
+  // 🔥 MAIN BET FUNCTION: User Always Pays Model
+  // User signs and pays transaction directly - Server pays NOTHING!
+  const handlePlaceBetUserPays = async () => {
+    console.log("🚀 STARTING handlePlaceBetUserPays function");
+    console.log("   └─ Time:", new Date().toISOString());
+
+    // Same validation as regular handlePlaceBet
+    if (!isWalletConnected || !walletAddress) {
+      Alert.alert(
+        "Wallet Not Connected",
+        "Please connect your wallet to place blockchain bets."
+      );
+      return;
+    }
+
+    if (!selectedCrypto) {
+      Alert.alert("Error", "Please select a cryptocurrency");
+      return;
+    }
+
+    if (!betAmount || betAmountValue <= 0) {
+      Alert.alert("Error", "Please enter a valid bet amount");
+      return;
+    }
+
+    if (!ethPrice || ethPrice <= 0) {
+      Alert.alert(
+        "Price Loading Error",
+        `ETH price not available: $${ethPrice}\n\nPlease wait for prices to load before betting.`
+      );
+      return;
+    }
+
+    const betAmountEth = usdToEth(betAmountValue, ethPrice);
+
+    // Safety check for conversion
+    if (betAmountEth > 0.1) {
+      Alert.alert(
+        "⚠️ Conversion Error",
+        `Bet amount seems wrong: ${betAmountEth.toFixed(4)} ETH (~$${(
+          betAmountEth * ethPrice
+        ).toFixed(
+          0
+        )})\n\nExpected ~0.01 ETH for $40 bet.\n\nETH Price: $${ethPrice}\nInput: $${betAmountValue}\n\nPlease check the conversion.`
+      );
+      return;
+    }
+
+    try {
+      console.log("🔥 USER PAYS MODEL: Preparing transaction for user...");
+      console.log(`   └─ User wallet will pay gas + bet amount`);
+      console.log(`   └─ Server wallet needs ZERO ETH! 🎉`);
+
+      // Step 1: Get transaction data from server using REST API
+      console.log("🔥 USER PAYS: Preparing transaction via REST API...");
+      await apiService.init();
+
+      const prepResult = await apiService.prepareTransaction({
+        cryptoSymbol: selectedCrypto,
+        betType: betType,
+        amount: betAmountEth,
+        timeframe: selectedTimeframe,
+        walletAddress: walletAddress,
+      });
+
+      const txData = prepResult.transactionData;
+      if (!txData) {
+        throw new Error("Failed to prepare transaction");
+      }
+
+      console.log("📝 Transaction prepared. User will sign...");
+      console.log(`   └─ To: ${txData.to}`);
+      console.log(
+        `   └─ Value: ${(parseFloat(txData.value) / 1e18).toFixed(6)} ETH`
+      );
+      console.log(`   └─ Gas Limit: ${txData.gasLimit}`);
+
+      // Step 2: USER SIGNS AND PAYS TRANSACTION DIRECTLY
+      console.log("🔥 USER PAYS: Sending transaction to user's wallet...");
+
+      let txHash;
+
+      // 🔥 MOBILE APP: All wallets (including MetaMask mobile) use WalletConnect
+      if (wcProvider && (wcConnected || isConnected)) {
+        console.log("📱 Using Mobile Wallet (WalletConnect protocol)");
+        console.log(
+          `   └─ MetaMask Mobile, Trust Wallet, etc. all use WalletConnect`
+        );
+        console.log("🔥 USER PAYS EVERYTHING - Server pays NOTHING!");
+
+        // 🔍 WALLET CONNECTION DEBUGGING
+        console.log("🔍 WALLET CONNECTION STATUS:");
+        console.log(`   └─ wcConnected: ${wcConnected}`);
+        console.log(`   └─ isConnected: ${isConnected}`);
+        console.log(`   └─ wcAddress: ${wcAddress}`);
+        console.log(`   └─ walletAddress: ${walletAddress}`);
+        console.log(`   └─ balance: ${balance} ETH`);
+
+        // 🔍 CALCULATE AMOUNTS FOR LOGGING
+        const ethAmount = parseFloat(txData.value) / 1e18;
+        const usdAmount = ethAmount * ethPrice;
+        const totalCostEth = ethAmount + 0.0006; // Estimated gas cost
+        const totalCostUsd = totalCostEth * ethPrice;
+
+        // 🔍 DEBUG TRANSACTION VALUES BEFORE METAMASK
+        console.log("🔍 TRANSACTION VALUE DEBUG:");
+        console.log(`   └─ txData.value (from server): ${txData.value}`);
+        console.log(`   └─ txData.value type: ${typeof txData.value}`);
+        console.log(`   └─ Converting to ETH: ${ethAmount.toFixed(8)} ETH`);
+        console.log(`   └─ Expected ~0.01 ETH for $40 bet`);
+
+        // 🚨 FIX: Convert decimal wei string to hex for wallet compatibility
+        // Use BigInt to avoid precision loss with large numbers
+        const valueInWei = txData.value;
+        const valueInHex = `0x${BigInt(valueInWei).toString(16)}`;
+
+        console.log("🔧 VALUE FORMAT CONVERSION (BigInt):");
+        console.log(`   └─ Original (decimal): ${valueInWei}`);
+        console.log(`   └─ Original as BigInt: ${BigInt(valueInWei)}`);
+        console.log(`   └─ Converted (hex): ${valueInHex}`);
+        console.log(`   └─ Back to decimal: ${BigInt(valueInHex)}`);
+        console.log(
+          `   └─ Back to ETH: ${(Number(BigInt(valueInHex)) / 1e18).toFixed(
+            8
+          )} ETH`
+        );
+
+        // Verify the conversion is exact
+        if (BigInt(valueInWei).toString() === BigInt(valueInHex).toString()) {
+          console.log("✅ Conversion is exact - no precision loss");
+        } else {
+          console.warn("⚠️ Conversion has precision loss!");
+          console.warn(`   └─ Original: ${BigInt(valueInWei)}`);
+          console.warn(`   └─ After hex conversion: ${BigInt(valueInHex)}`);
+        }
+
+        // 🔧 INCREASE GAS LIMIT: createOption needs more gas
+        const increasedGasLimit = 500000; // Increased from 300k to 500k
+        const gasLimitHex = `0x${increasedGasLimit.toString(16)}`;
+
+        console.log("🔧 GAS LIMIT ADJUSTMENT:");
+        console.log(`   └─ Original gas limit: ${txData.gasLimit}`);
+        console.log(`   └─ Increased gas limit: ${increasedGasLimit}`);
+        console.log(`   └─ Gas limit (hex): ${gasLimitHex}`);
+        console.log(`   └─ Reason: Previous tx failed with 'out of gas'`);
+
+        const transaction = {
+          from: walletAddress,
+          to: txData.to,
+          data: txData.data,
+          value: valueInHex, // 🔧 FIX: Use hex format for wallet
+          gasLimit: gasLimitHex, // 🔧 FIX: Use increased gas limit
+        };
+
+        console.log("📝 Transaction details:", transaction);
+
+        console.log("🔍 FINAL VALUE BEING SENT TO WALLET:");
+        console.log(`   └─ transaction.value (hex): ${transaction.value}`);
+        console.log(
+          `   └─ transaction.value (decimal): ${BigInt(transaction.value)}`
+        );
+        console.log(
+          `   └─ transaction.value (ETH): ${(
+            Number(BigInt(transaction.value)) / 1e18
+          ).toFixed(8)} ETH`
+        );
+        console.log(
+          `   └─ transaction.value (USD): $${(
+            (Number(BigInt(transaction.value)) / 1e18) *
+            ethPrice
+          ).toFixed(2)}`
+        );
+        console.log("");
+        console.log("💰 WALLET APPROVAL BREAKDOWN:");
+        const finalEthAmountForDisplay = Number(BigInt(valueInHex)) / 1e18;
+        const finalUsdAmountForDisplay = finalEthAmountForDisplay * ethPrice;
+        const estimatedGasCostEth = 0.0015; // Increased from 0.0006 to 0.0015 for 500k gas
+        const totalCostWithGas = finalEthAmountForDisplay + estimatedGasCostEth;
+        const totalCostUsdWithGas = totalCostWithGas * ethPrice;
+
+        console.log(
+          `   └─ 📊 BET AMOUNT: ${finalEthAmountForDisplay.toFixed(
+            6
+          )} ETH (~$${finalUsdAmountForDisplay.toFixed(2)})`
+        );
+        console.log(
+          `   └─ ⛽ EST. GAS COST: ~${estimatedGasCostEth} ETH (~$${(
+            estimatedGasCostEth * ethPrice
+          ).toFixed(2)})`
+        );
+        console.log(
+          `   └─ 💸 TOTAL YOU PAY: ~${totalCostWithGas.toFixed(
+            6
+          )} ETH (~$${totalCostUsdWithGas.toFixed(2)})`
+        );
+        console.log("");
+        console.log("✅ EXPECTED IN METAMASK:");
+        console.log(`   └─ Transaction Value: ${ethAmount.toFixed(6)} ETH`);
+        console.log(`   └─ Should show: ~$${usdAmount.toFixed(0)} bet + gas`);
+        console.log(`   └─ ETH Price Used: $${ethPrice.toFixed(0)}`);
+
+        // Additional verification
+        if (Math.abs(usdAmount - betAmountValue) > 2) {
+          console.warn("⚠️ WARNING: USD amounts don't match!");
+          console.warn(`   └─ Expected bet: $${betAmountValue}`);
+          console.warn(`   └─ Sending to MetaMask: $${usdAmount.toFixed(2)}`);
+          console.warn(
+            `   └─ Difference: $${Math.abs(usdAmount - betAmountValue).toFixed(
+              2
+            )}`
+          );
+        } else {
+          console.log("✅ USD amounts match perfectly!");
+        }
+        console.log("🔍 About to call wcProvider.request...");
+        console.log("🔍 wcProvider exists:", !!wcProvider);
+        console.log("🔍 wcConnected:", wcConnected);
+        console.log("🔍 isConnected:", isConnected);
+
+        try {
+          console.log("🚀 SENDING TRANSACTION REQUEST TO METAMASK MOBILE...");
+          console.log("⏳ Waiting for user approval in MetaMask Mobile app...");
+          console.log(
+            "📱 Check your MetaMask Mobile app for transaction approval prompt"
+          );
+
+          // 🔍 FINAL SUMMARY BEFORE METAMASK
+          console.log("");
+          console.log("📋 FINAL TRANSACTION SUMMARY FOR WALLET:");
+          console.log(
+            `   └─ 🎯 BET: $${betAmountValue} ${selectedCrypto} ${betType}`
+          );
+          const finalEthAmount = Number(BigInt(transaction.value)) / 1e18;
+          const finalUsdAmount = finalEthAmount * ethPrice;
+          console.log(
+            `   └─ 💰 AMOUNT: ${finalEthAmount.toFixed(
+              6
+            )} ETH ($${finalUsdAmount.toFixed(2)})`
+          );
+          console.log(`   └─ 🌐 NETWORK: Sepolia Testnet`);
+          console.log(`   └─ 📍 CONTRACT: ${txData.to}`);
+          console.log(`   └─ 👤 FROM: ${walletAddress}`);
+          console.log(
+            `   └─ ⛽ GAS LIMIT: ${increasedGasLimit} (increased from ${txData.gasLimit})`
+          );
+          console.log("");
+          console.log("🔔 WALLET SHOULD NOW SHOW APPROVAL MODAL!");
+          console.log("   └─ Look for notification in your wallet app");
+          console.log("   └─ Expected amount: ~$40 worth of ETH (0.01079 ETH)");
+          console.log("   └─ Network: Sepolia Testnet");
+          console.log(
+            "   └─ FIXED: Using hex format to prevent 18+ ETH display bug"
+          );
+          console.log("");
+
+          // Show user exactly what to expect in wallet with corrected hex values and gas
+          const alertEthAmount = Number(BigInt(valueInHex)) / 1e18;
+          const alertUsdAmount = alertEthAmount * ethPrice;
+          const alertGasCostUsd = 0.0015 * ethPrice; // Updated gas estimate
+          const alertTotalCost = alertUsdAmount + alertGasCostUsd;
+
+          Alert.alert(
+            "📱 Wallet Approval Expected",
+            `VERIFY THESE AMOUNTS IN YOUR WALLET:\n\n` +
+              `💰 Transaction Value: ${alertEthAmount.toFixed(6)} ETH\n` +
+              `💵 USD Value: $${alertUsdAmount.toFixed(2)}\n` +
+              `⛽ + Gas: ~$${alertGasCostUsd.toFixed(
+                2
+              )} (increased gas limit)\n` +
+              `💸 Total Cost: ~$${alertTotalCost.toFixed(2)}\n\n` +
+              `🔧 FIXED: Hex format + increased gas limit\n` +
+              `✅ If amounts match (~$40 + gas), APPROVE\n` +
+              `❌ If still wrong, REJECT and report bug`,
+            [
+              { text: "Continue to Wallet", style: "default" },
+              { text: "Cancel", style: "cancel" },
+            ]
+          );
+
+          txHash = await wcProvider.request({
+            method: "eth_sendTransaction",
+            params: [transaction],
+          });
+
+          console.log("🔍 wcProvider.request() completed successfully");
+
+          console.log(
+            "✅ SUCCESS: MetaMask returned transaction hash:",
+            txHash
+          );
+          console.log("🔍 Transaction hash type:", typeof txHash);
+          console.log(
+            "🔍 Transaction hash length:",
+            typeof txHash === "string" ? txHash.length : "N/A"
+          );
+
+          // 🔍 TRANSACTION VERIFICATION
+          if (
+            typeof txHash === "string" &&
+            txHash.length === 66 &&
+            txHash.startsWith("0x")
+          ) {
+            console.log("✅ Transaction hash format looks valid");
+            console.log(
+              `🔗 Etherscan link: https://sepolia.etherscan.io/tx/${txHash}`
+            );
+          } else {
+            console.warn("⚠️ Transaction hash format looks invalid:");
+            console.warn(`   └─ Expected: 0x followed by 64 hex characters`);
+            console.warn(`   └─ Received: ${txHash}`);
+          }
+        } catch (txError: any) {
+          console.error("❌ TRANSACTION REQUEST FAILED:");
+          console.error(
+            "   └─ Error type:",
+            txError?.constructor?.name || "Unknown"
+          );
+          console.error(
+            "   └─ Error message:",
+            txError?.message || "No message"
+          );
+          console.error("   └─ Error code:", txError?.code || "No code");
+          console.error("   └─ Full error:", txError);
+
+          // Check for specific error types
+          if (txError?.message?.includes("User rejected")) {
+            throw new Error(
+              "❌ You rejected the transaction in MetaMask Mobile"
+            );
+          } else if (txError?.message?.includes("insufficient funds")) {
+            throw new Error("❌ Insufficient funds for gas + bet amount");
+          } else if (txError?.code === 4001) {
+            throw new Error("❌ Transaction rejected by user in MetaMask");
+          } else {
+            throw new Error(
+              `❌ Transaction failed: ${txError?.message || "Unknown error"}`
+            );
+          }
+        }
+      } else {
+        throw new Error(
+          "No mobile wallet connected. Please connect MetaMask mobile or other wallet."
+        );
+      }
+
+      console.log("📝 Recording bet in database...");
+
+      // Get entry price from transaction preparation result
+      const entryPrice = prepResult.entryPrice || 0;
+
+      if (!entryPrice) {
+        throw new Error(`❌ Cannot get entry price for ${selectedCrypto}`);
+      }
+
+      console.log(`📊 Entry price: $${entryPrice.toLocaleString()}`);
+
+      // Step 3: Record the bet in database with RETRY LOGIC
+      let recordingAttempts = 0;
+      let recordingSuccess = false;
+      let betData: any = null;
+
+      while (!recordingSuccess && recordingAttempts < 3) {
+        recordingAttempts++;
+        console.log(`🔄 Recording attempt ${recordingAttempts}/3...`);
+
+        try {
+          console.log("🔄 Sending recordBlockchainBet mutation with:", {
+            cryptoSymbol: selectedCrypto,
+            betType: betType,
+            amount: betAmountEth,
+            timeframe: selectedTimeframe,
+            transactionHash: txHash,
+            walletAddress: walletAddress
+              ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+              : "null",
+            entryPrice: entryPrice,
+          });
+
+          const recordResult = await apiService.recordBet({
+            cryptoSymbol: selectedCrypto,
+            betType: betType,
+            amount: betAmountEth,
+            timeframe: selectedTimeframe,
+            transactionHash: txHash,
+            walletAddress: walletAddress,
+            entryPrice: entryPrice, // ✅ FIX: Include entry price
+          });
+
+          console.log("📨 REST API response received:", recordResult);
+
+          betData = recordResult as any;
+
+          if (!betData) {
+            throw new Error(
+              "No data returned from recordBlockchainBet mutation"
+            );
+          }
+
+          recordingSuccess = true;
+          console.log("✅ Bet recorded successfully!");
+          console.log(`   └─ Bet ID: ${betData?.id}`);
+          console.log(`   └─ Option ID: ${betData?.optionId}`);
+          console.log(`   └─ Full bet data:`, betData);
+        } catch (recordError: any) {
+          console.error("❌ Recording attempt failed:");
+          console.error(`   └─ Attempt: ${recordingAttempts}/3`);
+          console.error(
+            `   └─ Error type: ${recordError?.constructor?.name || "Unknown"}`
+          );
+          console.error(
+            `   └─ Error message: ${recordError?.message || "No message"}`
+          );
+
+          // Log GraphQL-specific errors
+          if (recordError?.graphQLErrors?.length > 0) {
+            console.error(`   └─ GraphQL errors:`, recordError.graphQLErrors);
+          }
+
+          if (recordError?.networkError) {
+            console.error(`   └─ Network error:`, recordError.networkError);
+          }
+
+          console.error(`   └─ Full error object:`, recordError);
+
+          if (recordingAttempts < 3) {
+            console.log("⏳ Waiting 2 seconds before retry...");
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          } else {
+            // Final attempt failed - show warning but don't crash
+            console.error(
+              "🚨 CRITICAL: Failed to record bet after 3 attempts!"
+            );
+            console.error(
+              "   └─ Transaction was successful but not recorded in database"
+            );
+            console.error(`   └─ Transaction Hash: ${txHash}`);
+            console.error(
+              "   └─ User should contact support with this transaction hash"
+            );
+
+            Alert.alert(
+              "⚠️ Recording Warning",
+              `Your bet transaction was successful but we had trouble recording it in our database.\n\n` +
+                `Transaction: ${txHash}\n\n` +
+                `Please save this transaction hash and contact support if you don't see your bet results.`,
+              [{ text: "OK, I'll Save This" }]
+            );
+          }
+        }
+      }
+
+      // 🔥 NEW: START REAL-TIME BET TRACKING
+      if (recordingSuccess && betData) {
+        console.log("🎯 STARTING REAL-TIME BET TRACKING:");
+        console.log(`   └─ Bet ID: ${betData.id}`);
+        console.log(`   └─ Option ID: ${betData.optionId}`);
+        console.log(`   └─ Expires at: ${betData.expiresAt}`);
+
+        // Start tracking this bet with countdown and auto-updates
+        startBetTracking({
+          betId: String(betData.id),
+          optionId: String(betData.optionId),
+          transactionHash: String(txHash),
+          cryptoSymbol: String(selectedCrypto),
+          betType: String(betType),
+          amount: betAmountEth,
+          expiresAt: String(betData.expiresAt),
+        });
+      }
+
+      console.log("✅ EVERYTHING SUCCESSFUL!");
+      console.log("   └─ User paid transaction");
+      console.log("   └─ Bet recorded in database");
+      console.log("   └─ Transaction hash:", txHash);
+      console.log("   └─ Real-time tracking started");
+
+      // Success - User successfully paid!
+      Alert.alert(
+        "🎉 BET PLACED SUCCESSFULLY!",
+        `Bet placed & tracking started!\n\n• YOUR wallet paid: ${betAmountEth.toFixed(
+          4
+        )} ETH + gas\n• Bet ID: ${betData?.id || "Unknown"}\n• Option ID: ${
+          betData?.optionId || "Unknown"
+        }\n• Transaction: ${txHash}\n\n⏰ Real-time tracking active!\n📱 You'll get notifications when bet expires and results are ready!`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              console.log("🎯 BET PLACEMENT COMPLETE:");
+              console.log(`   └─ Transaction Hash: ${txHash}`);
+              console.log(`   └─ Amount: ${betAmountEth.toFixed(6)} ETH`);
+              console.log(`   └─ Direction: ${selectedCrypto} ${betType}`);
+              console.log(`   └─ Timeframe: ${selectedTimeframe}`);
+              console.log(`   └─ User wallet: ${walletAddress}`);
+              console.log("");
+              console.log("📱 TO SEE RESULTS:");
+              console.log("   1. Switch to Portfolio tab");
+              console.log("   2. Wait for bet to expire (1 minute)");
+              console.log("   3. Server will auto-execute and show WIN/LOSS");
+              console.log("   4. Results will appear in bet history");
+            },
+          },
+        ]
+      );
+
+      // Reset bet amount
+      updateBetAmountToMaxSafe(currentBalance);
+    } catch (error) {
+      console.error("❌ COMPLETE FAILURE in handlePlaceBetUserPays:");
+      console.error("   └─ Error:", error);
+      console.error(
+        "   └─ Error type:",
+        error instanceof Error ? error.constructor.name : typeof error
+      );
+      console.error(
+        "   └─ Error message:",
+        error instanceof Error ? error.message : String(error)
+      );
+
+      Alert.alert(
+        "❌ Transaction Failed",
+        error instanceof Error
+          ? error.message
+          : "Unknown error occurred. Please try again."
+      );
     }
   };
 
@@ -616,6 +1434,16 @@ const BinaryOptionsScreen: React.FC = () => {
       timeframeScrollRef.current?.scrollTo({ x: scrollTo, animated: true });
     }, 300);
   }, [selectedTimeframe]);
+
+  const chainId = provider?.network?.chainId || 1;
+  const networkName = getCurrentNetworkName(chainId);
+  const supportedAssets = getSupportedAssets(networkName);
+
+  // After coinsData is loaded:
+  const filteredCryptoList =
+    coinsData?.coins?.filter((coin: Coin) =>
+      supportedAssets.includes(coin.symbol)
+    ) || [];
 
   return (
     <ImageBackground
@@ -674,57 +1502,37 @@ const BinaryOptionsScreen: React.FC = () => {
                 </LinearGradient>
               )}
               {/* Right Fade + Arrow */}
-              {cryptoContentWidth - cryptoLayoutWidth - cryptoScrollX > 5 && (
-                <LinearGradient
-                  colors={["rgba(20,20,30,0)", "rgba(20,20,30,0.7)"]}
-                  style={styles.rightFade}
-                  pointerEvents="none"
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <MaterialCommunityIcons
-                    name="chevron-right"
-                    size={28}
-                    color={COLORS.textMuted}
-                    style={{ opacity: 0.6 }}
-                  />
-                </LinearGradient>
-              )}
-              <ScrollView
-                ref={cryptoScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.cryptoList}
-                onScroll={(e) =>
-                  setCryptoScrollX(e.nativeEvent.contentOffset.x)
-                }
-                onContentSizeChange={(w) => setCryptoContentWidth(w)}
-                onLayout={(e) =>
-                  setCryptoLayoutWidth(e.nativeEvent.layout.width)
-                }
-                scrollEventThrottle={16}
+              {/* 🚀 NEW: Crypto Selector Button */}
+              <TouchableOpacity
+                style={styles.cryptoSelectorButton}
+                onPress={() => setIsCryptoSelectorVisible(true)}
               >
-                {coinsData?.coins?.map((coin: Coin) => (
-                  <TouchableOpacity
-                    key={coin.id}
-                    style={[
-                      styles.cryptoOption,
-                      selectedCrypto === coin.symbol && styles.selectedCrypto,
-                    ]}
-                    onPress={() => setSelectedCrypto(coin.symbol)}
-                  >
-                    <Text
-                      style={[
-                        styles.cryptoOptionText,
-                        selectedCrypto === coin.symbol &&
-                          styles.selectedCryptoText,
-                      ]}
-                    >
-                      {coin.symbol}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                <View style={styles.cryptoSelectorContent}>
+                  <MaterialCommunityIcons
+                    name={
+                      selectedCrypto === "BTC"
+                        ? "bitcoin"
+                        : selectedCrypto === "ETH"
+                        ? "ethereum"
+                        : selectedCrypto === "LINK"
+                        ? "link"
+                        : selectedCrypto
+                        ? "currency-usd"
+                        : "plus-circle"
+                    }
+                    size={24}
+                    color={COLORS.accent}
+                  />
+                  <Text style={styles.cryptoSelectorText}>
+                    {selectedCrypto || "Tap to Select Cryptocurrency"}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name="chevron-down"
+                    size={20}
+                    color={COLORS.textMuted}
+                  />
+                </View>
+              </TouchableOpacity>
             </View>
           </Animated.View>
 
@@ -745,12 +1553,7 @@ const BinaryOptionsScreen: React.FC = () => {
                     {(() => {
                       const label =
                         priceDataService.getTimeframeLabel(selectedTimeframe);
-                      console.log(
-                        "📊 Chart Title Update:",
-                        selectedTimeframe,
-                        "->",
-                        label
-                      );
+
                       return label;
                     })()}
                   </Text>
@@ -874,6 +1677,46 @@ const BinaryOptionsScreen: React.FC = () => {
                   {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
                 </Text>
               </View>
+            </Animated.View>
+          )}
+
+          {/* 🔥 NEW: Active Bet Tracking Section */}
+          {(() => {
+            // console.log(
+            //   `🔍 Active bets check: ${activeBets.length} active bets`
+            // );
+            // console.log(
+            //   `   └─ Active bet IDs: ${activeBets
+            //     .map((b) => b.betId)
+            //     .join(", ")}`
+            // );
+            return activeBets.length > 0;
+          })() && (
+            <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
+              <Text style={styles.sectionTitle}>
+                ⏰ Active Bets ({activeBets.length})
+              </Text>
+              {activeBets.map((bet) => {
+                // console.log(`🎯 Rendering active bet card: ${bet.betId}`);
+                return (
+                  <View key={bet.betId} style={styles.activeBetCard}>
+                    <View style={styles.activeBetHeader}>
+                      <Text style={styles.activeBetSymbol}>
+                        {bet.cryptoSymbol} {bet.betType}
+                      </Text>
+                      <Text style={styles.activeBetAmount}>
+                        {bet.amount.toFixed(4)} ETH
+                      </Text>
+                    </View>
+                    <View style={styles.activeBetFooter}>
+                      <Text style={styles.activeBetTimer}>
+                        {getActiveBetCountdown(bet.expiresAt)}
+                      </Text>
+                      <Text style={styles.activeBetId}>#{bet.optionId}</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </Animated.View>
           )}
 
@@ -1147,7 +1990,7 @@ const BinaryOptionsScreen: React.FC = () => {
                   shouldShowLoading) &&
                   styles.placeBetButtonDisabled,
               ]}
-              onPress={handlePlaceBet}
+              onPress={handlePlaceBetUserPays}
               disabled={
                 (!wcConnected && !isConnected) ||
                 hasInsufficientBalance ||
@@ -1238,6 +2081,14 @@ const BinaryOptionsScreen: React.FC = () => {
             )}
           </Animated.View>
         </Animated.ScrollView>
+
+        {/* 🚀 NEW: Crypto Selector Modal */}
+        <SimpleCryptoModal
+          visible={isCryptoSelectorVisible}
+          selectedCrypto={selectedCrypto}
+          onCryptoSelect={setSelectedCrypto}
+          onClose={() => setIsCryptoSelectorVisible(false)}
+        />
       </View>
     </ImageBackground>
   );
@@ -1791,6 +2642,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: "center",
     fontFamily: FONTS.REGULAR,
+  },
+  // 🔥 NEW: Active bet tracking styles (using existing activeBetCard)
+  activeBetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  activeBetSymbol: {
+    fontSize: 16,
+    fontFamily: FONTS.BOLD,
+    color: COLORS.textPrimary,
+  },
+  activeBetAmount: {
+    fontSize: 16,
+    fontFamily: FONTS.SEMI_BOLD,
+    color: COLORS.accent,
+  },
+  activeBetFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  activeBetTimer: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontFamily: FONTS.REGULAR,
+  },
+  activeBetId: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.REGULAR,
+  },
+  // 🚀 NEW: Crypto Selector Button Styles
+  cryptoSelectorButton: {
+    backgroundColor: COLORS.card2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+    alignItems: "center",
+  },
+  cryptoSelectorContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cryptoSelectorText: {
+    fontSize: 16,
+    fontFamily: FONTS.SEMI_BOLD,
+    color: COLORS.textPrimary,
+    flex: 1,
+    textAlign: "center",
   },
 });
 

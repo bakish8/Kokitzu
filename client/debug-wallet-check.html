@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallet Debug Check</title>
+    <style>
+      body {
+        font-family: monospace;
+        padding: 20px;
+        background: #1a1a1a;
+        color: #00ff00;
+      }
+      .section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #333;
+      }
+      .success {
+        color: #00ff00;
+      }
+      .error {
+        color: #ff4444;
+      }
+      .warning {
+        color: #ffaa00;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 10px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 Wallet Debug Check</h1>
+
+    <div class="section">
+      <h3>📱 Connected Wallet Info</h3>
+      <div id="walletInfo">Not connected</div>
+      <button onclick="connectWallet()">Connect MetaMask</button>
+    </div>
+
+    <div class="section">
+      <h3>🌐 Network Info</h3>
+      <div id="networkInfo">Unknown</div>
+    </div>
+
+    <div class="section">
+      <h3>📊 Contract Info</h3>
+      <div id="contractInfo">Loading...</div>
+    </div>
+
+    <div class="section">
+      <h3>💰 Balance Check</h3>
+      <div id="balanceInfo">Unknown</div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+      const CONTRACT_ADDRESS = "0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4";
+      const EXPECTED_USER_WALLET = "0x840b1F3A7B8cAf98A44fB60aDaE934AEf2d4364b";
+      const SERVER_WALLET = "0x4a00b089F7186f40540afb58B1B447FdB1E1A41b";
+
+      let provider, signer, walletAddress;
+
+      async function connectWallet() {
+        try {
+          if (!window.ethereum) {
+            alert("MetaMask not installed!");
+            return;
+          }
+
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          signer = provider.getSigner();
+          walletAddress = await signer.getAddress();
+
+          updateWalletInfo();
+          updateNetworkInfo();
+          updateContractInfo();
+          updateBalanceInfo();
+        } catch (error) {
+          document.getElementById(
+            "walletInfo"
+          ).innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+        }
+      }
+
+      function updateWalletInfo() {
+        let html = `<span class="success">✅ Connected: ${walletAddress}</span><br>`;
+
+        if (
+          walletAddress.toLowerCase() === EXPECTED_USER_WALLET.toLowerCase()
+        ) {
+          html += `<span class="success">🎯 CORRECT! This is your expected wallet</span>`;
+        } else if (
+          walletAddress.toLowerCase() === SERVER_WALLET.toLowerCase()
+        ) {
+          html += `<span class="error">⚠️ WRONG! This is the server wallet, not yours</span>`;
+        } else {
+          html += `<span class="warning">🤔 This is a different wallet than expected</span>`;
+        }
+
+        document.getElementById("walletInfo").innerHTML = html;
+      }
+
+      async function updateNetworkInfo() {
+        const network = await provider.getNetwork();
+        let html = `Chain ID: ${network.chainId}<br>`;
+
+        if (network.chainId === 11155111) {
+          html += `<span class="success">✅ Sepolia Testnet (correct!)</span>`;
+        } else {
+          html += `<span class="error">❌ Wrong network! Switch to Sepolia</span>`;
+        }
+
+        document.getElementById("networkInfo").innerHTML = html;
+      }
+
+      async function updateContractInfo() {
+        let html = `Contract Address: ${CONTRACT_ADDRESS}<br>`;
+        try {
+          const code = await provider.getCode(CONTRACT_ADDRESS);
+          if (code !== "0x") {
+            html += `<span class="success">✅ Contract exists and deployed</span>`;
+          } else {
+            html += `<span class="error">❌ No contract at this address</span>`;
+          }
+        } catch (error) {
+          html += `<span class="error">❌ Error checking contract: ${error.message}</span>`;
+        }
+        document.getElementById("contractInfo").innerHTML = html;
+      }
+
+      async function updateBalanceInfo() {
+        try {
+          const balance = await provider.getBalance(walletAddress);
+          const balanceEth = ethers.utils.formatEther(balance);
+
+          let html = `Your Balance: ${balanceEth} ETH<br>`;
+
+          if (parseFloat(balanceEth) > 0.01) {
+            html += `<span class="success">✅ Sufficient balance for testing</span>`;
+          } else {
+            html += `<span class="warning">⚠️ Low balance, get more Sepolia ETH from faucet</span>`;
+          }
+
+          document.getElementById("balanceInfo").innerHTML = html;
+        } catch (error) {
+          document.getElementById(
+            "balanceInfo"
+          ).innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+        }
+      }
+
+      // Auto-connect if already connected
+      if (window.ethereum && window.ethereum.selectedAddress) {
+        connectWallet();
+      }
+    </script>
+  </body>
+</html>

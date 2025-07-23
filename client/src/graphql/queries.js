@@ -99,3 +99,30 @@ export const PLACE_BET = gql`
     }
   }
 `;
+
+export const RECORD_BLOCKCHAIN_BET = gql`
+  mutation RecordBlockchainBet($input: BlockchainBetInput!) {
+    recordBlockchainBet(input: $input) {
+      id
+      cryptoSymbol
+      betType
+      amount
+      timeframe
+      entryPrice
+      status
+      createdAt
+      expiresAt
+      isBlockchainBet
+      optionId
+      transactionHash
+      blockNumber
+      walletAddress
+      blockchain {
+        optionId
+        transactionHash
+        blockNumber
+        gasUsed
+      }
+    }
+  }
+`;

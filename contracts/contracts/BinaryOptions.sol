@@ -25,6 +25,7 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         bool isWon;
         uint256 payout;
         uint256 timestamp;
+        uint256 finalPrice; // Add final price field for proper push/tie detection
     }
 
     struct AssetConfig {
@@ -43,7 +44,7 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
     mapping(address => uint256[]) public userOptions;
     
     uint256 public platformFee = 200; // 2% platform fee
-    uint256 public minExpiryTime = 5 minutes;
+    uint256 public minExpiryTime = 30 seconds; // Reduced from 5 minutes to 30 seconds
     uint256 public maxExpiryTime = 24 hours;
     
     // Events
@@ -86,20 +87,18 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
     }
 
     constructor(address initialOwner) Ownable(initialOwner) {
-        // Initialize with Sepolia testnet Chainlink price feeds
-        // NOTE: For mainnet deployment, replace these with mainnet price feed addresses
-        // Sepolia Chainlink Price Feeds: https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1&search=sepolia
+        // Chainlink Price Feeds for Sepolia Testnet
+        // Source: https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum#Sepolia%20Testnet
+        _setupAsset("ETH", 0x694AA1769357215DE4FAC081bf1f309aDC325306, 0.001 ether, 2 ether, 150);  // ETH/USD
+        _setupAsset("BTC", 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43, 0.0001 ether, 1 ether, 200); // BTC/USD
+        _setupAsset("LINK", 0xc59E3633BAAC79493d908e63626716e204A45EdF, 0.005 ether, 1.5 ether, 200); // LINK/USD
         
-        _setupAsset("ETH", 0x694AA1769357215DE4FAC081bf1f309aDC325306, 0.001 ether, 2 ether, 150);  // ETH/USD Sepolia
-        _setupAsset("BTC", 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43, 0.0001 ether, 1 ether, 200); // BTC/USD Sepolia  
-        _setupAsset("LINK", 0xc59E3633BAAC79493d908e63626716e204A45EdF, 0.005 ether, 1.5 ether, 200); // LINK/USD Sepolia
-        _setupAsset("MATIC", 0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada, 0.01 ether, 2 ether, 250); // MATIC/USD Sepolia
-        
-        // Assets are now configured and active for betting immediately after deployment
+        // Note: Many assets don't have Sepolia feeds, so we'll use a smaller set for testing
+        // For production mainnet deployment, we'll add back all the other assets
     }
 
     /**
-     * @dev Create a new binary option
+     * @dev Create a new binary option (deprecated - use createOptionFor with strike price)
      * @param asset The asset to trade (e.g., "BTC", "ETH")
      * @param amount The amount to bet in ETH
      * @param expiryTime The expiry time in seconds from now
@@ -120,6 +119,9 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
 
         uint256 currentPrice = getCurrentPrice(asset);
         require(currentPrice > 0, "Invalid price feed");
+        
+        // Convert Chainlink price to 2 decimal format for consistency
+        uint256 strikePrice = currentPrice / 1e6;
 
         _optionIds++;
         uint256 optionId = _optionIds;
@@ -129,19 +131,70 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
             trader: msg.sender,
             asset: asset,
             amount: amount,
-            strikePrice: currentPrice,
+            strikePrice: strikePrice,
             expiryTime: block.timestamp + expiryTime,
             isCall: isCall,
             isExecuted: false,
             isWon: false,
             payout: 0,
-            timestamp: block.timestamp
+            timestamp: block.timestamp,
+            finalPrice: 0
         });
 
         userOptions[msg.sender].push(optionId);
 
-        emit OptionCreated(optionId, msg.sender, asset, amount, currentPrice, block.timestamp + expiryTime, isCall);
+        emit OptionCreated(optionId, msg.sender, asset, amount, strikePrice, block.timestamp + expiryTime, isCall);
     }
+
+    /**
+     * @dev Create an option on behalf of another user (for server-side integration)
+     * @param beneficiary The user who will receive the payout (for mobile apps)
+     * @param asset The asset to trade
+     * @param amount The amount to bet
+     * @param strikePrice The entry price from the server (in USD with 2 decimals, e.g. 365684 = $3656.84)
+     * @param expiryTime The expiry time in seconds
+     * @param isCall True for call, false for put
+     */
+    function createOptionFor(
+        address beneficiary,
+        string memory asset,
+        uint256 amount,
+        uint256 strikePrice, // Accept strike price from server
+        uint256 expiryTime,
+        bool isCall
+    ) external payable onlyValidAsset(asset) nonReentrant {
+        require(msg.value == amount, "Incorrect amount sent");
+        require(amount >= assetConfigs[asset].minAmount, "Amount too low");
+        require(amount <= assetConfigs[asset].maxAmount, "Amount too high");
+        require(expiryTime >= minExpiryTime, "Expiry time too short");
+        require(expiryTime <= maxExpiryTime, "Expiry time too long");
+        require(block.timestamp + expiryTime > block.timestamp, "Invalid expiry time");
+        require(strikePrice > 0, "Invalid strike price");
+
+        _optionIds++;
+        uint256 optionId = _optionIds;
+
+        options[optionId] = Option({
+            id: optionId,
+            trader: beneficiary,
+            asset: asset,
+            amount: amount,
+            strikePrice: strikePrice, // Use server-provided strike price
+            expiryTime: block.timestamp + expiryTime,
+            isCall: isCall,
+            isExecuted: false,
+            isWon: false,
+            payout: 0,
+            timestamp: block.timestamp,
+            finalPrice: 0
+        });
+
+        userOptions[beneficiary].push(optionId);
+
+        emit OptionCreated(optionId, beneficiary, asset, amount, strikePrice, block.timestamp + expiryTime, isCall);
+    }
+
+
 
     /**
      * @dev Execute an expired option
@@ -153,11 +206,39 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         require(!option.isExecuted, "Option already executed");
         require(block.timestamp >= option.expiryTime, "Option not expired yet");
 
-        uint256 finalPrice = getCurrentPrice(option.asset);
-        require(finalPrice > 0, "Invalid price feed");
+        uint256 chainlinkPrice = getCurrentPrice(option.asset);
+        require(chainlinkPrice > 0, "Invalid price feed");
 
-        bool isWon = _calculateWin(option.strikePrice, finalPrice, option.isCall);
-        bool isPush = (option.strikePrice == finalPrice); // Identical prices = tie
+        // Convert Chainlink price to same format as strike price (USD * 100)
+        // Server sends: $118348 -> 11834800 (USD * 100)  
+        // Chainlink: 11834880000000 (8 decimals) -> 11834800 (USD * 100)
+        uint256 finalPrice = chainlinkPrice / 1e6; // Convert 8 decimals to USD*100 format
+
+        // Allow for small price differences due to timing/precision
+        // Only treat as push if prices are within 0.01% (very tight threshold)
+        bool isWon;
+        bool isPush;
+        
+        // Calculate 0.01% threshold for push detection
+        uint256 pushThreshold = (option.strikePrice * 1) / 10000; // 0.01% = 1/10000
+        uint256 priceDifference = option.strikePrice > finalPrice ? 
+            option.strikePrice - finalPrice : 
+            finalPrice - option.strikePrice;
+        
+        if (priceDifference <= pushThreshold) {
+            // Prices are too close to call - push/refund
+            isWon = false;
+            isPush = true;
+        } else {
+            // Clear price difference - determine winner
+            if (option.isCall) {
+                isWon = finalPrice > option.strikePrice; // UP bet wins if price increased
+            } else {
+                isWon = finalPrice < option.strikePrice; // DOWN bet wins if price decreased
+            }
+            isPush = false;
+        }
+        
         uint256 payout = 0;
 
         if (isPush) {
@@ -169,8 +250,8 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
             (bool success, ) = option.trader.call{value: payout}("");
             require(success, "Refund failed");
         } else if (isWon) {
-            // WIN: Calculate payout: 80% of the bet amount (20% house edge)
-            payout = (option.amount * 80) / 100;
+            // WIN: Return original bet + 80% profit (1.8x total payout)
+            payout = option.amount + (option.amount * 80) / 100;
             require(address(this).balance >= payout, "Insufficient contract balance");
             
             // Transfer winnings to trader
@@ -182,6 +263,7 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         option.isExecuted = true;
         option.isWon = isWon;
         option.payout = payout;
+        option.finalPrice = finalPrice; // Store final price in same format as strike price
 
         emit OptionExecuted(optionId, isWon, isPush, payout, finalPrice);
     }
@@ -189,7 +271,7 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
     /**
      * @dev Get current price from Chainlink price feed
      * @param asset The asset symbol
-     * @return The current price in USD with 8 decimals
+     * @return The current price in USD with 8 decimals (raw Chainlink format)
      */
     function getCurrentPrice(string memory asset) public view returns (uint256) {
         AssetConfig memory config = assetConfigs[asset];
@@ -202,27 +284,7 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         return uint256(price);
     }
 
-    /**
-     * @dev Calculate if the option is won based on strike price and final price
-     * Requires minimum 0.1% price movement to avoid ties from identical prices
-     */
-    function _calculateWin(uint256 strikePrice, uint256 finalPrice, bool isCall) internal pure returns (bool) {
-        // If prices are identical, it's a push (refund scenario)
-        if (strikePrice == finalPrice) {
-            return false; // Will be handled as a tie/push
-        }
-        
-        // Calculate minimum movement threshold (0.1% of strike price)
-        uint256 minMovement = (strikePrice * 10) / 10000; // 0.1% = 10/10000
-        
-        if (isCall) {
-            // For UP bets: final price must be at least 0.1% higher
-            return finalPrice >= strikePrice + minMovement;
-        } else {
-            // For DOWN bets: final price must be at least 0.1% lower  
-            return finalPrice <= strikePrice - minMovement;
-        }
-    }
+
 
     /**
      * @dev Setup or update an asset configuration
@@ -283,6 +345,57 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
     }
 
     /**
+     * @dev Get individual option fields (for easier decoding)
+     */
+    function getOptionId(uint256 optionId) external view returns (uint256) {
+        return options[optionId].id;
+    }
+
+    function getOptionTrader(uint256 optionId) external view returns (address) {
+        return options[optionId].trader;
+    }
+
+    function getOptionAsset(uint256 optionId) external view returns (string memory) {
+        return options[optionId].asset;
+    }
+
+    function getOptionAmount(uint256 optionId) external view returns (uint256) {
+        return options[optionId].amount;
+    }
+
+    function getOptionStrikePrice(uint256 optionId) external view returns (uint256) {
+        return options[optionId].strikePrice;
+    }
+
+    function getOptionExpiryTime(uint256 optionId) external view returns (uint256) {
+        return options[optionId].expiryTime;
+    }
+
+    function getOptionIsCall(uint256 optionId) external view returns (bool) {
+        return options[optionId].isCall;
+    }
+
+    function getOptionIsExecuted(uint256 optionId) external view returns (bool) {
+        return options[optionId].isExecuted;
+    }
+
+    function getOptionIsWon(uint256 optionId) external view returns (bool) {
+        return options[optionId].isWon;
+    }
+
+    function getOptionPayout(uint256 optionId) external view returns (uint256) {
+        return options[optionId].payout;
+    }
+
+    function getOptionTimestamp(uint256 optionId) external view returns (uint256) {
+        return options[optionId].timestamp;
+    }
+
+    function getOptionFinalPrice(uint256 optionId) external view returns (uint256) {
+        return options[optionId].finalPrice;
+    }
+
+    /**
      * @dev Get contract statistics
      */
     function getContractStats() external view returns (
@@ -322,6 +435,15 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         
         emit FundsWithdrawn(owner(), balance);
     }
+
+    /**
+     * @dev Owner can deposit ETH to fund payouts
+     */
+    function fundContract() external payable onlyOwner {
+        emit FundsDeposited(msg.sender, msg.value);
+    }
+    
+    event FundsDeposited(address indexed owner, uint256 amount);
 
     /**
      * @dev Emergency pause (owner only)

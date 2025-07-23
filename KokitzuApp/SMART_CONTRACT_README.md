@@ -358,3 +358,76 @@ This software is for educational and entertainment purposes. Trading binary opti
   - Never hardcode the private key in your codebase.
   - Store it in environment variables or a secure secrets manager.
   - Restrict access to the key and use a separate wallet for production and testing.
+
+---
+
+הטרנזקציה ששלחת (0xf564003ea9383e6d145c2cb1292c4060dd7474a44500dc6f16042c6c065f3653) **התקבלה בהצלחה** בבלוקצ'יין (Status: Success), והועברה לכתובת החוזה שלך.  
+היא כוללת קריאה לפונקציה (כנראה `createOptionFor`) עם הפרמטרים הנכונים, והכסף (0.0028 ETH) נכנס לחוזה.
+
+### מה זה אומר?
+
+- **הפקדה:** הכסף נכנס לחוזה החכם.
+- **הטרנזקציה הצליחה:** אין שגיאת גז, אין revert, אין בעיה בכניסה.
+- **הבעיה שלך היא לא בהפקדה, אלא ב-execution/settlement** (כלומר, שלב סיום ההימור).
+
+---
+
+## מה לבדוק עכשיו?
+
+### 1. **האם נוצרה אופציה בחוזה?**
+
+- בדוק ב-Etherscan בלשונית **Events** של החוזה, האם יש `OptionCreated` עם הכתובת שלך.
+- בדוק שה-`optionId` שנשמר אצלך תואם למה שנוצר באירוע.
+
+### 2. **האם מתבצע settlement (executeOption)?**
+
+- האם יש קריאה ל-`executeOption` עבור ה-`optionId` שלך?
+- האם יש אירוע `OptionExecuted`?
+- האם יש Internal Txn מהחוזה לארנק שלך (אם ניצחת)?
+
+### 3. **מה קורה בשרת?**
+
+- לפי הלוגים, השרת מנסה לבצע settlement, אבל נכשל כי הוא לא מצליח לקרוא את כתובת ה-trader מהחוזה (היא חוזרת null/undefined).
+- זה נובע מבעיה ב-ABI או בפרסינג של התשובה מהחוזה.
+
+---
+
+## מה לעשות עכשיו?
+
+### **שלב 1: בדוק את ה-ABI**
+
+ודא שה-ABI של הפונקציה `getOption` הוא בדיוק:
+
+```js
+"function getOption(uint256 optionId) external view returns (uint256 id, address trader, string asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall, bool isExecuted, bool isWon, uint256 payout, uint256 timestamp, uint256 finalPrice)";
+```
+
+**לא tuple!**  
+אם יש לך tuple ב-ABI, ethers.js לא ידע לפרש את זה נכון ויחזיר undefined/null.
+
+### **שלב 2: בדוק מה חוזר מ-getOption**
+
+- קרא ל-`getOption(optionId)` ידנית (ב-hardhat console או ethers.js REPL) ותראה מה חוזר.
+- ודא שכתובת ה-trader היא הכתובת שלך.
+
+### **שלב 3: בדוק את הלוגים החדשים**
+
+- אחרי כל התיקונים שהוספנו, תפעיל את השרת מחדש ותשלח לי את הלוגים של:
+  - הקריאה ל-getOption (מה חוזר)
+  - כל שורה שמתחילה ב-`❌` או `⚠️`
+  - כל שורה שמתחילה ב-`📊 Raw option data`
+
+### **שלב 4: בדוק Internal Txns**
+
+- אם settlement מצליח, אמור להופיע Internal Txn מהחוזה לארנק שלך (אם ניצחת).
+
+---
+
+## סיכום
+
+- **הפקדה עובדת** (הטרנזקציה הצליחה).
+- **הבעיה היא בשליפת נתוני האופציה מהחוזה** (כנראה בגלל ABI לא נכון או פרסינג לא נכון).
+- **המשך לבדוק את הלוגים** אחרי התיקונים האחרונים, ותוודא שה-ABI תואם בדיוק למה שהחוזה מחזיר.
+
+אם תשלח לי את הלוגים של הקריאה ל-getOption (כולל typeof, אורך, ערכים), אוכל לעזור לך לפתור את זה סופית!  
+**אם תעדכן את ה-ABI כמו שצריך, הבעיה תיפתר.**

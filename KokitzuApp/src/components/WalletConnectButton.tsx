@@ -17,7 +17,11 @@ import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 
 import WalletConnectedModal from "./WalletConnectedModal";
 import NetworkSelectionModal from "./NetworkSelectionModal";
-import { useEthPrice, formatEthWithUsd } from "../utils/currencyUtils";
+import {
+  useEthPrice,
+  formatEthWithUsd,
+  ethToUsd,
+} from "../utils/currencyUtils";
 import COLORS from "../constants/colors";
 
 interface WalletConnectButtonProps {
@@ -47,7 +51,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     networkConfig.chainId
   );
 
-  // Get ETH price for USD conversion
+  // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
   const ethPrice = useEthPrice();
 
   // Use the WalletConnect modal hook
@@ -59,45 +63,45 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   } = useWalletConnectModal();
 
   // Debug WalletConnect modal state
-  useEffect(() => {
-    console.log("🔍 WalletConnect Modal Debug:", {
-      wcConnected,
-      wcAddress,
-      hasProvider: !!provider,
-      showModal,
-      modalView,
-    });
-  }, [wcConnected, wcAddress, provider, showModal, modalView]);
+  // useEffect(() => {
+  //   console.log("🔍 WalletConnect Modal Debug:", {
+  //     wcConnected,
+  //     wcAddress,
+  //     hasProvider: !!provider,
+  //     showModal,
+  //     modalView,
+  //   });
+  // }, [wcConnected, wcAddress, provider, showModal, modalView]);
 
   // Update current chain when network changes
-  useEffect(() => {
-    setCurrentChain(networkConfig.chainId);
-    console.log(
-      "🌐 WalletConnectButton: Network changed to",
-      currentNetwork,
-      "Chain ID:",
-      networkConfig.chainId
-    );
-  }, [currentNetwork, networkConfig.chainId]);
+  // useEffect(() => {
+  //   setCurrentChain(networkConfig.chainId);
+  //   console.log(
+  //     "🌐 WalletConnectButton: Network changed to",
+  //     currentNetwork,
+  //     "Chain ID:",
+  //     networkConfig.chainId
+  //   );
+  // }, [currentNetwork, networkConfig.chainId]);
 
   // Debug effect to monitor connection changes
-  useEffect(() => {
-    console.log("🔗 WalletConnectButton: WalletConnect status:", {
-      wcConnected,
-      wcAddress,
-      isConnected,
-      walletAddress,
-      currentChain,
-      currentNetwork,
-    });
-  }, [
-    wcConnected,
-    wcAddress,
-    isConnected,
-    walletAddress,
-    currentChain,
-    currentNetwork,
-  ]);
+  // useEffect(() => {
+  //   console.log("🔗 WalletConnectButton: WalletConnect status:", {
+  //     wcConnected,
+  //     wcAddress,
+  //     isConnected,
+  //     walletAddress,
+  //     currentChain,
+  //     currentNetwork,
+  //   });
+  // }, [
+  //   wcConnected,
+  //   wcAddress,
+  //   isConnected,
+  //   walletAddress,
+  //   currentChain,
+  //   currentNetwork,
+  // ]);
 
   // Effect to detect chain changes - we'll use a polling approach
   useEffect(() => {
@@ -109,7 +113,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           const chainIdDecimal = parseInt(chainId as string, 16).toString();
           if (chainIdDecimal !== currentChain) {
             setCurrentChain(chainIdDecimal);
-            console.log("🔗 Chain changed to:", chainIdDecimal);
+            // console.log("🔗 Chain changed to:", chainIdDecimal);
           }
         } catch (error) {
           console.log(
@@ -270,16 +274,16 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   const chainName = getChainName(currentChain || networkConfig.chainId);
 
   // Periodic balance refresh every 30 seconds when connected
-  useEffect(() => {
-    if (isWalletConnected) {
-      const interval = setInterval(() => {
-        console.log("🔄 Periodic balance refresh");
-        // Balance is handled by wallet context
-      }, 30000); // 30 seconds
+  // useEffect(() => {
+  //   if (isWalletConnected) {
+  //     const interval = setInterval(() => {
+  //       console.log("🔄 Periodic balance refresh");
+  //       // Balance is handled by wallet context
+  //     }, 30000); // 30 seconds
 
-      return () => clearInterval(interval);
-    }
-  }, [isWalletConnected]);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [isWalletConnected]);
 
   // Debug: Log connection state before rendering
 

@@ -129,12 +129,7 @@ function BinaryOptions({
                   {(() => {
                     const label =
                       priceDataService.getTimeframeLabel(selectedTimeframe);
-                    console.log(
-                      "📊 Chart Title Update:",
-                      selectedTimeframe,
-                      "->",
-                      label
-                    );
+
                     return label;
                   })()}
                 </label>

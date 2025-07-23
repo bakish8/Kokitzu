@@ -24,13 +24,6 @@ The KokitzuApp now supports dynamic network switching between Ethereum Mainnet, 
    - Currency: Sepolia ETH
    - **✅ Safe for testing**
 
-3. **Goerli Testnet**
-   - Chain ID: 5
-   - RPC URL: `https://goerli.infura.io/v3/YOUR_PROJECT_ID`
-   - Explorer: `https://goerli.etherscan.io`
-   - Currency: Goerli ETH
-   - **✅ Safe for testing**
-
 ## How to Use
 
 ### 1. Network Selector in Header
@@ -54,7 +47,6 @@ The network selector is available in the header of all screens:
 - **Network Color**:
   - 🟢 Green for Mainnet
   - 🔵 Blue for Sepolia
-  - 🟠 Orange for Goerli
 - **Testnet Badge**: Clear indication for test networks
 
 ## Technical Implementation
@@ -123,8 +115,7 @@ const [currentNetwork, setCurrentNetwork] = useState<NetworkType>("sepolia");
 2. **Switch to Sepolia** using the network selector
 3. **Get test ETH** from Sepolia faucet
 4. **Test your features**
-5. **Switch to Goerli** for additional testing
-6. **Switch to Mainnet** only when ready for production
+5. **Switch to Mainnet** only when ready for production
 
 ### 3. Smart Contract Deployment
 

@@ -4,23 +4,17 @@
   "description": "GraphQL server for cryptocurrency prices",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "configure-assets": "node configure-assets.js",
     "execute-expired": "node execute-expired-bets.js"
   },
   "dependencies": {
-    "apollo-server-express": "^3.12.1",
-    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ethers": "^6.15.0",
     "express": "^4.18.2",
-    "graphql": "^16.8.1",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.6.3",
-    "node-fetch": "^3.3.2",
-    "uuid": "^11.1.0"
+    "mongoose": "^7.6.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

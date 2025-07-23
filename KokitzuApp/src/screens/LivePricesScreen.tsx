@@ -24,9 +24,8 @@ import Animated, {
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
 
-import { useQuery } from "@apollo/client";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { GET_CRYPTO_PRICES, GET_COINS } from "../graphql/queries";
+import { apiService } from "../services/apiService";
 import { CryptoPrice, Coin } from "../types";
 import CryptoCard from "../components/CryptoCard";
 import SkeletonCryptoCard from "../components/SkeletonCryptoCard";
@@ -38,11 +37,21 @@ import { useEthPrice } from "../utils/currencyUtils";
 import { FONTS } from "../constants/fonts";
 import { TIMEFRAMES } from "../constants/timeframes";
 import COLORS from "../constants/colors";
+import { getSupportedAssets } from "../services/priceDataService";
+import { getCurrentNetworkName } from "../utils/networkUtils";
 
 const LivePricesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_HOUR"); // Default to 1 hour
+
+  // REST API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+  const [data, setData] = useState<{ cryptoPrices: CryptoPrice[] } | null>(
+    null
+  );
+  const [coinsData, setCoinsData] = useState<{ coins: Coin[] } | null>(null);
   const navigation = useNavigation();
   const {
     setDefaultBet,
@@ -51,20 +60,24 @@ const LivePricesScreen: React.FC = () => {
   } = useTrading();
 
   // Add wallet context usage to ensure proper header updates
-  const { isConnected, balance } = useWallet();
+  const { isConnected, balance, provider } = useWallet();
   const { currentNetwork } = useNetwork();
 
   // Get ETH price for USD conversion
   const ethPrice = useEthPrice();
 
+  const chainId = provider?.network?.chainId || 1;
+  const networkName = getCurrentNetworkName(chainId);
+  const supportedAssets = getSupportedAssets(networkName);
+
   // Debug effect to monitor wallet state changes
-  useEffect(() => {
-    console.log("🔗 LivePricesScreen: Wallet state changed:", {
-      isConnected,
-      balance,
-      currentNetwork,
-    });
-  }, [isConnected, balance, currentNetwork]);
+  // useEffect(() => {
+  //   console.log("🔗 LivePricesScreen: Wallet state changed:", {
+  //     isConnected,
+  //     balance,
+  //     currentNetwork,
+  //   });
+  // }, [isConnected, balance, currentNetwork]);
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
@@ -151,38 +164,82 @@ const LivePricesScreen: React.FC = () => {
     }, [])
   );
 
-  const { loading, error, data, refetch } = useQuery(GET_CRYPTO_PRICES, {
-    pollInterval: 30000,
-    notifyOnNetworkStatusChange: true,
-    errorPolicy: "all",
-    onCompleted: (data) => {
-      console.log(
-        "✅ Crypto prices loaded:",
-        data?.cryptoPrices?.length || 0,
-        "coins"
-      );
-    },
-    onError: (error) => {
-      console.error("❌ Error loading crypto prices:", error.message);
-    },
-  });
+  // Fetch crypto prices from REST API
+  const fetchCryptoPrices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const { data: coinsData } = useQuery(GET_COINS, {
-    errorPolicy: "all",
-    onCompleted: (data) => {
-      console.log("✅ Coins data loaded:", data?.coins?.length || 0, "coins");
-    },
-    onError: (error) => {
-      console.error("❌ Error loading coins:", error.message);
-    },
-  });
+      console.log("🔍 Fetching crypto prices from REST API...");
+      const prices = await apiService.getPrices();
+
+      // Transform to match expected format
+      const cryptoPrices = prices.map((price: any) => ({
+        id: price.id,
+        symbol: price.symbol,
+        name: price.name || price.symbol,
+        price: price.price,
+        lastUpdated: price.lastUpdated,
+        source: price.source,
+      }));
+
+      setData({ cryptoPrices });
+      console.log(`✅ Loaded ${cryptoPrices.length} crypto prices`);
+
+      // Create coins data from prices (simplified)
+      const coins = cryptoPrices.map((crypto: any) => ({
+        id: crypto.id,
+        symbol: crypto.symbol,
+        name: crypto.name,
+        image: null, // We don't have images from Chainlink
+      }));
+
+      setCoinsData({ coins });
+      console.log(`✅ Created ${coins.length} coin entries`);
+    } catch (err: any) {
+      console.error("❌ Error loading crypto prices:", err.message);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refetch = fetchCryptoPrices;
+
+  // Initial load and polling
+  useEffect(() => {
+    const initAndFetch = async () => {
+      try {
+        console.log("🔧 Initializing API service...");
+        await apiService.init();
+        console.log("✅ API service initialized");
+        await fetchCryptoPrices();
+      } catch (error) {
+        console.error("❌ Failed to initialize API service:", error);
+        setError(error);
+        setLoading(false);
+      }
+    };
+
+    initAndFetch();
+
+    // Poll every 30 seconds
+    const interval = setInterval(fetchCryptoPrices, 120000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredCryptoList =
+    coinsData?.coins?.filter((coin: Coin) =>
+      supportedAssets.includes(coin.symbol)
+    ) || [];
 
   const filteredCryptoData = useMemo(() => {
-    console.log("🔄 Filtering crypto data:", {
-      hasData: !!data?.cryptoPrices,
-      dataLength: data?.cryptoPrices?.length || 0,
-      searchQuery,
-    });
+    // console.log("🔄 Filtering crypto data:", {
+    //   hasData: !!data?.cryptoPrices,
+    //   dataLength: data?.cryptoPrices?.length || 0,
+    //   searchQuery,
+    // });
 
     if (!data?.cryptoPrices) return [];
     return data.cryptoPrices.filter(
@@ -192,6 +249,10 @@ const LivePricesScreen: React.FC = () => {
         crypto.symbol.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [data?.cryptoPrices, searchQuery]);
+
+  const filteredSupportedCryptoData = filteredCryptoData.filter(
+    (crypto: CryptoPrice) => supportedAssets.includes(crypto.symbol)
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -285,7 +346,7 @@ const LivePricesScreen: React.FC = () => {
             ) : (
               // Crypto cards
               <View style={styles.cardsContainer}>
-                {filteredCryptoData.map(
+                {filteredSupportedCryptoData.map(
                   (crypto: CryptoPrice, index: number) => (
                     <CryptoCard
                       key={crypto.id}
@@ -297,10 +358,10 @@ const LivePricesScreen: React.FC = () => {
                     />
                   )
                 )}
-                {filteredCryptoData.length === 0 && (
+                {filteredSupportedCryptoData.length === 0 && (
                   <View style={styles.emptyState}>
                     <Text style={styles.emptyStateText}>
-                      No cryptocurrencies found
+                      No supported assets available on this network.
                     </Text>
                   </View>
                 )}

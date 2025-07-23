@@ -152,7 +152,7 @@ async function debugOption() {
         // Test with higher gas limit
         console.log(`📝 Attempting execution with gas limit 300,000...`);
         const result = await contractService.contract.executeOption(optionId, {
-          gasLimit: 300000,
+          gasLimit: 500000,
           maxFeePerGas: ethers.parseUnits("30", "gwei"),
           maxPriorityFeePerGas: ethers.parseUnits("3", "gwei"),
         });

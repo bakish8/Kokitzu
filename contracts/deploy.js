@@ -9,8 +9,25 @@ async function main() {
   // Get the deployer's address
   const [deployer] = await hre.ethers.getSigners();
 
-  // Deploy the contract
-  const binaryOptions = await BinaryOptions.deploy(deployer.address);
+  // Deploy the contract with optimized gas settings for limited balance
+  console.log(
+    `💰 Deployer balance: ${hre.ethers.formatEther(
+      await hre.ethers.provider.getBalance(deployer.address)
+    )} ETH`
+  );
+
+  // Add some randomization and higher gas price to avoid "already known" error
+  const randomNonce = await hre.ethers.provider.getTransactionCount(
+    deployer.address,
+    "pending"
+  );
+  console.log(`🔄 Using nonce: ${randomNonce}`);
+
+  const binaryOptions = await BinaryOptions.deploy(deployer.address, {
+    gasLimit: 3500000, // Increased gas limit
+    gasPrice: hre.ethers.parseUnits("10", "gwei"), // Higher gas price for faster processing
+    nonce: randomNonce, // Explicit nonce to avoid conflicts
+  });
 
   // Wait for deployment to complete
   await binaryOptions.waitForDeployment();
