@@ -370,16 +370,17 @@ const BinaryOptionsScreen: React.FC = () => {
 
   const betAmountValue = parseFloat(betAmount || "0");
 
-  // Calculate max safe bet in USD (90% of ETH balance converted to USD)
-  const maxSafeBetEth = currentBalance * 0.9; // 90% of ETH balance for safety
-  const maxSafeBetUsd = ethToUsd(maxSafeBetEth, ethPrice);
+  // Calculate max bet in USD (full ETH balance converted to USD)
+  const maxBetEth = currentBalance; // Full ETH balance
+  const maxBetUsd = ethToUsd(maxBetEth, ethPrice);
 
-  // USD-only betting, so max safe bet is in USD
-  const maxSafeBet = maxSafeBetUsd;
+  // USD-only betting, so max bet is in USD
+  const maxBet = maxBetUsd;
 
   // Check if bet amount exceeds available USD balance
   const availableUsdBalance = ethToUsd(currentBalance, ethPrice);
-  const hasInsufficientBalance = betAmountValue > availableUsdBalance;
+  const hasInsufficientBalance =
+    betAmountValue > availableUsdBalance && betAmountValue > 0;
 
   // Determine if we should show loading state
   const shouldShowLoading = false; // Balance is now handled by unified header
@@ -408,78 +409,16 @@ const BinaryOptionsScreen: React.FC = () => {
     }
   };
 
-  // Effect to update bet amount when network changes
+  // Effect to handle bet amount initialization (now handled by TradingContext)
   useEffect(() => {
     if (isWalletConnected && currentBalance > 0 && !shouldShowLoading) {
-      // Always update bet amount when network changes to reflect new balance
-      const formattedMaxBet = maxSafeBetUsd.toFixed(2);
-      setBetAmount(formattedMaxBet);
       console.log(
-        "🌐 Updated bet amount after network change to",
+        "🌐 Network changed to",
         currentNetwork,
-        "in USD:",
-        formattedMaxBet
+        "bet amount managed by TradingContext"
       );
     }
-  }, [
-    currentNetwork,
-    currentBalance,
-    maxSafeBetUsd,
-    isWalletConnected,
-    shouldShowLoading,
-  ]);
-
-  // Effect to update bet amount to max safe bet when balance or network changes
-  useEffect(() => {
-    if (isWalletConnected && currentBalance > 0 && !shouldShowLoading) {
-      const currentBetAmount = parseFloat(betAmount || "0");
-
-      // Update if the current bet amount is 100 (default), higher than max safe bet, or network changed
-      if (currentBetAmount === 100 || currentBetAmount > maxSafeBetUsd) {
-        const formattedMaxBet = maxSafeBetUsd.toFixed(2);
-        setBetAmount(formattedMaxBet);
-        console.log(
-          "💰 Updated bet amount to max safe bet for",
-          currentNetwork,
-          "in USD:",
-          formattedMaxBet
-        );
-      }
-    }
-  }, [
-    currentBalance,
-    isWalletConnected,
-    shouldShowLoading,
-    currentNetwork,
-    betAmount,
-    maxSafeBetUsd,
-  ]);
-
-  // Effect to set initial bet amount when wallet connects for the first time
-  useEffect(() => {
-    if (
-      isWalletConnected &&
-      currentBalance > 0 &&
-      !shouldShowLoading &&
-      betAmount === "100"
-    ) {
-      // Set to max safe bet in USD by default
-      const formattedMaxBet = maxSafeBetUsd.toFixed(2);
-      setBetAmount(formattedMaxBet);
-      console.log(
-        "💰 Set initial bet amount to max safe bet for",
-        currentNetwork,
-        "in USD"
-      );
-    }
-  }, [
-    isWalletConnected,
-    currentBalance,
-    shouldShowLoading,
-    betAmount,
-    maxSafeBetUsd,
-    currentNetwork,
-  ]);
+  }, [currentNetwork, currentBalance, isWalletConnected, shouldShowLoading]);
 
   // Timer update for Active Bets - updates every second
   useEffect(() => {
@@ -550,9 +489,9 @@ const BinaryOptionsScreen: React.FC = () => {
     return `⏰ ${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  // Function to set bet amount to max safe bet in USD
-  const setBetAmountToMaxSafe = () => {
-    const formattedMaxBet = maxSafeBetUsd.toFixed(2);
+  // Function to set bet amount to max bet in USD
+  const setBetAmountToMax = () => {
+    const formattedMaxBet = maxBetUsd.toFixed(2);
     setBetAmount(formattedMaxBet);
   };
 
@@ -1237,7 +1176,7 @@ const BinaryOptionsScreen: React.FC = () => {
             betType: betType,
             amount: betAmountEth,
             timeframe: selectedTimeframe,
-            transactionHash: txHash,
+            transactionHash: String(txHash),
             walletAddress: walletAddress,
             entryPrice: entryPrice, // ✅ FIX: Include entry price
           });
@@ -1359,8 +1298,8 @@ const BinaryOptionsScreen: React.FC = () => {
         ]
       );
 
-      // Reset bet amount
-      updateBetAmountToMaxSafe(currentBalance);
+      // Reset bet amount to 0
+      setBetAmount("0");
     } catch (error) {
       console.error("❌ COMPLETE FAILURE in handlePlaceBetUserPays:");
       console.error("   └─ Error:", error);
@@ -1472,6 +1411,55 @@ const BinaryOptionsScreen: React.FC = () => {
           onScroll={onScroll}
           scrollEventThrottle={16}
         >
+          {/* Bet Type - MOVE THIS SECTION TO THE TOP */}
+          <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
+            <Text style={styles.sectionTitle}>Bet Direction</Text>
+            <View style={styles.betTypeContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.betTypeButton,
+                  betType === "UP" && styles.upButton,
+                ]}
+                onPress={() => setBetType("UP")}
+              >
+                <MaterialCommunityIcons
+                  name="trending-up"
+                  size={24}
+                  color={betType === "UP" ? COLORS.textPrimary : COLORS.success}
+                />
+                <Text
+                  style={[
+                    styles.betTypeText,
+                    betType === "UP" && styles.upButtonText,
+                  ]}
+                >
+                  BUY
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.betTypeButton,
+                  betType === "DOWN" && styles.downButton,
+                ]}
+                onPress={() => setBetType("DOWN")}
+              >
+                <MaterialCommunityIcons
+                  name="trending-down"
+                  size={24}
+                  color={betType === "DOWN" ? COLORS.textPrimary : COLORS.error}
+                />
+                <Text
+                  style={[
+                    styles.betTypeText,
+                    betType === "DOWN" && styles.downButtonText,
+                  ]}
+                >
+                  SELL
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+
           {/* Crypto Selection */}
           <Animated.View style={[styles.section, cryptoSelectionAnimatedStyle]}>
             <Text style={styles.sectionTitle}>
@@ -1722,7 +1710,7 @@ const BinaryOptionsScreen: React.FC = () => {
 
           {/* Bet Amount */}
           <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-            <Text style={styles.sectionTitle}>Bet Amount (ETH Blockchain)</Text>
+            <Text style={styles.sectionTitle}>Bet Amount (USD)</Text>
 
             <View style={styles.betInputContainer}>
               <View
@@ -1741,7 +1729,7 @@ const BinaryOptionsScreen: React.FC = () => {
                   placeholder={
                     shouldShowLoading
                       ? "Loading balance..."
-                      : "Enter amount in USD"
+                      : "Enter bet amount in USD"
                   }
                   placeholderTextColor={COLORS.textMuted}
                   editable={!shouldShowLoading}
@@ -1750,16 +1738,16 @@ const BinaryOptionsScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.maxButton,
-                  (maxSafeBet <= 0 || shouldShowLoading) &&
+                  (maxBet <= 0 || shouldShowLoading) &&
                     styles.maxButtonDisabled,
                 ]}
-                onPress={setBetAmountToMaxSafe}
-                disabled={maxSafeBet <= 0 || shouldShowLoading}
+                onPress={setBetAmountToMax}
+                disabled={maxBet <= 0 || shouldShowLoading}
               >
                 <Text
                   style={[
                     styles.maxButtonText,
-                    (maxSafeBet <= 0 || shouldShowLoading) &&
+                    (maxBet <= 0 || shouldShowLoading) &&
                       styles.maxButtonTextDisabled,
                   ]}
                 >
@@ -1818,7 +1806,7 @@ const BinaryOptionsScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Max Safe Bet Info */}
+            {/* Max Bet Info */}
             {isWalletConnected && currentBalance > 0 && (
               <View style={styles.maxBetInfo}>
                 <MaterialCommunityIcons
@@ -1827,61 +1815,11 @@ const BinaryOptionsScreen: React.FC = () => {
                   color={COLORS.success}
                 />
                 <Text style={styles.maxBetInfoText}>
-                  Max safe bet: {formatUsd(maxSafeBetUsd)} (Ξ{" "}
-                  {maxSafeBetEth.toFixed(4)}) (90% of balance) on{" "}
-                  {currentNetwork}
+                  Max bet: {formatUsd(maxBetUsd)} (Ξ {maxBetEth.toFixed(4)})
+                  (full balance) on {currentNetwork}
                 </Text>
               </View>
             )}
-          </Animated.View>
-
-          {/* Bet Type */}
-          <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
-            <Text style={styles.sectionTitle}>Bet Direction</Text>
-            <View style={styles.betTypeContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.betTypeButton,
-                  betType === "UP" && styles.upButton,
-                ]}
-                onPress={() => setBetType("UP")}
-              >
-                <MaterialCommunityIcons
-                  name="trending-up"
-                  size={24}
-                  color={betType === "UP" ? COLORS.textPrimary : COLORS.success}
-                />
-                <Text
-                  style={[
-                    styles.betTypeText,
-                    betType === "UP" && styles.upButtonText,
-                  ]}
-                >
-                  BUY
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.betTypeButton,
-                  betType === "DOWN" && styles.downButton,
-                ]}
-                onPress={() => setBetType("DOWN")}
-              >
-                <MaterialCommunityIcons
-                  name="trending-down"
-                  size={24}
-                  color={betType === "DOWN" ? COLORS.textPrimary : COLORS.error}
-                />
-                <Text
-                  style={[
-                    styles.betTypeText,
-                    betType === "DOWN" && styles.downButtonText,
-                  ]}
-                >
-                  SELL
-                </Text>
-              </TouchableOpacity>
-            </View>
           </Animated.View>
 
           {/* Profit Summary Card */}
@@ -2012,7 +1950,7 @@ const BinaryOptionsScreen: React.FC = () => {
                   ? "Loading Balance..."
                   : hasInsufficientBalance
                   ? "Insufficient Balance"
-                  : "🔗 Place Blockchain Bet"}
+                  : "Place Bet"}
               </Text>
             </TouchableOpacity>
           </Animated.View>

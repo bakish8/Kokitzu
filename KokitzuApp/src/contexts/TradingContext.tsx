@@ -41,46 +41,38 @@ export const TradingProvider: React.FC<TradingProviderProps> = ({
 
   const [selectedCrypto, setSelectedCrypto] = useState<string>("");
   const [selectedTimeframe, setSelectedTimeframe] = useState("ONE_MINUTE");
-  const [betAmount, setBetAmount] = useState("100");
+  const [betAmount, setBetAmount] = useState("0");
   const [betType, setBetType] = useState<"UP" | "DOWN">("UP");
 
   const setDefaultBet = (cryptoSymbol: string) => {
     setSelectedCrypto(cryptoSymbol);
     setSelectedTimeframe("ONE_MINUTE");
-    setBetAmount("100");
+    setBetAmount("0");
     setBetType("UP");
   };
 
   const updateBetAmountToMaxSafe = (balance: number) => {
     if (balance > 0) {
-      const maxSafeBet = balance * 0.9; // 90% of balance for safety
-      const newBetAmount = Math.max(0.0001, maxSafeBet); // Minimum 0.0001
-      setBetAmount(newBetAmount.toFixed(4));
+      const maxBet = balance; // Full balance
+      const maxBetUsd = ethToUsd(maxBet, ethPrice);
+      setBetAmount(maxBetUsd.toFixed(2));
     }
   };
 
-  // Effect to automatically update bet amount when network or balance changes
+  // Effect to reset bet amount to 0 when wallet connects (but don't auto-update)
   useEffect(() => {
     if (isConnected && balance) {
       const currentBalance = parseFloat(balance);
-      if (currentBalance > 0) {
-        // Calculate max safe bet in USD (90% of ETH balance converted to USD)
-        const maxSafeBetEth = currentBalance * 0.9;
-        const maxSafeBetUsd = ethToUsd(maxSafeBetEth, ethPrice);
-
-        // Update bet amount to max safe bet
-        const formattedMaxBet = maxSafeBetUsd.toFixed(2);
-        setBetAmount(formattedMaxBet);
-
+      if (currentBalance > 0 && betAmount === "100") {
+        // Only reset to 0 if it's still the old default
+        setBetAmount("0");
         console.log(
-          "🔄 TradingContext: Updated bet amount to max safe bet for",
-          currentNetwork,
-          "in USD:",
-          formattedMaxBet
+          "🔄 TradingContext: Reset bet amount to 0 for",
+          currentNetwork
         );
       }
     }
-  }, [currentNetwork, balance, isConnected, ethPrice]);
+  }, [currentNetwork, balance, isConnected, betAmount]);
 
   const value: TradingContextType = {
     selectedCrypto,
