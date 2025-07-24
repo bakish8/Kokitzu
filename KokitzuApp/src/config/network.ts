@@ -14,8 +14,8 @@ export const NETWORK_CONFIG = {
 
   // Development with constant IP (update this IP when needed)
   DEVELOPMENT: {
-    API_URL: "http://192.168.1.173:4000",
-    GRAPHQL_URL: "http://192.168.1.173:4000", // Backward compatibility
+    API_URL: "http://192.168.10.116:4000",
+    GRAPHQL_URL: "http://192.168.10.116:4000", // Backward compatibility
   },
 };
 

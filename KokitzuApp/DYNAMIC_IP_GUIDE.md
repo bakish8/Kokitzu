@@ -12,13 +12,17 @@ npm run dev
 
 This will automatically detect your IP and start the development server.
 
-### Option 2: Manual IP Update
+### Option 2: Automatic IP Update
 
 ```bash
 npm run update-ip
 ```
 
-This will detect your current IP and update the configuration files.
+This will automatically detect your current IP, test server connectivity, and update the configuration files without asking for confirmation.
+
+### Option 3: In-App Refresh
+
+Use the "Refresh" button in the NetworkStatus component (visible in development mode).
 
 ### Option 3: In-App Refresh
 
@@ -108,10 +112,11 @@ Apollo Client with dynamic initialization:
 
 The `scripts/update-ip.js` script:
 
-- Detects your computer's current IP
-- Tests GraphQL server connectivity
-- Updates fallback IP list
+- Automatically detects your computer's current IP
+- Tests REST API server connectivity
+- Updates the network configuration file
 - Provides helpful feedback
+- No confirmation required - updates automatically
 
 ## 🧪 Testing
 
@@ -125,9 +130,11 @@ curl http://YOUR_IP:4000/graphql
 ### Test IP Detection
 
 ```bash
-# Run the IP update script
+# Run the automatic IP update script
 npm run update-ip
 ```
+
+This will automatically detect and update your IP without any prompts.
 
 ### Test In-App
 

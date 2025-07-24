@@ -40,30 +40,42 @@ function getCurrentIP() {
   return null;
 }
 
+// Function to test server connectivity
+async function testServerConnectivity(ip) {
+  try {
+    const response = await fetch(`http://${ip}:4000/api/prices`);
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
 // Function to update the network configuration file
 function updateNetworkConfig(newIP) {
   try {
     let content = fs.readFileSync(networkConfigPath, "utf8");
 
-    // Update the DEVELOPMENT configuration
+    // Update the DEVELOPMENT configuration for REST API
     const updatedContent = content.replace(
-      /DEVELOPMENT: \{[^}]*GRAPHQL_URL: "http:\/\/[^"]+",[^}]*WEBSOCKET_URL: "ws:\/\/[^"]+",[^}]*\}/s,
+      /DEVELOPMENT: \{[^}]*API_URL: "http:\/\/[^"]+",[^}]*GRAPHQL_URL: "http:\/\/[^"]+",[^}]*\}/s,
       `DEVELOPMENT: {
-    GRAPHQL_URL: "http://${newIP}:4000/graphql",
-    WEBSOCKET_URL: "ws://${newIP}:4000/graphql",
+    API_URL: "http://${newIP}:4000",
+    GRAPHQL_URL: "http://${newIP}:4000", // Backward compatibility
   }`
     );
 
     fs.writeFileSync(networkConfigPath, updatedContent);
     console.log(`✅ Successfully updated IP to: ${newIP}`);
     console.log(`📁 Updated file: ${networkConfigPath}`);
+    return true;
   } catch (error) {
     console.error("❌ Error updating network configuration:", error.message);
+    return false;
   }
 }
 
 // Main execution
-function main() {
+async function main() {
   console.log("🔍 Detecting current IP address...");
 
   const currentIP = getCurrentIP();
@@ -83,7 +95,7 @@ function main() {
   try {
     const content = fs.readFileSync(networkConfigPath, "utf8");
     const currentIPMatch = content.match(
-      /GRAPHQL_URL: "http:\/\/([^"]+):4000\/graphql"/
+      /DEVELOPMENT: \{[^}]*API_URL: "http:\/\/([^"]+):4000"/
     );
 
     if (currentIPMatch) {
@@ -99,28 +111,33 @@ function main() {
     console.log("⚠️ Could not read current configuration");
   }
 
-  // Ask for confirmation
-  const readline = require("readline");
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  // Test server connectivity
+  console.log("🔍 Testing server connectivity...");
+  const isServerReachable = await testServerConnectivity(currentIP);
 
-  rl.question(`\n🤔 Update IP to ${currentIP}? (y/N): `, (answer) => {
-    rl.close();
+  if (isServerReachable) {
+    console.log("✅ Server is reachable at the new IP!");
+  } else {
+    console.log("⚠️ Warning: Server might not be reachable at the new IP");
+    console.log("💡 Make sure your server is running: cd server && npm start");
+  }
 
-    if (answer.toLowerCase() === "y" || answer.toLowerCase() === "yes") {
-      updateNetworkConfig(currentIP);
-      console.log("\n🚀 You can now restart your app to use the new IP!");
-    } else {
-      console.log("❌ Update cancelled.");
-    }
-  });
+  // Automatically update without asking for confirmation
+  console.log(`\n🔄 Automatically updating IP to ${currentIP}...`);
+  const success = updateNetworkConfig(currentIP);
+
+  if (success) {
+    console.log("\n🎉 IP updated successfully!");
+    console.log("🚀 You can now restart your app to use the new IP!");
+    console.log("📱 The live prices should now work correctly.");
+  } else {
+    console.log("\n❌ Failed to update IP configuration.");
+  }
 }
 
 // Run the script
 if (require.main === module) {
-  main();
+  main().catch(console.error);
 }
 
 module.exports = { getCurrentIP, updateNetworkConfig };
