@@ -58,6 +58,7 @@ import { getSupportedAssets } from "../services/priceDataService";
 import { getCurrentNetworkName } from "../utils/networkUtils";
 import { apiService } from "../services/apiService";
 import { getApiUrl } from "../config/network";
+import TradeSummaryModal from "../components/TradeSummaryModal";
 
 const BinaryOptionsScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
@@ -1384,6 +1385,9 @@ const BinaryOptionsScreen: React.FC = () => {
       supportedAssets.includes(coin.symbol)
     ) || [];
 
+  const [isTradeSummaryModalVisible, setTradeSummaryModalVisible] =
+    useState(false);
+
   return (
     <ImageBackground
       source={backgroundImage}
@@ -1418,44 +1422,56 @@ const BinaryOptionsScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.betTypeButton,
+                  styles.betTypeButtonSmall,
                   betType === "UP" && styles.upButton,
                 ]}
                 onPress={() => setBetType("UP")}
               >
-                <MaterialCommunityIcons
-                  name="trending-up"
-                  size={24}
-                  color={betType === "UP" ? COLORS.textPrimary : COLORS.success}
-                />
-                <Text
-                  style={[
-                    styles.betTypeText,
-                    betType === "UP" && styles.upButtonText,
-                  ]}
-                >
-                  BUY
-                </Text>
+                <View style={styles.betTypeRow}>
+                  <MaterialCommunityIcons
+                    name="trending-up"
+                    size={18}
+                    color={
+                      betType === "UP" ? COLORS.textPrimary : COLORS.success
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.betTypeText,
+                      styles.betTypeTextSmall,
+                      betType === "UP" && styles.upButtonText,
+                    ]}
+                  >
+                    UP
+                  </Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.betTypeButton,
+                  styles.betTypeButtonSmall,
                   betType === "DOWN" && styles.downButton,
                 ]}
                 onPress={() => setBetType("DOWN")}
               >
-                <MaterialCommunityIcons
-                  name="trending-down"
-                  size={24}
-                  color={betType === "DOWN" ? COLORS.textPrimary : COLORS.error}
-                />
-                <Text
-                  style={[
-                    styles.betTypeText,
-                    betType === "DOWN" && styles.downButtonText,
-                  ]}
-                >
-                  SELL
-                </Text>
+                <View style={styles.betTypeRow}>
+                  <MaterialCommunityIcons
+                    name="trending-down"
+                    size={18}
+                    color={
+                      betType === "DOWN" ? COLORS.textPrimary : COLORS.error
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.betTypeText,
+                      styles.betTypeTextSmall,
+                      betType === "DOWN" && styles.downButtonText,
+                    ]}
+                  >
+                    DOWN
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -1647,7 +1663,7 @@ const BinaryOptionsScreen: React.FC = () => {
           </Animated.View>
 
           {/* Blockchain Status */}
-          {isWalletConnected && (
+          {/* {isWalletConnected && (
             <Animated.View style={[styles.section, betSectionAnimatedStyle]}>
               <View style={styles.blockchainStatusContainer}>
                 <View style={styles.blockchainBadge}>
@@ -1666,7 +1682,7 @@ const BinaryOptionsScreen: React.FC = () => {
                 </Text>
               </View>
             </Animated.View>
-          )}
+          )} */}
 
           {/* 🔥 NEW: Active Bet Tracking Section */}
           {(() => {
@@ -1807,7 +1823,7 @@ const BinaryOptionsScreen: React.FC = () => {
             )}
 
             {/* Max Bet Info */}
-            {isWalletConnected && currentBalance > 0 && (
+            {/* {isWalletConnected && currentBalance > 0 && (
               <View style={styles.maxBetInfo}>
                 <MaterialCommunityIcons
                   name="lightbulb-outline"
@@ -1819,141 +1835,46 @@ const BinaryOptionsScreen: React.FC = () => {
                   (full balance) on {currentNetwork}
                 </Text>
               </View>
-            )}
+            )} */}
           </Animated.View>
 
-          {/* Profit Summary Card */}
-          <Animated.View
-            style={[styles.profitSummaryContainer, placeBetButtonAnimatedStyle]}
-          >
-            <View style={styles.profitSummaryCard}>
-              <Text style={styles.profitSummaryTitle}>Trade Summary</Text>
-
-              <View style={styles.profitSummaryRow}>
-                <Text style={styles.profitSummaryLabel}>Investment:</Text>
-                <View style={styles.profitSummaryValue}>
-                  <Text style={styles.profitSummaryAmount}>
-                    {formatUsd(betAmountValue)}
-                  </Text>
-                  <Text style={styles.profitSummaryEquivalent}>
-                    Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.profitSummaryRow}>
-                <Text style={styles.profitSummaryLabel}>Direction:</Text>
-                <View
-                  style={[
-                    styles.directionBadge,
-                    betType === "UP"
-                      ? styles.upDirectionBadge
-                      : styles.downDirectionBadge,
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name={betType === "UP" ? "trending-up" : "trending-down"}
-                    size={16}
-                    color={COLORS.textPrimary}
-                  />
-                  <Text style={styles.directionText}>{betType}</Text>
-                </View>
-              </View>
-
-              <View style={styles.profitSummaryRow}>
-                <Text style={styles.profitSummaryLabel}>Timeframe:</Text>
-                <Text style={styles.profitSummaryValueText}>
-                  {
-                    TIMEFRAMES.find((tf) => tf.value === selectedTimeframe)
-                      ?.label
-                  }
-                </Text>
-              </View>
-
-              <View style={styles.profitSummaryRow}>
-                <Text style={styles.profitSummaryLabel}>Asset:</Text>
-                <Text style={styles.profitSummaryValueText}>
-                  {selectedCrypto}
-                </Text>
-              </View>
-
-              <View style={styles.profitSummaryDivider} />
-
-              <View style={styles.profitSummaryRow}>
-                <Text style={styles.profitSummaryLabel}>Potential Profit:</Text>
-                <View style={styles.profitSummaryValue}>
-                  <Text style={styles.profitSummaryProfit}>
-                    +
-                    {formatUsd(
-                      betAmountValue *
-                        (getPayoutMultiplier(selectedTimeframe) - 1)
-                    )}
-                  </Text>
-                  <Text style={styles.profitSummaryProfitEquivalent}>
-                    +Ξ{" "}
-                    {(
-                      usdToEth(betAmountValue, ethPrice) *
-                      (getPayoutMultiplier(selectedTimeframe) - 1)
-                    ).toFixed(4)}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.profitSummaryRow}>
-                <Text style={styles.profitSummaryLabel}>Potential Loss:</Text>
-                <View style={styles.profitSummaryValue}>
-                  <Text style={styles.profitSummaryLoss}>
-                    -{formatUsd(betAmountValue)}
-                  </Text>
-                  <Text style={styles.profitSummaryLossEquivalent}>
-                    -Ξ {usdToEth(betAmountValue, ethPrice).toFixed(4)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </Animated.View>
-
-          {/* Place Bet Button */}
-          <Animated.View
-            style={[
-              styles.placeBetButtonContainer,
-              placeBetButtonAnimatedStyle,
-            ]}
-          >
-            <TouchableOpacity
+          {/* Place Bet Button - open modal instead of placing bet */}
+          {!isTradeSummaryModalVisible && (
+            <Animated.View
               style={[
-                styles.placeBetButton,
-                ((!wcConnected && !isConnected) ||
-                  hasInsufficientBalance ||
-                  shouldShowLoading) &&
-                  styles.placeBetButtonDisabled,
+                styles.placeBetButtonContainer,
+                placeBetButtonAnimatedStyle,
               ]}
-              onPress={handlePlaceBetUserPays}
-              disabled={
-                (!wcConnected && !isConnected) ||
-                hasInsufficientBalance ||
-                shouldShowLoading
-              }
             >
-              <Text
+              <TouchableOpacity
                 style={[
-                  styles.placeBetButtonText,
+                  styles.placeBetButton,
                   ((!wcConnected && !isConnected) ||
                     hasInsufficientBalance ||
                     shouldShowLoading) &&
-                    styles.placeBetButtonTextDisabled,
+                    styles.placeBetButtonDisabled,
                 ]}
+                onPress={() => setTradeSummaryModalVisible(true)}
+                disabled={
+                  (!wcConnected && !isConnected) ||
+                  hasInsufficientBalance ||
+                  shouldShowLoading
+                }
               >
-                {!wcConnected && !isConnected
-                  ? "Connect Wallet for Blockchain Betting"
-                  : shouldShowLoading
-                  ? "Loading Balance..."
-                  : hasInsufficientBalance
-                  ? "Insufficient Balance"
-                  : "Place Bet"}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
+                <Text
+                  style={[
+                    styles.placeBetButtonText,
+                    ((!wcConnected && !isConnected) ||
+                      hasInsufficientBalance ||
+                      shouldShowLoading) &&
+                      styles.placeBetButtonTextDisabled,
+                  ]}
+                >
+                  Place Bet
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
 
           {/* Smart Contract Info */}
 
@@ -2026,6 +1947,26 @@ const BinaryOptionsScreen: React.FC = () => {
           selectedCrypto={selectedCrypto}
           onCryptoSelect={setSelectedCrypto}
           onClose={() => setIsCryptoSelectorVisible(false)}
+        />
+
+        {/* Trade Summary Modal */}
+        <TradeSummaryModal
+          visible={isTradeSummaryModalVisible}
+          onClose={() => setTradeSummaryModalVisible(false)}
+          onPlaceBet={async () => {
+            setTradeSummaryModalVisible(false);
+            await handlePlaceBetUserPays();
+          }}
+          betAmount={betAmount}
+          betAmountValue={betAmountValue}
+          betType={betType}
+          selectedTimeframe={selectedTimeframe}
+          selectedCrypto={selectedCrypto}
+          ethPrice={ethPrice}
+          getPayoutMultiplier={getPayoutMultiplier}
+          usdToEth={usdToEth}
+          formatUsd={formatUsd}
+          TIMEFRAMES={TIMEFRAMES}
         />
       </View>
     </ImageBackground>
@@ -2633,6 +2574,21 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     flex: 1,
     textAlign: "center",
+  },
+  betTypeButtonSmall: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    minHeight: 36,
+  },
+  betTypeTextSmall: {
+    fontSize: 14,
+    marginTop: 0,
+    marginLeft: 6,
+  },
+  betTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

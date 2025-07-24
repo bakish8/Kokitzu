@@ -351,10 +351,13 @@ const LivePricesScreen: React.FC = () => {
                     <CryptoCard
                       key={crypto.id}
                       crypto={crypto}
-                      onTradeUp={handleTradeUp}
-                      onTradeDown={handleTradeDown}
+                      onPress={() => {
+                        setDefaultBet(crypto.symbol);
+                        setBetType("UP");
+                        setTradingTimeframe(selectedTimeframe);
+                        (navigation as any).navigate("BinaryOptions");
+                      }}
                       index={index}
-                      selectedTimeframe={selectedTimeframe}
                     />
                   )
                 )}

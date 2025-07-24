@@ -35,14 +35,10 @@ interface CryptoCardProps {
 const CryptoCard: React.FC<CryptoCardProps> = ({
   crypto,
   onPress,
-  onTradeUp,
-  onTradeDown,
   index = 0,
   selectedTimeframe: propSelectedTimeframe = "ONE_HOUR",
 }) => {
-  const [selectedTimeframe, setSelectedTimeframe] = useState(
-    propSelectedTimeframe
-  );
+  const [selectedTimeframe] = useState(propSelectedTimeframe);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   // Animation values
@@ -52,6 +48,8 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
   const shadowOpacity = useSharedValue(0.1);
   const hoverScale = useSharedValue(1);
   const hoverTranslateY = useSharedValue(0);
+  // Add a pressed state for the Bet button
+  const [betButtonPressed, setBetButtonPressed] = useState(false);
 
   // Animated styles
   const animatedStyle = useAnimatedStyle(() => ({
@@ -76,11 +74,6 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
       withSpring(0, { damping: 15, stiffness: 150 })
     );
   }, []);
-
-  // Update local selectedTimeframe when prop changes
-  useEffect(() => {
-    setSelectedTimeframe(propSelectedTimeframe);
-  }, [propSelectedTimeframe]);
 
   // Fetch price history for chart
   useEffect(() => {
@@ -117,25 +110,6 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
     shadowOpacity.value = withTiming(0.1, { duration: 200 });
   };
 
-  // Button press animations
-  const [upButtonPressed, setUpButtonPressed] = useState(false);
-  const [downButtonPressed, setDownButtonPressed] = useState(false);
-
-  const handleUpButtonPressIn = () => {
-    setUpButtonPressed(true);
-  };
-
-  const handleUpButtonPressOut = () => {
-    setUpButtonPressed(false);
-  };
-
-  const handleDownButtonPressIn = () => {
-    setDownButtonPressed(true);
-  };
-
-  const handleDownButtonPressOut = () => {
-    setDownButtonPressed(false);
-  };
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -156,133 +130,59 @@ const CryptoCard: React.FC<CryptoCardProps> = ({
 
   return (
     <Animated.View style={[styles.cardContainer, animatedStyle]}>
-      <TouchableOpacity
+      <View
         style={styles.card}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={1}
+        onTouchStart={handlePressIn}
+        onTouchEnd={handlePressOut}
       >
-        <View style={styles.cardHeader}>
-          <View style={styles.cryptoInfo}>
-            <Text style={styles.cryptoName}>{crypto.name}</Text>
-            <Text style={styles.cryptoSymbol}>{crypto.symbol}</Text>
-          </View>
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>{formatPrice(crypto.price)}</Text>
-            <View
-              style={[
-                styles.changeContainer,
-                isPositive ? styles.positive : styles.negative,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name={isPositive ? "trending-up" : "trending-down"}
-                size={16}
-                color={isPositive ? "#10b981" : "#ef4444"}
-              />
-              <Text
-                style={[
-                  styles.changeText,
-                  isPositive ? styles.positiveText : styles.negativeText,
-                ]}
-              >
-                {formatPercentage(priceChange)}
-              </Text>
-            </View>
-            {/* Mini Price Chart */}
-            <View style={styles.chartContainer}>
-              <PriceChart
-                data={priceHistory}
-                color={isPositive ? "#10b981" : "#ef4444"}
-                height={40}
-                isMini={true}
-              />
-            </View>
-          </View>
+        <View style={styles.cardHeaderCompact}>
+          <Text style={styles.cryptoSymbolCompact}>{crypto.symbol}</Text>
         </View>
-
-        {/* Timeframe Selection */}
-        <View style={styles.timeframeSection}>
-          <Text style={styles.timeframeLabel}>Select Timeframe:</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.timeframeScrollView}
-            contentContainerStyle={styles.timeframeContainer}
+        <View style={styles.priceContainerCompact}>
+          <Text style={styles.priceCompact}>{formatPrice(crypto.price)}</Text>
+          <View
+            style={[
+              styles.changeContainer,
+              isPositive ? styles.positive : styles.negative,
+            ]}
           >
-            {TIMEFRAMES.map((timeframe) => (
-              <TouchableOpacity
-                key={timeframe.value}
-                style={[
-                  styles.timeframeOption,
-                  selectedTimeframe === timeframe.value &&
-                    styles.selectedTimeframe,
-                ]}
-                onPress={() => setSelectedTimeframe(timeframe.value)}
-              >
-                <Text
-                  style={[
-                    styles.timeframeText,
-                    selectedTimeframe === timeframe.value &&
-                      styles.selectedTimeframeText,
-                  ]}
-                >
-                  {timeframe.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.timeframePayout,
-                    selectedTimeframe === timeframe.value &&
-                      styles.selectedTimeframePayout,
-                  ]}
-                >
-                  {timeframe.payout}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.cardFooter}>
-          <View style={styles.tradeButtonsContainer}>
-            <TouchableOpacity
+            <MaterialCommunityIcons
+              name={isPositive ? "trending-up" : "trending-down"}
+              size={14}
+              color={isPositive ? "#10b981" : "#ef4444"}
+            />
+            <Text
               style={[
-                styles.tradeUpButton,
-                upButtonPressed && styles.tradeUpButtonPressed,
+                styles.changeText,
+                isPositive ? styles.positiveText : styles.negativeText,
               ]}
-              onPress={() => onTradeUp?.(crypto, selectedTimeframe)}
-              onPressIn={handleUpButtonPressIn}
-              onPressOut={handleUpButtonPressOut}
-              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons
-                name="trending-up"
-                size={22}
-                color="#ffffff"
-              />
-              <Text style={styles.tradeButtonText}>Buy</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tradeDownButton,
-                downButtonPressed && styles.tradeDownButtonPressed,
-              ]}
-              onPress={() => onTradeDown?.(crypto, selectedTimeframe)}
-              onPressIn={handleDownButtonPressIn}
-              onPressOut={handleDownButtonPressOut}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons
-                name="trending-down"
-                size={22}
-                color="#ffffff"
-              />
-              <Text style={styles.tradeButtonText}>Sell</Text>
-            </TouchableOpacity>
+              {formatPercentage(priceChange)}
+            </Text>
           </View>
         </View>
-      </TouchableOpacity>
+        {/* Mini Price Chart */}
+        <View style={styles.chartContainerCompact}>
+          <PriceChart
+            data={priceHistory}
+            color={isPositive ? "#10b981" : "#ef4444"}
+            height={28}
+            isMini={true}
+          />
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.betButton,
+            betButtonPressed && styles.betButtonPressed,
+          ]}
+          onPress={onPress}
+          activeOpacity={0.85}
+          onPressIn={() => setBetButtonPressed(true)}
+          onPressOut={() => setBetButtonPressed(false)}
+        >
+          <Text style={styles.betButtonText}>Bet</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 };
@@ -292,57 +192,83 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 6,
+    elevation: 6,
+    marginBottom: 10,
   },
   card: {
     backgroundColor: COLORS.card2,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 0,
     shadowColor: COLORS.cardGlow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.7,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+    minWidth: 120,
+    minHeight: 120,
+    alignItems: "center",
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
+  cardHeaderCompact: {
+    alignItems: "center",
+    marginBottom: 4,
   },
-  cryptoInfo: {
-    flex: 1,
-  },
-  cryptoName: {
+  cryptoSymbolCompact: {
     color: COLORS.textPrimary,
     fontSize: 18,
     fontFamily: FONTS.BOLD,
-    marginBottom: 4,
-  },
-  cryptoSymbol: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    fontFamily: FONTS.MEDIUM,
     textTransform: "uppercase",
+    letterSpacing: 1,
   },
-  priceContainer: {
-    alignItems: "flex-end",
+  priceContainerCompact: {
+    alignItems: "center",
+    marginBottom: 2,
   },
-  price: {
+  priceCompact: {
     color: COLORS.textPrimary,
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: FONTS.BOLD,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  chartContainerCompact: {
+    marginTop: 2,
+    marginBottom: 8,
+    alignItems: "center",
+    width: "100%",
+  },
+  betButton: {
+    backgroundColor: "transparent",
+    borderRadius: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    transform: [{ scale: 1 }],
+  },
+  betButtonText: {
+    color: COLORS.accent,
+    fontSize: 22,
+    fontFamily: FONTS.BOLD,
+    letterSpacing: 1,
+    textAlign: "center",
   },
   changeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 6,
   },
   positive: {
@@ -352,10 +278,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(239, 68, 68, 0.1)",
   },
   changeText: {
-    color: COLORS.accent, // neon for price change
-    fontSize: 14,
+    color: COLORS.accent,
+    fontSize: 12,
     fontFamily: FONTS.SEMI_BOLD,
-    marginLeft: 4,
+    marginLeft: 3,
   },
   positiveText: {
     color: "#10b981",
@@ -363,132 +289,11 @@ const styles = StyleSheet.create({
   negativeText: {
     color: "#ef4444",
   },
-  cardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-    paddingTop: 12,
-  },
-  footerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  lastUpdated: {
-    fontSize: 12,
-    fontFamily: FONTS.REGULAR,
-    color: "#666666",
-  },
-  tradeButtonsContainer: {
-    flexDirection: "row",
-    gap: 8,
-    width: "100%",
-  },
-  tradeUpButton: {
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.3)",
-    shadowColor: "#10b981",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  tradeDownButton: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
-    shadowColor: "#ef4444",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  // Timeframe Selection Styles
-  timeframeSection: {
-    marginBottom: 16,
-  },
-  timeframeLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.MEDIUM,
-    color: "#cccccc",
-    marginBottom: 8,
-  },
-  timeframeScrollView: {
-    flexGrow: 0,
-  },
-  timeframeContainer: {
-    paddingHorizontal: 4,
-  },
-  timeframeOption: {
-    backgroundColor: "transparent",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginRight: 6,
-    borderWidth: 1,
-    borderColor: "#444",
-    alignItems: "center",
-    minWidth: 50,
-  },
-  selectedTimeframe: {
-    backgroundColor: "#00ffe7",
-    borderColor: "#00ffe7",
-    color: "",
-  },
-  timeframeText: {
-    fontSize: 11,
-    fontFamily: FONTS.MEDIUM,
-    color: "#999999",
-  },
-  selectedTimeframeText: {
-    fontFamily: FONTS.SEMI_BOLD,
-    color: "rgba(20, 32, 44, 0.98)",
-  },
-  timeframePayout: {
-    fontSize: 9,
-    fontFamily: FONTS.REGULAR,
-    color: "#666666",
-    marginTop: 1,
-  },
-  selectedTimeframePayout: {
-    color: "rgba(20, 32, 44, 0.98)",
-  },
-  tradeButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontFamily: FONTS.BOLD,
-    marginLeft: 8,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  tradeUpButtonPressed: {
-    backgroundColor: "rgba(16, 185, 129, 0.25)",
-    transform: [{ scale: 0.98 }],
+  // Add a pressed state for the Bet button
+  betButtonPressed: {
+    transform: [{ scale: 1.06 }, { translateY: -2 }],
     shadowOpacity: 0.4,
-    shadowRadius: 12,
-  },
-  tradeDownButtonPressed: {
-    backgroundColor: "rgba(239, 68, 68, 0.25)",
-    transform: [{ scale: 0.98 }],
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-  },
-  chartContainer: {
-    marginTop: 8,
-    alignItems: "center",
+    shadowRadius: 18,
   },
 });
 
