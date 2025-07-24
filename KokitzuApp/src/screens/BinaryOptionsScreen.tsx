@@ -643,6 +643,8 @@ const BinaryOptionsScreen: React.FC = () => {
               ? "🎉 You Won!"
               : bet.status === "LOST"
               ? "😔 You Lost"
+              : bet.status === "INVALID_TRANSACTION"
+              ? "❌ Transaction Failed"
               : "🔄 Bet Complete",
             `${bet.cryptoSymbol} ${bet.betType} bet result:\n\n` +
               `Status: ${bet.status}\n` +
