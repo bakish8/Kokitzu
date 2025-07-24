@@ -16,12 +16,9 @@ import { useNetwork, NetworkType, NETWORKS } from "../contexts/NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 
 import WalletConnectedModal from "./WalletConnectedModal";
-import NetworkSelectionModal from "./NetworkSelectionModal";
-import {
-  useEthPrice,
-  formatEthWithUsd,
-  ethToUsd,
-} from "../utils/currencyUtils";
+
+import { formatEthWithUsd, ethToUsd } from "../utils/currencyUtils";
+import { useEthPrice } from "../contexts/EthPriceContext";
 import COLORS from "../constants/colors";
 
 interface WalletConnectButtonProps {
@@ -42,17 +39,14 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   } = useWallet();
   const { currentNetwork, networkConfig, switchNetwork, isNetworkSwitching } =
     useNetwork();
-  const [showModal, setShowModal] = useState(false);
-  const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [showWalletConnectedModal, setShowWalletConnectedModal] =
     useState(false);
-  const [modalView, setModalView] = useState<"wallet" | "network">("wallet");
   const [currentChain, setCurrentChain] = useState<string>(
     networkConfig.chainId
   );
 
-  // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
-  const ethPrice = useEthPrice();
+  // Get ETH price for USD conversion (CoinGecko price, Sepolia ETH treated as regular ETH)
+  const { ethPrice } = useEthPrice();
 
   // Use the WalletConnect modal hook
   const {
@@ -140,51 +134,6 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     }
   }, [wcConnected, isConnected, networkConfig.chainId]);
 
-  const handleConnect = async (method: "metamask" | "walletconnect") => {
-    try {
-      console.log(
-        "🔗 Starting wallet connection with method:",
-        method,
-        "on",
-        currentNetwork
-      );
-
-      if (method === "walletconnect") {
-        // For WalletConnect, directly open the official modal
-        console.log("📱 Opening official WalletConnect modal");
-        // Close our modal first, then open WalletConnect modal
-        setShowModal(false);
-        // Small delay to ensure our modal is closed
-        setTimeout(async () => {
-          try {
-            await open();
-            console.log("✅ WalletConnect modal opened successfully");
-          } catch (wcError) {
-            console.error("❌ WalletConnect modal error:", wcError);
-            Alert.alert(
-              "WalletConnect Error",
-              "Failed to open WalletConnect modal. Please try again."
-            );
-          }
-        }, 100);
-      } else {
-        // For MetaMask, proceed normally
-        console.log("🦊 Connecting to MetaMask");
-        await connectWallet(method);
-        setShowModal(false);
-        if (onConnected && walletAddress) {
-          onConnected(walletAddress, null);
-        }
-      }
-    } catch (error: any) {
-      console.error("❌ Wallet connection error:", error);
-      Alert.alert(
-        "Connection Error",
-        error?.message || "Failed to connect wallet. Please try again."
-      );
-    }
-  };
-
   // Fix: Ensure disconnect clears all wallet states
   const handleDisconnect = async () => {
     try {
@@ -209,13 +158,11 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
       }, 500);
       // Force a re-render by toggling modal state
       setShowWalletConnectedModal(false);
-      setShowModal(false);
     } catch (error) {
       console.error("❌ Error disconnecting:", error);
       disconnectWallet();
       setCurrentChain(networkConfig.chainId);
       setShowWalletConnectedModal(false);
-      setShowModal(false);
     }
   };
 
@@ -330,79 +277,23 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
     <>
       <TouchableOpacity
         style={styles.connectButton}
-        onPress={() => setShowModal(true)}
+        onPress={async () => {
+          try {
+            console.log("📱 Opening WalletConnect modal directly");
+            await open();
+            console.log("✅ WalletConnect modal opened successfully");
+          } catch (wcError) {
+            console.error("❌ WalletConnect modal error:", wcError);
+            Alert.alert(
+              "Connection Error",
+              "Failed to open WalletConnect modal. Please try again."
+            );
+          }
+        }}
       >
         <MaterialCommunityIcons name="wallet-outline" size={20} />
         <Text style={styles.connectButtonText}>Connect Wallet</Text>
       </TouchableOpacity>
-      {/* Wallet Selection Modal */}
-      <Modal
-        visible={showModal && modalView === "wallet"}
-        transparent={true}
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Connect Wallet</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.connectionOptions}>
-              <TouchableOpacity
-                style={styles.connectionOption}
-                onPress={() => handleConnect("metamask")}
-              >
-                {/* <MaterialCommunityIcons
-                  name="ethereum"
-                  size={32}
-                  color="#f6851b"
-                /> */}
-                {/* add MetaMask-icon-fox icon in here */}
-                {/* @ts-ignore */}
-                <Image
-                  source={require("../../assets/MetaMask_Fox.png")}
-                  style={styles.connectionOptionIcon}
-                />
-                <View style={styles.connectionOptionText}>
-                  <Text style={styles.connectionOptionTitle}>MetaMask</Text>
-                  <Text style={styles.connectionOptionSubtitle}>
-                    Connect directly with MetaMask
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.connectionOption}
-                onPress={() => handleConnect("walletconnect")}
-              >
-                <Image
-                  source={require("../../assets/walletconnect.png")}
-                  style={styles.connectionOptionIcon}
-                />
-                <View style={styles.connectionOptionText}>
-                  <Text style={styles.connectionOptionTitle}>
-                    WalletConnect
-                  </Text>
-                  <Text style={styles.connectionOptionSubtitle}>
-                    Choose from 100+ compatible wallets
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Network Selection Modal */}
-      <NetworkSelectionModal
-        visible={modalView === "network"}
-        onClose={() => setShowModal(false)}
-        onBack={() => setModalView("wallet")}
-        isConnected={false}
-      />
     </>
   );
 };

@@ -44,12 +44,12 @@ import UnifiedHeader from "../components/UnifiedHeader";
 import SmartContractInfo from "../components/SmartContractInfo";
 import SimpleCryptoModal from "../components/SimpleCryptoModal";
 import {
-  useEthPrice,
   formatEthWithUsd,
   formatUsd,
   ethToUsd,
   usdToEth,
 } from "../utils/currencyUtils";
+import { useEthPrice } from "../contexts/EthPriceContext";
 import PriceChart from "../components/PriceChart";
 import priceDataService from "../services/priceDataService";
 import { FONTS } from "../constants/fonts";
@@ -130,8 +130,8 @@ const BinaryOptionsScreen: React.FC = () => {
     balance,
   ]);
 
-  // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
-  const ethPrice = useEthPrice();
+  // Get ETH price for USD conversion (CoinGecko price, Sepolia ETH treated as regular ETH)
+  const { ethPrice } = useEthPrice();
 
   // Debug: Log the USD conversion values
   useEffect(() => {
@@ -819,26 +819,19 @@ const BinaryOptionsScreen: React.FC = () => {
     console.log("   └─ Time:", new Date().toISOString());
 
     // Same validation as regular handlePlaceBet
-    // Check both WalletConnect modal state and wallet context state
-    const hasWalletConnection = wcConnected || isConnected;
-    const hasWalletAddress = wcAddress || walletAddress || null;
-
+    // Only check WalletConnect connection
     console.log("🔍 WALLET VALIDATION DEBUG:");
     console.log(`   └─ wcConnected: ${wcConnected}`);
-    console.log(`   └─ isConnected: ${isConnected}`);
     console.log(`   └─ wcAddress: ${wcAddress}`);
-    console.log(`   └─ walletAddress: ${walletAddress}`);
-    console.log(`   └─ hasWalletConnection: ${hasWalletConnection}`);
-    console.log(`   └─ hasWalletAddress: ${hasWalletAddress}`);
+    console.log(`   └─ wcProvider: ${!!wcProvider}`);
 
-    if (!hasWalletConnection || !hasWalletAddress) {
+    if (!wcConnected || !wcAddress) {
       Alert.alert(
-        "Wallet Not Connected",
-        "Please connect your wallet to place blockchain bets.\n\n" +
+        "WalletConnect Not Connected",
+        "Please connect your wallet via WalletConnect to place blockchain bets.\n\n" +
           `Debug Info:\n` +
           `WalletConnect: ${wcConnected ? "Connected" : "Not Connected"}\n` +
-          `Wallet Context: ${isConnected ? "Connected" : "Not Connected"}\n` +
-          `Address: ${hasWalletAddress || "None"}`
+          `Address: ${wcAddress || "None"}`
       );
       return;
     }
@@ -885,13 +878,33 @@ const BinaryOptionsScreen: React.FC = () => {
       console.log("🔥 USER PAYS: Preparing transaction via REST API...");
       await apiService.init();
 
-      const prepResult = await apiService.prepareTransaction({
-        cryptoSymbol: selectedCrypto,
-        betType: betType,
-        amount: betAmountEth,
-        timeframe: selectedTimeframe,
-        walletAddress: hasWalletAddress || "",
-      });
+      let prepResult;
+      try {
+        prepResult = await apiService.prepareTransaction({
+          cryptoSymbol: selectedCrypto,
+          betType: betType,
+          amount: betAmountEth,
+          timeframe: selectedTimeframe,
+          walletAddress: wcAddress || "",
+        });
+      } catch (prepError: any) {
+        console.error("❌ Error preparing transaction:", prepError);
+
+        // Check if it's a rate limiting error
+        if (
+          prepError?.message?.includes("Too Many Requests") ||
+          prepError?.message?.includes("-32005")
+        ) {
+          Alert.alert(
+            "⚠️ Rate Limit Exceeded",
+            "Too many requests to the blockchain network. Please wait a few minutes and try again.\n\n" +
+              "This is a temporary issue with the network provider."
+          );
+          return;
+        }
+
+        throw prepError;
+      }
 
       const txData = prepResult.transactionData;
       if (!txData) {
@@ -913,11 +926,32 @@ const BinaryOptionsScreen: React.FC = () => {
       // 🔥 MOBILE APP: All wallets (including MetaMask mobile) use WalletConnect
       console.log("🔍 PROVIDER DEBUG:");
       console.log(`   └─ wcProvider exists: ${!!wcProvider}`);
+      console.log(
+        `   └─ wcProvider type: ${wcProvider ? typeof wcProvider : "undefined"}`
+      );
+      console.log(
+        `   └─ wcProvider.request: ${
+          wcProvider ? typeof wcProvider.request : "undefined"
+        }`
+      );
       console.log(`   └─ wcConnected: ${wcConnected}`);
       console.log(`   └─ isConnected: ${isConnected}`);
-      console.log(`   └─ provider: ${!!provider}`);
+      console.log(`   └─ provider exists: ${!!provider}`);
+      console.log(
+        `   └─ provider type: ${provider ? typeof provider : "undefined"}`
+      );
+      console.log(
+        `   └─ provider.sendTransaction: ${
+          provider ? typeof provider.sendTransaction : "undefined"
+        }`
+      );
+      console.log(
+        `   └─ provider.getSigner: ${
+          provider ? typeof provider.getSigner : "undefined"
+        }`
+      );
 
-      if ((wcProvider || provider) && (wcConnected || isConnected)) {
+      if (wcProvider && wcConnected) {
         console.log("📱 Using Mobile Wallet (WalletConnect protocol)");
         console.log(
           `   └─ MetaMask Mobile, Trust Wallet, etc. all use WalletConnect`
@@ -981,7 +1015,7 @@ const BinaryOptionsScreen: React.FC = () => {
         console.log(`   └─ Reason: Previous tx failed with 'out of gas'`);
 
         const transaction = {
-          from: hasWalletAddress || walletAddress || "",
+          from: wcAddress || "",
           to: txData.to,
           data: txData.data,
           value: valueInHex, // 🔧 FIX: Use hex format for wallet
@@ -1113,12 +1147,26 @@ const BinaryOptionsScreen: React.FC = () => {
             ]
           );
 
-          txHash = await (wcProvider || provider).request({
+          // Only use WalletConnect - ensure it's connected
+          if (!wcProvider || typeof wcProvider.request !== "function") {
+            throw new Error(
+              "WalletConnect provider not available. Please connect via WalletConnect."
+            );
+          }
+
+          if (!wcConnected) {
+            throw new Error(
+              "WalletConnect not connected. Please connect your wallet first."
+            );
+          }
+
+          console.log("🔧 Using WalletConnect provider.request()");
+          const txHash = await wcProvider.request({
             method: "eth_sendTransaction",
             params: [transaction],
           });
 
-          console.log("🔍 wcProvider.request() completed successfully");
+          console.log("🔍 Transaction request completed successfully");
 
           console.log(
             "✅ SUCCESS: MetaMask returned transaction hash:",
@@ -1175,7 +1223,7 @@ const BinaryOptionsScreen: React.FC = () => {
         }
       } else {
         throw new Error(
-          "No mobile wallet connected. Please connect MetaMask mobile or other wallet."
+          "WalletConnect not connected. Please connect your wallet via WalletConnect."
         );
       }
 
@@ -1218,7 +1266,7 @@ const BinaryOptionsScreen: React.FC = () => {
             amount: betAmountEth,
             timeframe: selectedTimeframe,
             transactionHash: String(txHash),
-            walletAddress: hasWalletAddress || "",
+            walletAddress: wcAddress || "",
             entryPrice: entryPrice, // ✅ FIX: Include entry price
           });
 

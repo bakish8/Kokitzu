@@ -33,7 +33,7 @@ import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
 import UnifiedHeader from "../components/UnifiedHeader";
-import { useEthPrice } from "../utils/currencyUtils";
+import { useEthPrice } from "../contexts/EthPriceContext";
 import { FONTS } from "../constants/fonts";
 import { TIMEFRAMES } from "../constants/timeframes";
 import COLORS from "../constants/colors";
@@ -64,7 +64,7 @@ const LivePricesScreen: React.FC = () => {
   const { currentNetwork } = useNetwork();
 
   // Get ETH price for USD conversion
-  const ethPrice = useEthPrice();
+  const { ethPrice } = useEthPrice();
 
   const chainId = provider?.network?.chainId || 1;
   const networkName = getCurrentNetworkName(chainId);

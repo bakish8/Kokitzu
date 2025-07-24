@@ -1,13 +1,41 @@
 import { useState, useEffect } from "react";
 import { apiService } from "../services/apiService";
 
+// Global cache for ETH price to prevent multiple API calls
+let ethPriceCache = {
+  price: 0,
+  lastUpdated: 0,
+  isFetching: false,
+};
+
 // Hook to get ETH price for conversion from Chainlink (treats Sepolia ETH as regular ETH)
 export const useEthPrice = () => {
   const [ethPrice, setEthPrice] = useState(0);
 
   useEffect(() => {
     const fetchEthPrice = async () => {
+      // Prevent multiple simultaneous requests
+      if (ethPriceCache.isFetching) {
+        console.log("⏳ ETH price fetch already in progress, skipping...");
+        return;
+      }
+
+      // Use cached price if it's less than 5 minutes old
+      const now = Date.now();
+      const cacheAge = now - ethPriceCache.lastUpdated;
+      if (ethPriceCache.price > 0 && cacheAge < 300000) {
+        // 5 minutes
+        console.log(
+          `💰 Using cached ETH price: $${ethPriceCache.price.toLocaleString()} (age: ${Math.round(
+            cacheAge / 1000
+          )}s)`
+        );
+        setEthPrice(ethPriceCache.price);
+        return;
+      }
+
       try {
+        ethPriceCache.isFetching = true;
         console.log("🔍 Fetching ETH price from Chainlink REST API...");
         await apiService.init();
         const prices = await apiService.getPrices();
@@ -16,11 +44,12 @@ export const useEthPrice = () => {
         const ethData = prices.find((crypto: any) => crypto.symbol === "ETH");
 
         if (ethData && ethData.price && ethData.price > 0) {
+          ethPriceCache.price = ethData.price;
+          ethPriceCache.lastUpdated = now;
           setEthPrice(ethData.price);
           console.log(
             `💰 ETH price updated: $${ethData.price.toLocaleString()} (Chainlink)`
           );
-          // console.log(`✅ USD conversion now available for wallet balance`);
         } else {
           console.warn("⚠️ ETH price not found or invalid in API response");
           console.warn("ETH data received:", ethData);
@@ -34,13 +63,23 @@ export const useEthPrice = () => {
       } catch (error) {
         console.error("❌ Error fetching ETH price for USD conversion:", error);
         console.error("❌ This will cause $0 to show in wallet balance");
+
+        // If we have a cached price, use it as fallback
+        if (ethPriceCache.price > 0) {
+          console.log(
+            `🔄 Using cached ETH price as fallback: $${ethPriceCache.price.toLocaleString()}`
+          );
+          setEthPrice(ethPriceCache.price);
+        }
+      } finally {
+        ethPriceCache.isFetching = false;
       }
     };
 
     fetchEthPrice();
 
-    // Update ETH price every 2 minutes
-    const interval = setInterval(fetchEthPrice, 120000);
+    // Update ETH price every 5 minutes (increased from 2 minutes to reduce API calls)
+    const interval = setInterval(fetchEthPrice, 300000);
     return () => clearInterval(interval);
   }, []);
 

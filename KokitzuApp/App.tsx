@@ -26,6 +26,7 @@ import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import { TradingProvider } from "./src/contexts/TradingContext";
 import { WalletProvider } from "./src/contexts/WalletContext";
 import { NetworkProvider } from "./src/contexts/NetworkContext";
+import { EthPriceProvider } from "./src/contexts/EthPriceContext";
 import AuthModal from "./src/components/AuthModal";
 import usePerformanceMonitor from "./src/hooks/usePerformanceMonitor";
 import COLORS from "./src/constants/colors";
@@ -57,6 +58,21 @@ const providerMetadata = {
   redirect: {
     native: "kokitzuapp://",
     universal: "https://kokitzu.app",
+  },
+};
+
+// Required chains for WalletConnect
+const requiredNamespaces = {
+  eip155: {
+    methods: [
+      "eth_sendTransaction",
+      "eth_signTransaction",
+      "eth_sign",
+      "personal_sign",
+      "eth_signTypedData",
+    ],
+    chains: ["eip155:11155111"], // Sepolia testnet
+    events: ["chainChanged", "accountsChanged"],
   },
 };
 
@@ -209,13 +225,15 @@ export default function App() {
           <NetworkProvider>
             <AuthProvider>
               <WalletProvider>
-                <TradingProvider>
-                  <AppContent />
-                  <WalletConnectModal
-                    projectId={projectId}
-                    providerMetadata={providerMetadata}
-                  />
-                </TradingProvider>
+                <EthPriceProvider>
+                  <TradingProvider>
+                    <AppContent />
+                    <WalletConnectModal
+                      projectId={projectId}
+                      providerMetadata={providerMetadata}
+                    />
+                  </TradingProvider>
+                </EthPriceProvider>
               </WalletProvider>
             </AuthProvider>
           </NetworkProvider>

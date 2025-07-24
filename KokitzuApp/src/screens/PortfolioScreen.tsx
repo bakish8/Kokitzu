@@ -25,12 +25,8 @@ import { GET_USER_STATS, GET_BET_HISTORY } from "../graphql/queries";
 import { UserStats, Bet } from "../types";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import UnifiedHeader from "../components/UnifiedHeader";
-import {
-  useEthPrice,
-  formatEthWithUsd,
-  formatUsd,
-  ethToUsd,
-} from "../utils/currencyUtils";
+import { formatEthWithUsd, formatUsd, ethToUsd } from "../utils/currencyUtils";
+import { useEthPrice } from "../contexts/EthPriceContext";
 import { FONTS } from "../constants/fonts";
 import COLORS from "../constants/colors";
 
@@ -41,7 +37,7 @@ const PortfolioScreen: React.FC = () => {
   const [timerTick, setTimerTick] = useState(0);
 
   // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
-  const ethPrice = useEthPrice();
+  const { ethPrice } = useEthPrice();
 
   // Animation values for entrance animations
   const headerOpacity = useSharedValue(0);
