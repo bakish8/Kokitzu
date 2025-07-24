@@ -51,9 +51,15 @@ const SimpleCryptoModal: React.FC<SimpleCryptoModalProps> = ({
       setLoading(true);
       await apiService.init();
       const prices = await apiService.getPrices();
-      setCryptos(prices);
-      setFilteredCryptos(prices);
-      console.log(`✅ Loaded ${prices.length} cryptos for selector`);
+      // Filter out any items with null/undefined prices to prevent errors
+      const validPrices = prices.filter(
+        (crypto: CryptoOption) => crypto && crypto.price != null
+      );
+      setCryptos(validPrices);
+      setFilteredCryptos(validPrices);
+      console.log(
+        `✅ Loaded ${validPrices.length} cryptos for selector (filtered from ${prices.length})`
+      );
     } catch (error) {
       console.error("❌ Error fetching cryptos for selector:", error);
     } finally {
@@ -135,7 +141,7 @@ const SimpleCryptoModal: React.FC<SimpleCryptoModalProps> = ({
         </View>
         <View style={styles.priceContainer}>
           <Text style={[styles.cryptoPrice, isSelected && styles.selectedText]}>
-            ${item.price.toLocaleString()}
+            ${item.price ? item.price.toLocaleString() : "N/A"}
           </Text>
           {isSelected && (
             <MaterialCommunityIcons

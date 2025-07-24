@@ -112,6 +112,24 @@ const BinaryOptionsScreen: React.FC = () => {
   // Debug connection status (same logic as header)
   const isWalletConnected = wcConnected || isConnected;
 
+  // Debug wallet connection status
+  useEffect(() => {
+    console.log("🔍 WALLET CONNECTION DEBUG:");
+    console.log(`   └─ wcConnected: ${wcConnected}`);
+    console.log(`   └─ isConnected: ${isConnected}`);
+    console.log(`   └─ wcAddress: ${wcAddress}`);
+    console.log(`   └─ walletAddress: ${walletAddress}`);
+    console.log(`   └─ isWalletConnected: ${isWalletConnected}`);
+    console.log(`   └─ balance: ${balance}`);
+  }, [
+    wcConnected,
+    isConnected,
+    wcAddress,
+    walletAddress,
+    isWalletConnected,
+    balance,
+  ]);
+
   // Get ETH price for USD conversion (Chainlink price, Sepolia ETH treated as regular ETH)
   const ethPrice = useEthPrice();
 
@@ -754,7 +772,7 @@ const BinaryOptionsScreen: React.FC = () => {
             amount: usdToEth(betAmountValue, ethPrice), // Convert USD to ETH for blockchain
             timeframe: selectedTimeframe,
             useBlockchain: true, // Always use blockchain
-            walletAddress: walletAddress, // Send connected wallet address
+            walletAddress: walletAddress || "", // Send connected wallet address
           },
         },
       });
@@ -801,10 +819,26 @@ const BinaryOptionsScreen: React.FC = () => {
     console.log("   └─ Time:", new Date().toISOString());
 
     // Same validation as regular handlePlaceBet
-    if (!isWalletConnected || !walletAddress) {
+    // Check both WalletConnect modal state and wallet context state
+    const hasWalletConnection = wcConnected || isConnected;
+    const hasWalletAddress = wcAddress || walletAddress || null;
+
+    console.log("🔍 WALLET VALIDATION DEBUG:");
+    console.log(`   └─ wcConnected: ${wcConnected}`);
+    console.log(`   └─ isConnected: ${isConnected}`);
+    console.log(`   └─ wcAddress: ${wcAddress}`);
+    console.log(`   └─ walletAddress: ${walletAddress}`);
+    console.log(`   └─ hasWalletConnection: ${hasWalletConnection}`);
+    console.log(`   └─ hasWalletAddress: ${hasWalletAddress}`);
+
+    if (!hasWalletConnection || !hasWalletAddress) {
       Alert.alert(
         "Wallet Not Connected",
-        "Please connect your wallet to place blockchain bets."
+        "Please connect your wallet to place blockchain bets.\n\n" +
+          `Debug Info:\n` +
+          `WalletConnect: ${wcConnected ? "Connected" : "Not Connected"}\n` +
+          `Wallet Context: ${isConnected ? "Connected" : "Not Connected"}\n` +
+          `Address: ${hasWalletAddress || "None"}`
       );
       return;
     }
@@ -856,7 +890,7 @@ const BinaryOptionsScreen: React.FC = () => {
         betType: betType,
         amount: betAmountEth,
         timeframe: selectedTimeframe,
-        walletAddress: walletAddress,
+        walletAddress: hasWalletAddress || "",
       });
 
       const txData = prepResult.transactionData;
@@ -877,7 +911,13 @@ const BinaryOptionsScreen: React.FC = () => {
       let txHash;
 
       // 🔥 MOBILE APP: All wallets (including MetaMask mobile) use WalletConnect
-      if (wcProvider && (wcConnected || isConnected)) {
+      console.log("🔍 PROVIDER DEBUG:");
+      console.log(`   └─ wcProvider exists: ${!!wcProvider}`);
+      console.log(`   └─ wcConnected: ${wcConnected}`);
+      console.log(`   └─ isConnected: ${isConnected}`);
+      console.log(`   └─ provider: ${!!provider}`);
+
+      if ((wcProvider || provider) && (wcConnected || isConnected)) {
         console.log("📱 Using Mobile Wallet (WalletConnect protocol)");
         console.log(
           `   └─ MetaMask Mobile, Trust Wallet, etc. all use WalletConnect`
@@ -941,7 +981,7 @@ const BinaryOptionsScreen: React.FC = () => {
         console.log(`   └─ Reason: Previous tx failed with 'out of gas'`);
 
         const transaction = {
-          from: walletAddress,
+          from: hasWalletAddress || walletAddress || "",
           to: txData.to,
           data: txData.data,
           value: valueInHex, // 🔧 FIX: Use hex format for wallet
@@ -1073,7 +1113,7 @@ const BinaryOptionsScreen: React.FC = () => {
             ]
           );
 
-          txHash = await wcProvider.request({
+          txHash = await (wcProvider || provider).request({
             method: "eth_sendTransaction",
             params: [transaction],
           });
@@ -1178,7 +1218,7 @@ const BinaryOptionsScreen: React.FC = () => {
             amount: betAmountEth,
             timeframe: selectedTimeframe,
             transactionHash: String(txHash),
-            walletAddress: walletAddress,
+            walletAddress: hasWalletAddress || "",
             entryPrice: entryPrice, // ✅ FIX: Include entry price
           });
 
