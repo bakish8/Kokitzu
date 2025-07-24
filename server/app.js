@@ -111,6 +111,17 @@ class ChainlinkPriceService {
         `❌ Error getting ${symbol} price from Chainlink:`,
         error.message
       );
+
+      // Return cached price if available, otherwise throw
+      if (this.prices[symbol]) {
+        console.log(
+          `🔄 Using cached price for ${symbol}: $${this.prices[
+            symbol
+          ].toLocaleString()}`
+        );
+        return this.prices[symbol];
+      }
+
       throw error;
     }
   }
@@ -509,7 +520,7 @@ app.get("/api/transaction-status/:txHash", async (req, res) => {
   }
 });
 
-// Auto-update prices every 30 seconds
+// Auto-update prices every 2 minutes to reduce rate limiting
 setInterval(async () => {
   try {
     console.log("🔄 Auto-updating Chainlink prices...");
@@ -522,8 +533,10 @@ setInterval(async () => {
     await resolvePendingOptionIds();
   } catch (error) {
     console.error("❌ Error in auto-update:", error.message);
+    console.error("❌ Error stack:", error.stack);
+    // Don't crash the server on price update errors
   }
-}, 60000); // Increased to 60 seconds to reduce RPC load
+}, 120000); // Increased to 2 minutes to reduce RPC load
 
 // Check expired bets function
 async function checkExpiredBets() {

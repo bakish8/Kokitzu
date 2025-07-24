@@ -137,17 +137,45 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
   // Fix: Ensure disconnect clears all wallet states
   const handleDisconnect = async () => {
     try {
-      if (provider && provider.disconnect) {
-        await provider.disconnect();
+      console.log("🔌 Disconnecting from WalletConnect...");
+
+      // Disconnect from WalletConnect provider
+      if (provider) {
+        try {
+          // Try to disconnect using the provider's disconnect method
+          if (typeof provider.disconnect === "function") {
+            await provider.disconnect();
+            console.log("✅ WalletConnect provider disconnected");
+          } else {
+            console.log("⚠️ No disconnect method available on provider");
+          }
+        } catch (providerError) {
+          console.warn("⚠️ Provider disconnect error:", providerError);
+        }
       }
+
+      // Disconnect from wallet context
       disconnectWallet();
       setCurrentChain(networkConfig.chainId);
-      // Manually clear WalletConnect modal state if possible
-      if (typeof window !== "undefined" && window.localStorage) {
-        // WalletConnect v2 uses this key, but may vary by implementation
-        window.localStorage.removeItem("walletconnect");
-        window.localStorage.removeItem("WALLETCONNECT_DEEPLINK_CHOICE");
+
+      // Clear any stored WalletConnect data
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.removeItem("walletconnect");
+          window.localStorage.removeItem("WALLETCONNECT_DEEPLINK_CHOICE");
+          window.localStorage.removeItem("wc@2:client:0.3//session");
+          console.log("✅ Cleared WalletConnect localStorage");
+        }
+      } catch (storageError) {
+        console.warn("⚠️ Storage clear error:", storageError);
       }
+
+      // Force a re-render
+      setShowWalletConnectedModal(false);
+
+      console.log("✅ Disconnect complete");
+
+      // Debug: Check connection status after disconnect
       setTimeout(() => {
         console.log("[DEBUG] After disconnect:", {
           wcConnected,
@@ -155,11 +183,19 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           walletAddress,
           isConnected,
         });
-      }, 500);
-      // Force a re-render by toggling modal state
-      setShowWalletConnectedModal(false);
+
+        // If still connected, try to force a refresh
+        if (wcConnected || wcAddress) {
+          console.log(
+            "⚠️ Still connected after disconnect, forcing refresh..."
+          );
+          // Force a re-render by updating state
+          setCurrentChain(networkConfig.chainId);
+        }
+      }, 1000);
     } catch (error) {
       console.error("❌ Error disconnecting:", error);
+      // Still try to disconnect from wallet context
       disconnectWallet();
       setCurrentChain(networkConfig.chainId);
       setShowWalletConnectedModal(false);
@@ -234,8 +270,8 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
 
   // Debug: Log connection state before rendering
 
-  // Only show connected UI if app wallet context is connected
-  if (isConnected && walletAddress) {
+  // Show connected UI if either wallet context or WalletConnect is connected
+  if ((isConnected && walletAddress) || (wcConnected && wcAddress)) {
     return (
       <>
         <TouchableOpacity
@@ -245,7 +281,7 @@ const WalletConnectButton: React.FC<WalletConnectButtonProps> = ({
           <MaterialCommunityIcons name="wallet" size={20} color="#10b981" />
           <View style={styles.addressContainer}>
             <Text style={styles.connectedButtonText}>
-              {formatAddress(walletAddress || "")}
+              {formatAddress(connectedAddress || "")}
             </Text>
             {displayBalance && (
               <Text style={styles.balanceText}>

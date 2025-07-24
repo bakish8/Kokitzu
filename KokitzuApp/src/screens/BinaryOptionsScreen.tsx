@@ -1161,7 +1161,7 @@ const BinaryOptionsScreen: React.FC = () => {
           }
 
           console.log("🔧 Using WalletConnect provider.request()");
-          const txHash = await wcProvider.request({
+          txHash = await wcProvider.request({
             method: "eth_sendTransaction",
             params: [transaction],
           });
