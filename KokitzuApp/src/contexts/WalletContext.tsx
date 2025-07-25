@@ -2,37 +2,28 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ethers } from "ethers";
 import "react-native-get-random-values";
-import { getInfuraUrl, validateApiKeys } from "../config/api";
 import {
-  connectWalletConnect as connectWC,
-  getWalletConnectSessions,
-  getWalletAddress,
   getWalletBalance,
   signMessage as signMessageWC,
   sendTransaction as sendTransactionWC,
-  disconnectWalletConnect,
-  setCurrentSession,
-  getCurrentSession,
-  getConnectionStatus,
-  forceDisconnectAll,
   setCurrentNetwork as setWalletNetwork,
   getCurrentNetwork as getWalletNetwork,
+  clearWalletConnectStorage,
+  validateWalletConnectConfig,
 } from "../services/walletconnect";
 import { useNetwork } from "./NetworkContext";
 import { useWalletConnectModal } from "@walletconnect/modal-react-native";
-import { Linking, Alert, Platform } from "react-native";
+import { Alert } from "react-native";
 
 interface WalletContextType {
   walletAddress: string | null;
   isConnected: boolean;
-  connectWallet: (method: "metamask" | "walletconnect") => Promise<any>;
-  disconnectWallet: () => void;
-  signMessage: (message: string) => Promise<string | null>;
-  sendTransaction: (to: string, amount: string) => Promise<string | null>;
+  connectWallet: () => Promise<void>;
+  disconnectWallet: () => Promise<void>;
+  signMessage: (message: string) => Promise<string>;
+  sendTransaction: (to: string, amount: string) => Promise<string>;
   balance: string | null;
   loading: boolean;
-  walletConnectUri: string | null;
-  connectionStatus: "waiting" | "connecting" | "connected" | "failed";
   provider: any;
   refreshBalance: () => Promise<void>;
 }
@@ -54,394 +45,152 @@ interface WalletProviderProps {
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const { currentNetwork, networkConfig } = useNetwork();
 
-  // WalletConnect modal hook
+  // WalletConnect modal hook - this is our main connection method
   const {
     isConnected: wcConnected,
     address: wcAddress,
     provider: wcProvider,
+    open: openModal,
+    close: closeModal,
   } = useWalletConnectModal();
 
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [balance, setBalance] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [provider, setProvider] = useState<any>(null);
-  const [walletConnectUri, setWalletConnectUri] = useState<string | null>(null);
-  const [walletSession, setWalletSession] = useState<any>(null);
-  const [connectionStatus, setConnectionStatus] = useState<
-    "waiting" | "connecting" | "connected" | "failed"
-  >("waiting");
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Update wallet service network when network context changes
   useEffect(() => {
     setWalletNetwork(currentNetwork);
     console.log("🌐 WalletContext: Network changed to", currentNetwork);
 
-    // Reinitialize provider with new network and refresh balance
-    if (isConnected && walletAddress) {
-      setProvider(new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl));
-      console.log(
-        "🌐 WalletContext: Provider reinitialized for",
-        currentNetwork
-      );
-
-      // Refresh balance for the new network
-      const refreshBalance = async () => {
-        try {
-          console.log(
-            "🌐 WalletContext: Refreshing balance for",
-            currentNetwork
-          );
-          const realBalance = await getWalletBalance(
-            walletAddress,
-            undefined,
-            currentNetwork
-          );
-          setBalance(realBalance);
-          console.log(
-            "🌐 WalletContext: Balance refreshed:",
-            realBalance,
-            "for",
-            currentNetwork
-          );
-        } catch (error) {
-          console.error("🌐 WalletContext: Error refreshing balance:", error);
-          setBalance("0.0000");
-        }
-      };
-
-      refreshBalance();
-    } else if (wcConnected && wcAddress) {
-      // For WalletConnect, also refresh balance when network changes
-      const refreshBalance = async () => {
-        try {
-          console.log(
-            "🌐 WalletContext: Refreshing WalletConnect balance for",
-            currentNetwork
-          );
-          const realBalance = await getWalletBalance(
-            wcAddress,
-            undefined,
-            currentNetwork
-          );
-          setBalance(realBalance);
-          console.log(
-            "🌐 WalletContext: WalletConnect balance refreshed:",
-            realBalance,
-            "for",
-            currentNetwork
-          );
-        } catch (error) {
-          console.error(
-            "🌐 WalletContext: Error refreshing WalletConnect balance:",
-            error
-          );
-          setBalance("0.0000");
-        }
-      };
-
+    // Refresh balance when network changes if connected
+    if (wcConnected && wcAddress) {
       refreshBalance();
     }
-  }, [
-    currentNetwork,
-    networkConfig.rpcUrl,
-    isConnected,
-    walletAddress,
-    wcConnected,
-    wcAddress,
-  ]);
+  }, [currentNetwork, wcConnected, wcAddress]);
 
-  // Sync WalletConnect modal state to wallet context
+  // Handle WalletConnect connection changes
   useEffect(() => {
     if (wcConnected && wcAddress) {
-      setIsConnected(true);
-      setWalletAddress(wcAddress);
-      setProvider(wcProvider);
-      setConnectionStatus("connected");
-    } else if (!wcConnected) {
-      setIsConnected(false);
-      setWalletAddress(null);
-      setProvider(null);
-      setConnectionStatus("waiting");
+      console.log("✅ WalletConnect connected:", wcAddress);
+      // Save connection state to prevent auto-reconnect issues
+      saveConnectionState(wcAddress);
+      refreshBalance();
+    } else {
+      console.log("❌ WalletConnect disconnected");
+      clearConnectionState();
+      setBalance(null);
     }
-  }, [wcConnected, wcAddress, wcProvider]);
+  }, [wcConnected, wcAddress]);
 
+  // Initialize and check for existing connections
   useEffect(() => {
-    loadStoredWallet();
+    const initialize = async () => {
+      try {
+        // Clear any stored connection state on app start to prevent auto-reconnect
+        await clearConnectionState();
+        setIsInitialized(true);
+      } catch (error) {
+        console.error("Error initializing WalletContext:", error);
+        setIsInitialized(true);
+      }
+    };
+
+    initialize();
   }, []);
 
-  const loadStoredWallet = async () => {
+  const saveConnectionState = async (address: string) => {
     try {
-      const storedAddress = await AsyncStorage.getItem("walletAddress");
-      const storedSession = await AsyncStorage.getItem("walletSession");
-
-      if (storedAddress && storedSession) {
-        const session = JSON.parse(storedSession);
-        setWalletAddress(storedAddress);
-        setIsConnected(true);
-        setWalletSession(session);
-        setCurrentSession(session);
-        setProvider(new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl));
-
-        // Get real balance for current network
-        const realBalance = await getWalletBalance(
-          storedAddress,
-          undefined,
-          currentNetwork
-        );
-        setBalance(realBalance);
-        console.log(
-          "Loaded stored wallet:",
-          storedAddress,
-          "Balance:",
-          realBalance,
-          "on",
-          currentNetwork
-        );
-      }
+      await AsyncStorage.setItem("lastConnectedAddress", address);
+      await AsyncStorage.setItem("connectionTimestamp", Date.now().toString());
     } catch (error) {
-      console.error("Error loading stored wallet:", error);
+      console.warn("Failed to save connection state:", error);
     }
   };
 
-  const connectWallet = async (method: "metamask" | "walletconnect") => {
-    setLoading(true);
-    setConnectionStatus("connecting");
+  const clearConnectionState = async () => {
     try {
-      if (method === "metamask") {
-        // For MetaMask, use WalletConnect to connect
-        await connectMetaMaskViaWalletConnect();
-        return null;
-      } else if (method === "walletconnect") {
-        return await connectWalletConnect();
-      }
+      await AsyncStorage.multiRemove([
+        "lastConnectedAddress",
+        "connectionTimestamp",
+        "walletAddress", // Legacy key
+        "walletSession", // Legacy key
+      ]);
+      console.log("🧹 Cleared connection state from AsyncStorage");
+    } catch (error) {
+      console.warn("Failed to clear connection state:", error);
+    }
+  };
+
+  const connectWallet = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      // Validate configuration
+      validateWalletConnectConfig();
+
+      console.log("🔗 Opening WalletConnect modal...");
+      await openModal();
+
+      // The connection state will be handled by the useEffect hook
+      // when wcConnected and wcAddress change
     } catch (error: any) {
-      console.error("Error connecting wallet:", error);
-      setConnectionStatus("failed");
-      throw new Error(
-        `Failed to connect ${method}: ${error?.message || "Unknown error"}`
+      console.error("❌ Error connecting wallet:", error);
+      Alert.alert(
+        "Connection Error",
+        error?.message || "Failed to connect wallet. Please try again."
       );
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const connectMetaMaskViaWalletConnect = async () => {
+  const disconnectWallet = async (): Promise<void> => {
     try {
-      // Check if API keys are configured
-      const errors = validateApiKeys();
-      if (errors.length > 0) {
-        throw new Error(`API Keys not configured: ${errors.join(", ")}`);
-      }
+      console.log("🔌 Disconnecting wallet...");
 
-      // Use WalletConnect to connect to MetaMask
-      const { uri, approval } = await connectWC();
+      // Clear WalletConnect storage
+      clearWalletConnectStorage();
 
-      if (uri) {
-        console.log(
-          "MetaMask connection URI generated for",
-          currentNetwork,
-          ":",
-          uri
-        );
+      // Clear AsyncStorage
+      await clearConnectionState();
 
-        // Try to open MetaMask directly with the URI
-        const metamaskUrl = `metamask://wc?uri=${encodeURIComponent(uri)}`;
-
+      // Close the modal connection
+      if (wcProvider && typeof wcProvider.disconnect === "function") {
         try {
-          await Linking.openURL(metamaskUrl);
-          console.log("Opened MetaMask with connection URI");
-        } catch (error) {
-          console.log(
-            "Could not open MetaMask directly, trying alternative method"
-          );
-          // Fallback: try to open MetaMask app
-          await Linking.openURL("metamask://");
+          await wcProvider.disconnect();
+        } catch (disconnectError) {
+          console.warn("Provider disconnect error:", disconnectError);
         }
-
-        // Wait for approval
-        const session = await approval();
-        console.log("MetaMask session approved:", session);
-
-        // Set current session
-        setCurrentSession(session);
-
-        // Extract wallet address from session
-        const address = getWalletAddress(session);
-        if (address) {
-          setWalletAddress(address);
-          setIsConnected(true);
-          setWalletSession(session);
-          setProvider(
-            new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl)
-          );
-          await AsyncStorage.setItem("walletAddress", address);
-          await AsyncStorage.setItem("walletSession", JSON.stringify(session));
-
-          // Get real balance for current network
-          const realBalance = await getWalletBalance(
-            address,
-            undefined,
-            currentNetwork
-          );
-          setBalance(realBalance);
-          setConnectionStatus("connected");
-          console.log(
-            "Connected to MetaMask:",
-            address,
-            "Balance:",
-            realBalance,
-            "on",
-            currentNetwork
-          );
-        }
-      } else {
-        throw new Error("Failed to generate MetaMask connection URI");
-      }
-    } catch (error: any) {
-      setConnectionStatus("failed");
-      throw new Error(
-        `MetaMask connection failed: ${error?.message || "Unknown error"}`
-      );
-    }
-  };
-
-  const connectWalletConnect = async () => {
-    try {
-      console.log(
-        "WalletContext: Starting WalletConnect connection on",
-        currentNetwork
-      );
-
-      // Check if API keys are configured
-      const errors = validateApiKeys();
-      if (errors.length > 0) {
-        throw new Error(`API Keys not configured: ${errors.join(", ")}`);
       }
 
-      // Use real WalletConnect v2
-      const { uri, approval } = await connectWC();
-      console.log("WalletContext: Got WalletConnect URI and approval function");
-
-      if (uri) {
-        setWalletConnectUri(uri);
-        setConnectionStatus("waiting");
-        console.log(
-          "🔗 WalletContext: Setting walletConnectUri:",
-          uri.substring(0, 50) + "..."
-        );
-        console.log(
-          "🔗 WalletContext: walletConnectUri state should now be available"
-        );
-        console.log(
-          "WalletContext: WalletConnect URI generated for",
-          currentNetwork,
-          ":",
-          uri.substring(0, 50) + "..."
-        );
-
-        // Wait for approval
-        console.log("WalletContext: Waiting for wallet approval...");
-        const session = await approval();
-        console.log("WalletContext: WalletConnect session approved:", session);
-
-        // Set current session
-        setCurrentSession(session);
-        console.log("WalletContext: Current session set");
-
-        // Extract wallet address from session
-        const address = getWalletAddress(session);
-        console.log("WalletContext: Extracted address from session:", address);
-
-        if (address) {
-          console.log("WalletContext: Setting wallet state...");
-          setWalletAddress(address);
-          setIsConnected(true);
-          setWalletSession(session);
-          setProvider(
-            new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl)
-          );
-          setConnectionStatus("connected");
-
-          console.log("WalletContext: Saving to AsyncStorage...");
-          await AsyncStorage.setItem("walletAddress", address);
-          await AsyncStorage.setItem("walletSession", JSON.stringify(session));
-
-          // Get real balance for current network
-          console.log("WalletContext: Fetching balance for", currentNetwork);
-          const realBalance = await getWalletBalance(
-            address,
-            undefined,
-            currentNetwork
-          );
-          setBalance(realBalance);
-          console.log(
-            "WalletContext: Connected to wallet:",
-            address,
-            "Balance:",
-            realBalance,
-            "on",
-            currentNetwork
-          );
-        } else {
-          throw new Error("Failed to extract wallet address from session");
-        }
-
-        return { uri, approval };
-      } else {
-        throw new Error("Failed to generate WalletConnect URI");
-      }
-    } catch (error: any) {
-      setConnectionStatus("failed");
-      throw new Error(
-        `WalletConnect connection failed: ${error?.message || "Unknown error"}`
-      );
-    }
-  };
-
-  const disconnectWallet = async () => {
-    try {
-      console.log("WalletContext: Disconnecting wallet...");
-
-      // Disconnect from WalletConnect
-      await disconnectWalletConnect();
+      // Close modal if open
+      await closeModal();
 
       // Clear local state
-      setWalletAddress(null);
-      setIsConnected(false);
       setBalance(null);
-      setProvider(null);
-      setWalletConnectUri(null);
-      setWalletSession(null);
-      setConnectionStatus("waiting");
 
-      // Clear stored data
-      await AsyncStorage.removeItem("walletAddress");
-      await AsyncStorage.removeItem("walletSession");
-
-      console.log("WalletContext: Wallet disconnected successfully");
+      console.log("✅ Wallet disconnected successfully");
     } catch (error) {
-      console.error("Error disconnecting wallet:", error);
+      console.error("❌ Error disconnecting wallet:", error);
       // Still clear local state even if there's an error
-      setWalletAddress(null);
-      setIsConnected(false);
+      await clearConnectionState();
       setBalance(null);
-      setProvider(null);
-      setWalletConnectUri(null);
-      setWalletSession(null);
-      setConnectionStatus("waiting");
     }
   };
 
-  const signMessage = async (message: string): Promise<string | null> => {
+  const signMessage = async (message: string): Promise<string> => {
     try {
-      if (!isConnected || !walletSession) {
+      if (!wcConnected || !wcProvider) {
         throw new Error("Wallet not connected");
       }
 
-      return await signMessageWC(message, walletSession);
+      console.log("🖊️ Signing message...");
+      const signature = await signMessageWC(message, wcProvider);
+      console.log("✅ Message signed successfully");
+      return signature;
     } catch (error) {
-      console.error("Error signing message:", error);
+      console.error("❌ Error signing message:", error);
       throw error;
     }
   };
@@ -449,43 +198,32 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const sendTransaction = async (
     to: string,
     amount: string
-  ): Promise<string | null> => {
+  ): Promise<string> => {
     try {
-      if (!isConnected || !walletSession) {
+      if (!wcConnected || !wcProvider) {
         throw new Error("Wallet not connected");
       }
 
       const transaction = {
         to,
         value: ethers.utils.parseEther(amount).toHexString(),
-        gas: "0x5208", // 21000 gas
+        gas: "0x5208", // 21000 gas for simple transfer
       };
 
-      return await sendTransactionWC(transaction, walletSession);
+      console.log("🚀 Sending transaction...");
+      const txHash = await sendTransactionWC(transaction, wcProvider);
+      console.log("✅ Transaction sent successfully:", txHash);
+      return txHash;
     } catch (error) {
-      console.error("Error sending transaction:", error);
+      console.error("❌ Error sending transaction:", error);
       throw error;
     }
   };
 
   const refreshBalance = async () => {
     try {
-      if (isConnected && walletAddress) {
+      if (wcConnected && wcAddress) {
         console.log("🔄 Refreshing balance for", currentNetwork);
-        const realBalance = await getWalletBalance(
-          walletAddress,
-          undefined,
-          currentNetwork
-        );
-        setBalance(realBalance);
-        console.log(
-          "💰 Balance refreshed:",
-          realBalance,
-          "for",
-          currentNetwork
-        );
-      } else if (wcConnected && wcAddress) {
-        console.log("🔄 Refreshing WalletConnect balance for", currentNetwork);
         const realBalance = await getWalletBalance(
           wcAddress,
           undefined,
@@ -493,7 +231,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         );
         setBalance(realBalance);
         console.log(
-          "💰 WalletConnect balance refreshed:",
+          "💰 Balance refreshed:",
           realBalance,
           "for",
           currentNetwork
@@ -505,20 +243,23 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
+  // Don't render until initialized to prevent flash of wrong state
+  if (!isInitialized) {
+    return null;
+  }
+
   return (
     <WalletContext.Provider
       value={{
-        walletAddress,
-        isConnected,
+        walletAddress: wcAddress || null,
+        isConnected: wcConnected,
         connectWallet,
         disconnectWallet,
         signMessage,
         sendTransaction,
         balance,
         loading,
-        walletConnectUri,
-        connectionStatus,
-        provider,
+        provider: wcProvider,
         refreshBalance,
       }}
     >

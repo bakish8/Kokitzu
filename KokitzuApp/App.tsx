@@ -61,21 +61,6 @@ const providerMetadata = {
   },
 };
 
-// Required chains for WalletConnect
-const requiredNamespaces = {
-  eip155: {
-    methods: [
-      "eth_sendTransaction",
-      "eth_signTransaction",
-      "eth_sign",
-      "personal_sign",
-      "eth_signTypedData",
-    ],
-    chains: ["eip155:11155111"], // Sepolia testnet
-    events: ["chainChanged", "accountsChanged"],
-  },
-};
-
 function AppContent() {
   const { user, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);

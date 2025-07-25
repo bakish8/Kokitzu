@@ -1,249 +1,206 @@
-# 🚀 KokitzuApp - Crypto Binary Options Trading
+# KokitzuApp - Crypto Binary Options Trading
 
-A React Native (Expo) cryptocurrency binary options trading app with real wallet connections.
+A modern React Native app for crypto binary options trading with WalletConnect v2 integration.
 
-## ✨ Features
+## Features
 
-- **Real Wallet Connections**: Connect with MetaMask and WalletConnect (no mock wallets)
-- **Live Crypto Prices**: Real-time cryptocurrency prices from CoinGecko API
-- **Binary Options Trading**: Bet on price direction (UP/DOWN) with multiple timeframes
-- **Real Wallet Integration**: Sign messages and send transactions with actual wallets
-- **Modern UI**: Futuristic design with glassmorphism and smooth animations
-- **GraphQL API**: Modern GraphQL server with Apollo Server
-- **Responsive Design**: Beautiful interface optimized for mobile devices
+- **Modern WalletConnect v2 Integration**: Clean, reliable wallet connections with proper disconnect handling
+- **Single Signature Trading**: Connect once, trade multiple times without repeated signatures using allowance system
+- **Real-time Price Data**: Live crypto price feeds with interactive charts
+- **Binary Options Trading**: Place CALL/PUT options on various cryptocurrencies
+- **Multi-Network Support**: Arbitrum One and Arbitrum Sepolia networks
+- **Portfolio Tracking**: Monitor your active bets and trading history
 
-## 🔐 Wallet Integration
-
-### Supported Wallets
-
-- **MetaMask**: Direct connection via WalletConnect
-- **WalletConnect**: QR code connection for any WalletConnect-compatible wallet
-
-### Real Wallet Features
-
-- ✅ Real wallet addresses (no mock addresses)
-- ✅ Real ETH balance from Infura
-- ✅ Real message signing
-- ✅ Real transaction sending
-- ✅ Session management and persistence
-- ✅ Automatic reconnection
-
-### API Keys Required
-
-1. **Infura Project ID**: Get from [https://infura.io/](https://infura.io/)
-2. **WalletConnect Project ID**: Get from [https://cloud.walletconnect.com/](https://cloud.walletconnect.com/)
-
-Update these in `src/config/api.ts`:
-
-```typescript
-export const API_CONFIG = {
-  INFURA_PROJECT_ID: "your_infura_project_id",
-  WALLETCONNECT_PROJECT_ID: "your_walletconnect_project_id",
-  // ...
-};
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js (version 16 or higher)
-- npm or yarn
-- Expo CLI
-- MetaMask mobile app or WalletConnect-compatible wallet
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd KokitzuApp
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Configure API keys**
-
-   - Edit `src/config/api.ts`
-   - Add your Infura and WalletConnect project IDs
-
-4. **Start the development server**
-
-   ```bash
-   npm start
-   ```
-
-5. **Run on device/simulator**
-
-   ```bash
-   # iOS
-   npm run ios
-
-   # Android
-   npm run android
-
-   # Web
-   npm run web
-   ```
-
-## 📱 Testing Real Wallet Connections
-
-### MetaMask Connection
-
-1. **Install MetaMask mobile app** on your device
-2. **Open KokitzuApp** and tap "Connect Wallet"
-3. **Select MetaMask** from the options
-4. **Approve connection** in MetaMask
-5. **Verify real address and balance** are displayed
-
-### WalletConnect Connection
-
-1. **Open KokitzuApp** and tap "Connect Wallet"
-2. **Select WalletConnect** from the options
-3. **Scan QR code** with any WalletConnect-compatible wallet
-4. **Approve connection** in your wallet
-5. **Verify real address and balance** are displayed
-
-### Testing Real Transactions
-
-1. **Connect a wallet** with some test ETH
-2. **Try signing a message** (if implemented in UI)
-3. **Try sending a transaction** (if implemented in UI)
-4. **Verify transactions** appear in your wallet history
-
-## 🏗️ Architecture
-
-```
-KokitzuApp/
-├── src/
-│   ├── components/          # React Native components
-│   ├── contexts/           # React contexts (WalletContext)
-│   ├── services/           # Wallet connection services
-│   ├── config/             # API configuration
-│   ├── types/              # TypeScript type definitions
-│   └── utils/              # Utility functions
-├── server/                 # GraphQL backend
-└── package.json
-```
-
-## 🔧 Wallet Service Architecture
-
-### Real Wallet Implementation
-
-- **WalletConnect v2**: Uses `@walletconnect/sign-client`
-- **Infura Integration**: Real balance fetching
-- **Session Management**: Persistent wallet connections
-- **Error Handling**: Proper error handling for real wallet operations
-
-### Key Files
-
-- `src/services/walletconnect.ts`: Real wallet connection logic
-- `src/contexts/WalletContext.tsx`: Wallet state management
-- `src/components/WalletConnectButton.tsx`: UI for wallet connections
-- `src/config/api.ts`: API key configuration
-
-## 🎯 Trading Features
-
-### Binary Options Trading
-
-- **Bet Direction**: Choose UP or DOWN for price movement
-- **Timeframes**: 1 min, 5 min, 15 min, 30 min, 1 hour, 4 hours, 1 day
-- **Payout Multipliers**: 1.8x to 3.0x based on timeframe
-- **Real-time Settlement**: Automatic bet resolution at expiry
-
-### Available Timeframes & Payouts
-
-| Timeframe  | Duration | Payout Multiplier |
-| ---------- | -------- | ----------------- |
-| 1 Minute   | 60s      | 1.8x              |
-| 5 Minutes  | 5m       | 1.9x              |
-| 15 Minutes | 15m      | 2.0x              |
-| 30 Minutes | 30m      | 2.1x              |
-| 1 Hour     | 1h       | 2.2x              |
-| 4 Hours    | 4h       | 2.5x              |
-| 1 Day      | 24h      | 3.0x              |
-
-## 🔍 Troubleshooting
-
-### Wallet Connection Issues
-
-1. **"API Keys not configured"**
-
-   - Check `src/config/api.ts`
-   - Ensure Infura and WalletConnect project IDs are set
-
-2. **"MetaMask not found"**
-
-   - Install MetaMask mobile app
-   - Ensure app is up to date
-
-3. **"Connection failed"**
-
-   - Check internet connection
-   - Verify API keys are valid
-   - Try reconnecting
-
-4. **"Balance fetch failed"**
-   - Check Infura project ID
-   - Verify wallet has transactions on mainnet
-
-### Network Issues
-
-1. **GraphQL connection errors**
-
-   - Ensure server is running
-   - Check network configuration
-
-2. **Price data not loading**
-   - Check CoinGecko API status
-   - Verify internet connection
-
-## 🚀 Deployment
-
-### Building for Production
+## Installation
 
 ```bash
-# Build for iOS
-expo build:ios
-
-# Build for Android
-expo build:android
-
-# Build for web
-expo build:web
+npm install
+# or
+yarn install
 ```
 
-### Environment Variables
+## Configuration
 
-- `EXPO_PUBLIC_INFURA_PROJECT_ID`: Infura project ID
-- `EXPO_PUBLIC_WALLETCONNECT_PROJECT_ID`: WalletConnect project ID
+1. **WalletConnect Project ID**: Update `App.tsx` with your WalletConnect Project ID
+2. **API Keys**: Configure required API keys in your `.env` file:
+   - `WALLETCONNECT_PROJECT_ID`
+   - `INFURA_PROJECT_ID`
+   - Other service API keys
 
-## ⚠️ Security Notes
+## Running the App
 
-- **Real Wallets**: This app connects to real wallets with real funds
-- **Test First**: Always test with small amounts first
-- **Secure Keys**: Keep your API keys secure and never commit them to version control
-- **Backup**: Always backup your wallet seed phrases
+### Development
 
-## 📝 License
+```bash
+# Start the Expo development server
+npm start
+# or
+yarn start
 
-MIT License - feel free to use this project for learning and development!
+# For iOS
+npm run ios
+# or
+yarn ios
 
-## 🤝 Contributing
+# For Android
+npm run android
+# or
+yarn android
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly with real wallets
-5. Submit a pull request
+### Deployment
+
+#### iOS Deployment
+
+1. Build using Expo EAS Build
+2. Submit to App Store Connect
+3. Configure provisioning profiles and certificates
+
+#### Android Deployment
+
+1. Build APK/AAB using Expo EAS Build
+2. Upload to Google Play Console
+3. Configure signing keys and release management
+
+## WalletConnect Integration
+
+### Modern Connection Flow
+
+1. **Connect**: Tap "Connect Wallet" to open WalletConnect modal
+2. **Scan QR**: Use your wallet app to scan the QR code
+3. **Approve**: Confirm connection in your wallet
+
+### Single Signature Trading
+
+The app implements an allowance-based trading system for seamless trading:
+
+1. **Initial Setup** (One-time signature):
+
+   ```typescript
+   // Set allowance for trading (requires user signature)
+   await binaryOptionsContract.setAllowance("0.1"); // 0.1 ETH allowance
+   ```
+
+2. **Subsequent Trades** (No signature required):
+
+   ```typescript
+   // Trade using allowance (no signature needed)
+   await binaryOptionsContract.createOptionWithAllowance(
+     "BTC", // asset
+     "0.01", // amount in ETH
+     50000, // strike price
+     300, // expiry in seconds
+     true // isCall (true for UP, false for DOWN)
+   );
+   ```
+
+3. **Withdraw Unused Allowance**:
+   ```typescript
+   await binaryOptionsContract.withdrawAllowance("0.05"); // Withdraw 0.05 ETH
+   ```
+
+### Proper Disconnection
+
+The app ensures complete cleanup on disconnect:
+
+- Clears all WalletConnect sessions
+- Removes stored connection data
+- Resets contract instances
+- Clears both web localStorage and React Native AsyncStorage
+
+## Trading Features
+
+### Binary Options
+
+- **Asset Selection**: Choose from supported cryptocurrencies
+- **Direction**: CALL (price goes up) or PUT (price goes down)
+- **Amount**: Set your bet amount in ETH
+- **Timeframe**: Select expiry time (1-60 minutes)
+- **Real-time Execution**: Automatic settlement at expiry
+
+### Smart Contract Integration
+
+- **Arbitrum Networks**: Low fees, fast transactions
+- **Decentralized**: All bets stored on-chain
+- **Transparent**: Open source smart contracts
+- **Secure**: Non-custodial, funds remain in your wallet
+
+## Network Support
+
+- **Arbitrum One** (Mainnet): Production trading
+- **Arbitrum Sepolia** (Testnet): Development and testing
+
+## Architecture
+
+### Contexts
+
+- `WalletContext`: Manages wallet connections and state
+- `NetworkContext`: Handles network switching
+- `TradingContext`: Trading parameters and state
+- `EthPriceContext`: Real-time ETH price data
+
+### Services
+
+- `walletconnect.ts`: Modern WalletConnect v2 integration
+- `binaryOptionsContract.ts`: Smart contract interactions
+- `priceDataService.ts`: Real-time price feeds
+- `apiService.ts`: Backend API communication
+
+### Components
+
+- `WalletConnectButton`: Connection UI with status display
+- `BinaryOptionsTrading`: Main trading interface
+- `PriceChart`: Real-time price visualization
+- `TradeSummaryModal`: Trade confirmation and details
+
+## Design System
+
+- **Font**: Space Grotesk throughout the app
+- **Colors**: Dark theme with neon accent colors
+- **Animations**: Smooth React Native Reanimated animations
+- **Layout**: Mobile-first responsive design
+
+## Troubleshooting
+
+### WalletConnect Issues
+
+- Ensure your wallet app supports WalletConnect v2
+- Check network connection
+- Try clearing app data and reconnecting
+- Verify WalletConnect Project ID is configured
+
+### Trading Issues
+
+- Ensure sufficient ETH balance for gas fees
+- Check network connection to RPC endpoints
+- Verify smart contract address is correct
+- Monitor transaction status on block explorer
+
+## Development
+
+### Adding New Features
+
+1. Create components in `src/components/`
+2. Add contexts in `src/contexts/`
+3. Implement services in `src/services/`
+4. Update navigation in `App.tsx`
+
+### Testing
+
+- Use Arbitrum Sepolia testnet for development
+- Get testnet ETH from faucets
+- Test all wallet connection flows
+- Verify trading functionality end-to-end
+
+## Support
+
+For issues or questions:
+
+1. Check the troubleshooting section
+2. Review console logs for errors
+3. Test on Arbitrum Sepolia first
+4. Verify all API keys are configured
 
 ---
 
-**Experience real crypto trading with KokitzuApp! 🚀**
-
-_Remember: This app connects to real wallets with real funds. Always trade responsibly and never risk more than you can afford to lose._
+Built with React Native, Expo, WalletConnect v2, and Arbitrum smart contracts.

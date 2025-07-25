@@ -52,6 +52,7 @@ import {
 import { useEthPrice } from "../contexts/EthPriceContext";
 import PriceChart from "../components/PriceChart";
 import priceDataService from "../services/priceDataService";
+import { binaryOptionsContract } from "../services/binaryOptionsContract";
 import { FONTS } from "../constants/fonts";
 import COLORS from "../constants/colors";
 import { getSupportedAssets } from "../services/priceDataService";
@@ -112,7 +113,7 @@ const BinaryOptionsScreen: React.FC = () => {
   // Debug connection status (same logic as header)
   const isWalletConnected = wcConnected || isConnected;
 
-  // Debug wallet connection status
+  // Debug wallet connection status and initialize contract
   useEffect(() => {
     console.log("🔍 WALLET CONNECTION DEBUG:");
     console.log(`   └─ wcConnected: ${wcConnected}`);
@@ -121,6 +122,20 @@ const BinaryOptionsScreen: React.FC = () => {
     console.log(`   └─ walletAddress: ${walletAddress}`);
     console.log(`   └─ isWalletConnected: ${isWalletConnected}`);
     console.log(`   └─ balance: ${balance}`);
+
+    // Initialize contract when wallet connects
+    if (wcConnected && wcProvider) {
+      console.log("🔧 Initializing contract with connected wallet...");
+      binaryOptionsContract.init(wcProvider).catch((error) => {
+        console.error(
+          "❌ Failed to initialize contract on wallet connect:",
+          error
+        );
+      });
+    } else if (!wcConnected) {
+      // Reset contract when wallet disconnects
+      binaryOptionsContract.reset();
+    }
   }, [
     wcConnected,
     isConnected,
@@ -128,6 +143,7 @@ const BinaryOptionsScreen: React.FC = () => {
     walletAddress,
     isWalletConnected,
     balance,
+    wcProvider,
   ]);
 
   // Get ETH price for USD conversion (CoinGecko price, Sepolia ETH treated as regular ETH)
@@ -608,7 +624,59 @@ const BinaryOptionsScreen: React.FC = () => {
         `🔍 Checking results for bet ${betId} (option ${optionId})...`
       );
 
-      // Use REST API instead of GraphQL
+      // First try to execute the option directly from the client if it's expired
+      if (optionId && wcConnected) {
+        try {
+          // Contract should already be initialized from wallet connection
+          // Check if option is expired and needs execution
+          const isExpired = await binaryOptionsContract.isOptionExpired(
+            optionId
+          );
+
+          if (isExpired) {
+            console.log(
+              `⏰ Option ${optionId} is expired, executing from client...`
+            );
+
+            // Execute the option directly from client
+            const executedOption = await binaryOptionsContract.executeOption(
+              optionId
+            );
+
+            console.log(`✅ Client-side execution successful:`, executedOption);
+
+            // Show result immediately
+            Alert.alert(
+              executedOption.won
+                ? "🎉 You Won!"
+                : executedOption.isPush
+                ? "🤝 Push/Tie - Refunded"
+                : "😔 You Lost",
+              `${selectedCrypto} ${betType} bet result:\n\n` +
+                `Status: ${
+                  executedOption.won
+                    ? "WON"
+                    : executedOption.isPush
+                    ? "PUSH"
+                    : "LOST"
+                }\n` +
+                `Entry: $${executedOption.entryPrice}\n` +
+                `Exit: $${executedOption.exitPrice}\n` +
+                `Payout: ${executedOption.payout} ETH`,
+              [{ text: "View in Portfolio" }]
+            );
+
+            // Stop tracking this bet
+            stopBetTracking(betId);
+            return;
+          }
+        } catch (contractError) {
+          console.error(`❌ Client-side execution failed:`, contractError);
+          // Fall back to server-side checking
+        }
+      }
+
+      // Fallback: Use REST API to check server-side results
       const apiUrl = await getApiUrl();
       const response = await fetch(`${apiUrl}/api/bets/${betId}`, {
         method: "GET",
@@ -643,6 +711,8 @@ const BinaryOptionsScreen: React.FC = () => {
               ? "🎉 You Won!"
               : bet.status === "LOST"
               ? "😔 You Lost"
+              : bet.status === "PUSH"
+              ? "🤝 Push/Tie - Refunded"
               : bet.status === "INVALID_TRANSACTION"
               ? "❌ Transaction Failed"
               : "🔄 Bet Complete",

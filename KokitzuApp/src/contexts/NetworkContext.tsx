@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 
-export type NetworkType = "mainnet" | "sepolia";
+export type NetworkType = "arbitrumOne" | "arbitrumSepolia";
 
 export interface NetworkConfig {
   name: string;
@@ -18,11 +18,11 @@ export interface NetworkConfig {
 }
 
 export const NETWORKS: Record<NetworkType, NetworkConfig> = {
-  mainnet: {
-    name: "Ethereum Mainnet",
-    chainId: "1",
-    rpcUrl: "https://mainnet.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
-    explorerUrl: "https://etherscan.io",
+  arbitrumOne: {
+    name: "Arbitrum One",
+    chainId: "42161",
+    rpcUrl: "https://arb1.arbitrum.io/rpc",
+    explorerUrl: "https://arbiscan.io",
     isTestnet: false,
     nativeCurrency: {
       name: "Ether",
@@ -30,14 +30,14 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
       decimals: 18,
     },
   },
-  sepolia: {
-    name: "Sepolia Testnet",
-    chainId: "11155111",
-    rpcUrl: "https://sepolia.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
-    explorerUrl: "https://sepolia.etherscan.io",
+  arbitrumSepolia: {
+    name: "Arbitrum Sepolia",
+    chainId: "421614",
+    rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+    explorerUrl: "https://sepolia.arbiscan.io",
     isTestnet: true,
     nativeCurrency: {
-      name: "Sepolia Ether",
+      name: "Arbitrum Sepolia Ether",
       symbol: "ETH",
       decimals: 18,
     },
@@ -68,7 +68,8 @@ interface NetworkProviderProps {
 export const NetworkProvider: React.FC<NetworkProviderProps> = ({
   children,
 }) => {
-  const [currentNetwork, setCurrentNetwork] = useState<NetworkType>("sepolia"); // Default to Sepolia for development
+  const [currentNetwork, setCurrentNetwork] =
+    useState<NetworkType>("arbitrumSepolia"); // Default to Arbitrum for development
   const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
 
   useEffect(() => {
@@ -82,9 +83,9 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({
         setCurrentNetwork(storedNetwork as NetworkType);
         console.log("🌐 Loaded stored network:", storedNetwork);
       } else {
-        // Default to Sepolia for development
-        await AsyncStorage.setItem("selectedNetwork", "sepolia");
-        console.log("🌐 Set default network to Sepolia");
+        // Default to Arbitrum One for production
+        await AsyncStorage.setItem("selectedNetwork", "arbitrumSepolia");
+        console.log("🌐 Set default network to Arbitrum");
       }
     } catch (error) {
       console.error("Error loading stored network:", error);
@@ -99,7 +100,7 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({
       console.log(`🌐 Switching network from ${currentNetwork} to ${network}`);
 
       // Show confirmation for mainnet
-      if (network === "mainnet") {
+      if (network === "arbitrumOne") {
         const confirmed = await new Promise<boolean>((resolve) => {
           Alert.alert(
             "Switch to Mainnet",

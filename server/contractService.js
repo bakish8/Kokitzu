@@ -6,7 +6,7 @@ dotenv.config();
 // Contract configuration
 // ✅ UPDATED: New contract with individual getter functions (deployed 2025-01-23)
 const CONTRACT_ADDRESS =
-  process.env.CONTRACT_ADDRESS || "0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4";
+  process.env.CONTRACT_ADDRESS || "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
 const SEPOLIA_RPC_URL =
   process.env.SEPOLIA_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/demo";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
@@ -113,7 +113,7 @@ class ContractService {
         }`
       );
       console.log(
-        `🔧 DEBUG: Expected NEW contract: 0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4`
+        `🔧 DEBUG: Expected NEW contract: 0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE`
       );
       console.log(
         `🔧 DEBUG: Expected OLD contract: 0x7aC3058352cc4360dd12fD592BF33baBEE55dBdc`
@@ -631,18 +631,24 @@ class ContractService {
         expiryISO = new Date().toISOString();
       }
 
+      // Determine if this is a push (payout equals original amount)
+      const originalAmount = ethers.formatEther(amount || 0);
+      const payoutAmount = ethers.formatEther(payout || 0);
+      const isPush = isExecuted && !isWon && payoutAmount === originalAmount;
+
       const result = {
         id: id?.toString() || "0",
         trader: trader || "0x0000000000000000000000000000000000000000",
         asset: asset || "",
-        amount: ethers.formatEther(amount || 0),
+        amount: originalAmount,
         expiry: expiryISO,
         isCall: Boolean(isCall),
         executed: Boolean(isExecuted),
         entryPrice: strikePrice?.toString() || "0", // strikePrice
         exitPrice: isExecuted ? finalPrice?.toString() || "0" : "0", // finalPrice if executed
         won: Boolean(isWon),
-        payout: ethers.formatEther(payout || 0),
+        isPush: isPush,
+        payout: payoutAmount,
       };
 
       console.log(`✅ Processed option data:`, result);

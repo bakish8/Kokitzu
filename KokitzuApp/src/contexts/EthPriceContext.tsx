@@ -37,7 +37,9 @@ export const EthPriceProvider: React.FC<EthPriceProviderProps> = ({
       setIsLoading(true);
       setError(null);
 
-      console.log("🔍 Fetching ETH price from CoinGecko API...");
+      console.log(
+        "🔍 Fetching ETH price from Chainlink (Arbitrum Sepolia (Testnet))..."
+      );
       await apiService.init();
       const prices = await apiService.getPrices();
 
@@ -47,7 +49,7 @@ export const EthPriceProvider: React.FC<EthPriceProviderProps> = ({
         setEthPrice(ethData.price);
         setLastFetch(Date.now());
         console.log(
-          `💰 ETH price updated: $${ethData.price.toLocaleString()} (CoinGecko)`
+          `💰 ETH price updated: $${ethData.price.toLocaleString()} (Chainlink - Arbitrum Sepolia)`
         );
       } else {
         console.warn("⚠️ ETH price not found or invalid in API response");

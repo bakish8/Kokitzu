@@ -17,7 +17,7 @@ async function fundContract() {
     console.log(
       `📍 Contract Address: ${
         process.env.CONTRACT_ADDRESS ||
-        "0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4"
+        "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE"
       }`
     );
 

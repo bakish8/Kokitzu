@@ -5,8 +5,8 @@ async function main() {
 
   // Contract addresses
   const OLD_CONTRACT_ADDRESS = "0xDa542310B4F1547998096a9AeB274773f41CB963";
-  const NEW_CONTRACT_ADDRESS = "0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4";
-  const PARENT_WALLET = "0x4a00b089F7186f40540afb58B1B447FdB1E1A41b";
+  const NEW_CONTRACT_ADDRESS = "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
+  const PARENT_WALLET = "0x55bd5862DEa6311d0ac3853B5b451426B42F9236";
 
   // Get the deployer's address
   const [deployer] = await hre.ethers.getSigners();

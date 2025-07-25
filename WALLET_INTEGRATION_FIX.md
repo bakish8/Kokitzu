@@ -51,7 +51,7 @@ await placeBet({
 
 - **Your Wallet (User)**: `0x840b1F3A7B8cAf98A44fB60aDaE934AEf2d4364b`
 - **Server Wallet (Admin)**: `0x4a00b089F7186f40540afb58B1B447FdB1E1A41b`
-- **Contract**: `0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4`
+- **Contract**: `0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE`
 
 ## ✅ **How to Test**
 

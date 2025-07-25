@@ -24,17 +24,17 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Chainlink Price Feed Addresses (Sepolia Testnet)
+// Chainlink Price Feed Addresses (Arbitrum Sepolia (Testnet))
 const CHAINLINK_FEEDS = {
-  ETH: "0x694AA1769357215DE4FAC081bf1f309aDC325306", // ETH/USD
-  BTC: "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43", // BTC/USD
-  LINK: "0xc59E3633BAAC79493d908e63626716e204A45EdF", // LINK/USD
+  ETH: "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165", // ETH/USD on Arbitrum
+  BTC: "0x56a43EB56Da12C0dc1D972ACb089c06a5dEF8e69", // BTC/USD on Arbitrum
+  LINK: "0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298", // LINK/USD on Arbitrum
 };
 
-// Ethereum provider
+// Arbitrum provider
 const provider = new ethers.JsonRpcProvider(
-  process.env.SEPOLIA_RPC_URL ||
-    "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161"
+  process.env.ARBITRUM_SEPOLIA_RPC_URL ||
+    "https://sepolia-rollup.arbitrum.io/rpc"
 );
 
 // Chainlink AggregatorV3Interface ABI
@@ -56,12 +56,12 @@ const betSchema = new mongoose.Schema({
   entryPrice: { type: Number, required: true },
   status: {
     type: String,
-    enum: ["ACTIVE", "WON", "LOST", "EXPIRED"],
+    enum: ["ACTIVE", "WON", "LOST", "PUSH", "EXPIRED"],
     default: "ACTIVE",
   },
   result: {
     type: String,
-    enum: ["WIN", "LOSS", "DRAW", "INVALID_OPTION", "ERROR", null],
+    enum: ["WIN", "LOSS", "PUSH", "DRAW", "INVALID_OPTION", "ERROR", null],
     default: null,
   },
   exitPrice: { type: Number, default: null },
@@ -154,7 +154,7 @@ app.get("/health", (req, res) => {
     blockchain: {
       contractAddress:
         process.env.CONTRACT_ADDRESS ||
-        "0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4",
+        "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE",
       network: "Sepolia Testnet",
     },
   });
@@ -308,6 +308,19 @@ app.post("/api/record-bet", async (req, res) => {
       entryPrice,
     } = req.body;
     const userId = "user-1"; // For demo
+
+    // Validate transaction hash
+    if (
+      !transactionHash ||
+      transactionHash === "undefined" ||
+      transactionHash === "null"
+    ) {
+      console.error("❌ Invalid transaction hash received:", transactionHash);
+      return res.status(400).json({
+        success: false,
+        error: "Invalid transaction hash provided",
+      });
+    }
 
     console.log("📝 Recording blockchain bet:", {
       cryptoSymbol,
@@ -637,20 +650,22 @@ async function checkExpiredBets() {
         console.log(`📊 Option data after execution:`, option);
 
         const isWon = option.won;
+        const isPush = option.isPush;
         const contractPayout = parseFloat(option.payout);
         const finalPrice = parseFloat(option.exitPrice) / 100; // Convert from contract format
 
         console.log(`🎯 Bet result:`, {
           isWon: isWon,
+          isPush: isPush,
           contractPayout: contractPayout,
           finalPrice: finalPrice,
-          status: isWon ? "WON" : "LOST",
-          result: isWon ? "WIN" : "LOSS",
+          status: isWon ? "WON" : isPush ? "PUSH" : "LOST",
+          result: isWon ? "WIN" : isPush ? "PUSH" : "LOSS",
         });
 
         // Update bet
-        bet.status = isWon ? "WON" : "LOST";
-        bet.result = isWon ? "WIN" : "LOSS";
+        bet.status = isWon ? "WON" : isPush ? "PUSH" : "LOST";
+        bet.result = isWon ? "WIN" : isPush ? "PUSH" : "LOSS";
         bet.exitPrice = finalPrice;
         bet.payout = contractPayout;
 
@@ -683,6 +698,21 @@ async function resolvePendingOptionIds() {
       try {
         console.log(`🔍 Resolving option ID for bet: ${bet.id}`);
         console.log(`   └─ Transaction: ${bet.transactionHash}`);
+
+        // Skip bets with invalid transaction hashes
+        if (
+          !bet.transactionHash ||
+          bet.transactionHash === "undefined" ||
+          bet.transactionHash === "null"
+        ) {
+          console.log(
+            `❌ Invalid transaction hash for bet ${bet.id}, marking as failed`
+          );
+          bet.status = "LOST";
+          bet.result = "LOSS";
+          await bet.save();
+          continue;
+        }
 
         // Try to get transaction receipt
         const receipt = await contractService.getTransactionReceipt(

@@ -1,423 +1,361 @@
 import { ethers } from "ethers";
-import { getInfuraUrl } from "../config/api";
-import { NetworkType, NETWORKS } from "../contexts/NetworkContext";
 
-// BinaryOptions Contract ABI (simplified for key functions)
+// Contract ABI for the binary options contract
 const BINARY_OPTIONS_ABI = [
-  // Events
-  "event OptionCreated(uint256 indexed optionId, address indexed trader, string asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall)",
-  "event OptionExecuted(uint256 indexed optionId, bool isWon, uint256 payout, uint256 finalPrice)",
+  // Allowance-based trading functions
+  "function setAllowance(uint256 amount) external payable",
+  "function getAllowance(address user) external view returns (uint256)",
+  "function createOptionWithAllowance(string memory asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall) external",
 
-  // View functions
-  "function getOption(uint256 optionId) external view returns (uint256 id, address trader, string asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall, bool isExecuted, bool isWon, uint256 payout, uint256 timestamp)",
-  "function getUserOptions(address user) external view returns (uint256[])",
-  "function getCurrentPrice(string memory asset) external view returns (uint256)",
-  "function getContractStats() external view returns (uint256 totalOptions, uint256 totalVolume, uint256 contractBalance)",
-
-  // State changing functions
-  "function createOption(string memory asset, uint256 amount, uint256 expiryTime, bool isCall) external payable",
+  // Option execution (automatic)
   "function executeOption(uint256 optionId) external",
 
-  // Admin functions
-  "function updateAssetConfig(string memory asset, address priceFeed, uint256 minAmount, uint256 maxAmount, uint256 feePercentage) external",
-  "function withdrawFees() external",
-  "function pauseAsset(string memory asset) external",
-  "function resumeAsset(string memory asset) external",
+  // Option getters
+  "function getOptionId(uint256 optionId) external view returns (uint256)",
+  "function getOptionTrader(uint256 optionId) external view returns (address)",
+  "function getOptionAsset(uint256 optionId) external view returns (string memory)",
+  "function getOptionAmount(uint256 optionId) external view returns (uint256)",
+  "function getOptionStrikePrice(uint256 optionId) external view returns (uint256)",
+  "function getOptionExpiryTime(uint256 optionId) external view returns (uint256)",
+  "function getOptionIsCall(uint256 optionId) external view returns (bool)",
+  "function getOptionIsExecuted(uint256 optionId) external view returns (bool)",
+  "function getOptionIsWon(uint256 optionId) external view returns (bool)",
+  "function getOptionPayout(uint256 optionId) external view returns (uint256)",
+  "function getOptionTimestamp(uint256 optionId) external view returns (uint256)",
+  "function getOptionFinalPrice(uint256 optionId) external view returns (uint256)",
+
+  // Withdrawal
+  "function withdrawAllowance(uint256 amount) external",
+
+  // Events
+  "event OptionCreated(uint256 indexed optionId, address indexed trader, string asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall)",
+  "event OptionExecuted(uint256 indexed optionId, bool isWon, bool isPush, uint256 payout, uint256 finalPrice)",
+  "event AllowanceSet(address indexed user, uint256 amount)",
+  "event AllowanceWithdrawn(address indexed user, uint256 amount)",
 ];
 
-// Contract addresses for different networks
-const CONTRACT_ADDRESSES: Record<NetworkType, string> = {
-  mainnet: "0x...", // Deploy and add mainnet address
-  sepolia: "0x...", // Deploy and add sepolia address
-};
+// Contract address on Arbitrum Sepolia (updated after deployment)
+const CONTRACT_ADDRESS = "0x44877E23864A0959292c10bee2C4cba49Caaf3Ed";
 
-export interface Option {
-  id: number;
-  trader: string;
-  asset: string;
-  amount: string;
-  strikePrice: string;
-  expiryTime: number;
-  isCall: boolean;
-  isExecuted: boolean;
-  isWon: boolean;
-  payout: string;
-  timestamp: number;
-}
-
-export interface ContractStats {
-  totalOptions: number;
-  totalVolume: string;
-  contractBalance: string;
-}
-
-export interface CreateOptionParams {
-  asset: string;
-  amount: string; // in ETH
-  expiryTime: number; // in seconds
-  isCall: boolean;
-}
-
-class BinaryOptionsContractService {
+export class BinaryOptionsContract {
   private contract: ethers.Contract | null = null;
-  private provider: ethers.providers.JsonRpcProvider | null = null;
-  private signer: ethers.Signer | null = null;
-  private currentNetwork: NetworkType = "sepolia"; // Default to Sepolia
+  private provider: any = null;
+  private signer: any = null;
+  private isInitialized: boolean = false;
+  private userAddress: string = "";
 
-  constructor() {
-    this.initializeProvider();
-  }
+  constructor() {}
 
-  private initializeProvider() {
-    try {
-      this.provider = new ethers.providers.JsonRpcProvider(
-        getInfuraUrl(this.currentNetwork)
-      );
-      console.log(
-        "✅ BinaryOptions contract provider initialized for",
-        this.currentNetwork
-      );
-    } catch (error) {
-      console.error("❌ Failed to initialize provider:", error);
+  // Initialize with WalletConnect provider (one-time setup)
+  async init(wcProvider: any, userAddress: string) {
+    // Return early if already initialized with same provider
+    if (
+      this.isInitialized &&
+      this.provider === wcProvider &&
+      this.userAddress === userAddress
+    ) {
+      console.log("✅ Contract already initialized, reusing existing instance");
+      return true;
     }
-  }
 
-  /**
-   * Set network and reinitialize provider
-   */
-  setNetwork(network: NetworkType) {
-    this.currentNetwork = network;
-    this.initializeProvider();
-    console.log("🌐 BinaryOptions contract network set to:", network);
-  }
-
-  /**
-   * Get current network
-   */
-  getCurrentNetwork(): NetworkType {
-    return this.currentNetwork;
-  }
-
-  /**
-   * Get current network config
-   */
-  getCurrentNetworkConfig() {
-    return NETWORKS[this.currentNetwork];
-  }
-
-  /**
-   * Connect wallet to contract
-   */
-  async connectWallet(signer: ethers.Signer) {
     try {
-      this.signer = signer;
-      const contractAddress = CONTRACT_ADDRESSES[this.currentNetwork];
+      console.log("🔧 Initializing Binary Options Contract...");
+      console.log(`👤 User Address: ${userAddress}`);
 
-      if (!contractAddress || contractAddress === "0x...") {
-        throw new Error(
-          `Contract not deployed on ${this.currentNetwork}. Please deploy the contract first.`
-        );
-      }
+      this.provider = wcProvider;
+      this.userAddress = userAddress;
+
+      // Create ethers provider from WalletConnect provider
+      const ethersProvider = new ethers.providers.Web3Provider(wcProvider);
+      this.signer = ethersProvider.getSigner();
 
       this.contract = new ethers.Contract(
-        contractAddress,
+        CONTRACT_ADDRESS,
         BINARY_OPTIONS_ABI,
-        signer
+        this.signer
       );
-      console.log(
-        "✅ Connected to BinaryOptions contract:",
-        contractAddress,
-        "on",
-        this.currentNetwork
-      );
+
+      this.isInitialized = true;
+      console.log("✅ Binary Options Contract initialized");
+      console.log(`📍 Contract Address: ${CONTRACT_ADDRESS}`);
 
       return true;
     } catch (error) {
-      console.error("❌ Failed to connect to contract:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Get current price for an asset
-   */
-  async getCurrentPrice(asset: string): Promise<string> {
-    try {
-      if (!this.contract) {
-        throw new Error("Contract not connected");
-      }
-
-      const price = await this.contract.getCurrentPrice(asset);
-      return ethers.utils.formatUnits(price, 8); // Chainlink prices have 8 decimals
-    } catch (error) {
-      console.error("❌ Failed to get current price:", error);
+      console.error("❌ Failed to initialize contract:", error);
+      this.isInitialized = false;
       throw error;
     }
   }
 
-  /**
-   * Create a new binary option
-   */
-  async createOption(
-    params: CreateOptionParams
-  ): Promise<ethers.ContractTransaction> {
+  // Set allowance (one-time approval to trade)
+  async setAllowance(amountInEth: string) {
+    if (!this.contract) {
+      throw new Error("Contract not initialized");
+    }
+
     try {
-      if (!this.contract || !this.signer) {
-        throw new Error("Contract not connected");
-      }
+      console.log(`💰 Setting allowance for ${amountInEth} ETH...`);
 
-      const amountWei = ethers.utils.parseEther(params.amount);
+      const amountWei = ethers.utils.parseEther(amountInEth);
 
-      console.log("📝 Creating option on", this.currentNetwork, ":", {
-        asset: params.asset,
-        amount: params.amount,
-        expiryTime: params.expiryTime,
-        isCall: params.isCall,
+      // Send ETH to contract as allowance
+      const tx = await this.contract.setAllowance(amountWei, {
+        value: amountWei,
       });
 
-      const tx = await this.contract.createOption(
-        params.asset,
+      console.log(`⏳ Allowance transaction sent: ${tx.hash}`);
+
+      // Wait for confirmation
+      const receipt = await tx.wait();
+      console.log(
+        `✅ Allowance set successfully in block ${receipt.blockNumber}`
+      );
+
+      return receipt;
+    } catch (error) {
+      console.error("❌ Failed to set allowance:", error);
+      throw error;
+    }
+  }
+
+  // Get user's current allowance
+  async getAllowance(): Promise<string> {
+    if (!this.contract || !this.userAddress) {
+      throw new Error("Contract not initialized or no user address");
+    }
+
+    try {
+      const allowance = await this.contract.getAllowance(this.userAddress);
+      const allowanceEth = ethers.utils.formatEther(allowance);
+
+      console.log(`💰 Current allowance: ${allowanceEth} ETH`);
+      return allowanceEth;
+    } catch (error) {
+      console.error("❌ Failed to get allowance:", error);
+      throw error;
+    }
+  }
+
+  // Create option using allowance (no additional signing)
+  async createOptionWithAllowance(
+    asset: string,
+    amountInEth: string,
+    strikePrice: number,
+    expiryTimeSeconds: number,
+    isCall: boolean
+  ) {
+    if (!this.contract) {
+      throw new Error("Contract not initialized");
+    }
+
+    try {
+      console.log(`📝 Creating option with allowance:`, {
+        asset,
+        amount: amountInEth,
+        strikePrice,
+        expiryTime: expiryTimeSeconds,
+        isCall,
+      });
+
+      const amountWei = ethers.utils.parseEther(amountInEth);
+      const strikePriceFormatted = Math.round(strikePrice * 100); // Convert to contract format
+
+      // This doesn't require user signature - uses pre-approved allowance
+      const tx = await this.contract.createOptionWithAllowance(
+        asset,
         amountWei,
-        params.expiryTime,
-        params.isCall,
-        { value: amountWei }
+        strikePriceFormatted,
+        expiryTimeSeconds,
+        isCall
       );
 
-      console.log(
-        "✅ Option creation transaction sent:",
-        tx.hash,
-        "on",
-        this.currentNetwork
+      console.log(`⏳ Option creation sent: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+      console.log(`✅ Option created in block ${receipt.blockNumber}`);
+
+      // Extract option ID from events
+      const optionCreatedEvent = receipt.events?.find(
+        (event: any) => event.event === "OptionCreated"
       );
-      return tx;
+
+      const optionId = optionCreatedEvent?.args?.optionId?.toString();
+      console.log(`🎯 Option ID: ${optionId}`);
+
+      return {
+        optionId,
+        transactionHash: tx.hash,
+        receipt,
+      };
     } catch (error) {
-      console.error("❌ Failed to create option:", error);
+      console.error("❌ Failed to create option with allowance:", error);
       throw error;
     }
   }
 
-  /**
-   * Execute an expired option
-   */
-  async executeOption(optionId: number): Promise<ethers.ContractTransaction> {
+  // Withdraw unused allowance
+  async withdrawAllowance(amountInEth: string) {
+    if (!this.contract) {
+      throw new Error("Contract not initialized");
+    }
+
     try {
-      if (!this.contract) {
-        throw new Error("Contract not connected");
+      console.log(`💸 Withdrawing ${amountInEth} ETH from allowance...`);
+
+      const amountWei = ethers.utils.parseEther(amountInEth);
+
+      const tx = await this.contract.withdrawAllowance(amountWei);
+      console.log(`⏳ Withdrawal transaction sent: ${tx.hash}`);
+
+      const receipt = await tx.wait();
+      console.log(`✅ Withdrawal successful in block ${receipt.blockNumber}`);
+
+      return receipt;
+    } catch (error) {
+      console.error("❌ Failed to withdraw allowance:", error);
+      throw error;
+    }
+  }
+
+  // Get option details
+  async getOption(optionId: string) {
+    if (!this.contract) {
+      throw new Error("Contract not initialized");
+    }
+
+    try {
+      console.log(`🔍 Getting option details for ID: ${optionId}`);
+
+      const [
+        id,
+        trader,
+        asset,
+        amount,
+        strikePrice,
+        expiryTime,
+        isCall,
+        isExecuted,
+        isWon,
+        payout,
+        timestamp,
+        finalPrice,
+      ] = await Promise.all([
+        this.contract.getOptionId(optionId),
+        this.contract.getOptionTrader(optionId),
+        this.contract.getOptionAsset(optionId),
+        this.contract.getOptionAmount(optionId),
+        this.contract.getOptionStrikePrice(optionId),
+        this.contract.getOptionExpiryTime(optionId),
+        this.contract.getOptionIsCall(optionId),
+        this.contract.getOptionIsExecuted(optionId),
+        this.contract.getOptionIsWon(optionId),
+        this.contract.getOptionPayout(optionId),
+        this.contract.getOptionTimestamp(optionId),
+        this.contract.getOptionFinalPrice(optionId),
+      ]);
+
+      // Convert to readable format
+      const originalAmount = ethers.utils.formatEther(amount || 0);
+      const payoutAmount = ethers.utils.formatEther(payout || 0);
+      const isPush = isExecuted && !isWon && payoutAmount === originalAmount;
+
+      const option = {
+        id: id?.toString() || "0",
+        trader: trader || "0x0000000000000000000000000000000000000000",
+        asset: asset || "",
+        amount: originalAmount,
+        expiry: new Date(Number(expiryTime) * 1000).toISOString(),
+        isCall: Boolean(isCall),
+        executed: Boolean(isExecuted),
+        entryPrice: (Number(strikePrice) / 100).toString(), // Convert from contract format
+        exitPrice: isExecuted ? (Number(finalPrice) / 100).toString() : "0",
+        won: Boolean(isWon),
+        isPush: isPush,
+        payout: payoutAmount,
+      };
+
+      console.log(`✅ Option details:`, option);
+      return option;
+    } catch (error) {
+      console.error(`❌ Failed to get option ${optionId}:`, error);
+      throw error;
+    }
+  }
+
+  // Execute option (settle bet)
+  async executeOption(optionId: string) {
+    if (!this.contract) {
+      throw new Error("Contract not initialized");
+    }
+
+    try {
+      console.log(`🎯 Executing option ${optionId}...`);
+
+      // First check if option exists and is not executed
+      const option = await this.getOption(optionId);
+
+      if (option.executed) {
+        console.log(`⚠️ Option ${optionId} already executed`);
+        return option;
       }
 
-      console.log("🎯 Executing option:", optionId, "on", this.currentNetwork);
+      if (option.trader === "0x0000000000000000000000000000000000000000") {
+        throw new Error(`Option ${optionId} does not exist`);
+      }
 
+      // Execute the option
+      console.log(`📝 Sending executeOption transaction...`);
       const tx = await this.contract.executeOption(optionId);
-      console.log(
-        "✅ Option execution transaction sent:",
-        tx.hash,
-        "on",
-        this.currentNetwork
-      );
+      console.log(`⏳ Transaction sent: ${tx.hash}`);
 
-      return tx;
+      // Wait for confirmation
+      const receipt = await tx.wait();
+      console.log(`✅ Transaction confirmed in block ${receipt.blockNumber}`);
+
+      // Get updated option details
+      const updatedOption = await this.getOption(optionId);
+      console.log(`🎯 Execution result:`, {
+        optionId,
+        won: updatedOption.won,
+        isPush: updatedOption.isPush,
+        payout: updatedOption.payout,
+        status: updatedOption.won
+          ? "WON"
+          : updatedOption.isPush
+          ? "PUSH"
+          : "LOST",
+      });
+
+      return updatedOption;
     } catch (error) {
-      console.error("❌ Failed to execute option:", error);
+      console.error(`❌ Failed to execute option ${optionId}:`, error);
       throw error;
     }
   }
 
-  /**
-   * Get option details
-   */
-  async getOption(optionId: number): Promise<Option> {
-    try {
-      if (!this.contract) {
-        throw new Error("Contract not connected");
-      }
-
-      const option = await this.contract.getOption(optionId);
-
-      return {
-        id: option.id.toNumber(),
-        trader: option.trader,
-        asset: option.asset,
-        amount: ethers.utils.formatEther(option.amount),
-        strikePrice: ethers.utils.formatUnits(option.strikePrice, 8),
-        expiryTime: option.expiryTime.toNumber(),
-        isCall: option.isCall,
-        isExecuted: option.isExecuted,
-        isWon: option.isWon,
-        payout: ethers.utils.formatEther(option.payout),
-        timestamp: option.timestamp.toNumber(),
-      };
-    } catch (error) {
-      console.error("❌ Failed to get option:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get user's options
-   */
-  async getUserOptions(userAddress: string): Promise<number[]> {
-    try {
-      if (!this.contract) {
-        throw new Error("Contract not connected");
-      }
-
-      const optionIds = await this.contract.getUserOptions(userAddress);
-      return optionIds.map((id: ethers.BigNumber) => id.toNumber());
-    } catch (error) {
-      console.error("❌ Failed to get user options:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get contract statistics
-   */
-  async getContractStats(): Promise<ContractStats> {
-    try {
-      if (!this.contract) {
-        throw new Error("Contract not connected");
-      }
-
-      const stats = await this.contract.getContractStats();
-
-      return {
-        totalOptions: stats.totalOptions.toNumber(),
-        totalVolume: ethers.utils.formatEther(stats.totalVolume),
-        contractBalance: ethers.utils.formatEther(stats.contractBalance),
-      };
-    } catch (error) {
-      console.error("❌ Failed to get contract stats:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get user's active options
-   */
-  async getUserActiveOptions(userAddress: string): Promise<Option[]> {
-    try {
-      const optionIds = await this.getUserOptions(userAddress);
-      const activeOptions: Option[] = [];
-
-      for (const optionId of optionIds) {
-        const option = await this.getOption(optionId);
-        if (!option.isExecuted) {
-          activeOptions.push(option);
-        }
-      }
-
-      return activeOptions;
-    } catch (error) {
-      console.error("❌ Failed to get user active options:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get user's completed options
-   */
-  async getUserCompletedOptions(userAddress: string): Promise<Option[]> {
-    try {
-      const optionIds = await this.getUserOptions(userAddress);
-      const completedOptions: Option[] = [];
-
-      for (const optionId of optionIds) {
-        const option = await this.getOption(optionId);
-        if (option.isExecuted) {
-          completedOptions.push(option);
-        }
-      }
-
-      return completedOptions;
-    } catch (error) {
-      console.error("❌ Failed to get user completed options:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if option can be executed
-   */
-  async canExecuteOption(optionId: number): Promise<boolean> {
+  // Check if option has expired and needs execution
+  async isOptionExpired(optionId: string): Promise<boolean> {
     try {
       const option = await this.getOption(optionId);
-      return !option.isExecuted && Date.now() / 1000 >= option.expiryTime;
+      const now = new Date();
+      const expiry = new Date(option.expiry);
+
+      return now >= expiry && !option.executed;
     } catch (error) {
-      console.error("❌ Failed to check if option can be executed:", error);
+      console.error(`❌ Failed to check expiry for option ${optionId}:`, error);
       return false;
     }
   }
 
-  /**
-   * Listen to option creation events
-   */
-  onOptionCreated(
-    callback: (
-      optionId: number,
-      trader: string,
-      asset: string,
-      amount: string,
-      isCall: boolean
-    ) => void
-  ) {
-    if (!this.contract) {
-      console.error("❌ Contract not connected");
-      return;
-    }
-
-    this.contract.on(
-      "OptionCreated",
-      (optionId, trader, asset, amount, strikePrice, expiryTime, isCall) => {
-        callback(
-          optionId.toNumber(),
-          trader,
-          asset,
-          ethers.utils.formatEther(amount),
-          isCall
-        );
-      }
-    );
-  }
-
-  /**
-   * Listen to option execution events
-   */
-  onOptionExecuted(
-    callback: (
-      optionId: number,
-      isWon: boolean,
-      payout: string,
-      finalPrice: string
-    ) => void
-  ) {
-    if (!this.contract) {
-      console.error("❌ Contract not connected");
-      return;
-    }
-
-    this.contract.on(
-      "OptionExecuted",
-      (optionId, isWon, payout, finalPrice) => {
-        callback(
-          optionId.toNumber(),
-          isWon,
-          ethers.utils.formatEther(payout),
-          ethers.utils.formatUnits(finalPrice, 8)
-        );
-      }
-    );
-  }
-
-  /**
-   * Remove all event listeners
-   */
-  removeAllListeners() {
-    if (this.contract) {
-      this.contract.removeAllListeners();
-    }
+  // Reset initialization (call when wallet disconnects)
+  reset() {
+    console.log("🔄 Resetting contract instance");
+    this.contract = null;
+    this.provider = null;
+    this.signer = null;
+    this.userAddress = "";
+    this.isInitialized = false;
   }
 }
 
-// Export singleton instance
-export const binaryOptionsContract = new BinaryOptionsContractService();
-export default binaryOptionsContract;
+export const binaryOptionsContract = new BinaryOptionsContract();

@@ -8,22 +8,26 @@ export const API_CONFIG = {
   // WalletConnect Project ID - Get from https://cloud.walletconnect.com/
   WALLETCONNECT_PROJECT_ID: "7f511967202c5d90747168fd9f2e8c3c",
 
-  // Ethereum Network
-  ETHEREUM_NETWORK: "sepolia", // Default to Sepolia for development
+  // Default Network
+  DEFAULT_NETWORK: "arbitrumSepolia", // Default to Arbitrum Sepolia for development
 
-  // Infura URLs
-  INFURA_URLS: {
+  // Network URLs
+  NETWORK_URLS: {
+    // Ethereum Networks
     mainnet: "https://mainnet.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
-
     sepolia: "https://sepolia.infura.io/v3/357501fadbb54b0592b60d419e62f10c",
+
+    // Arbitrum Networks
+    arbitrumOne: "https://arb1.arbitrum.io/rpc",
+    arbitrumSepolia: "https://sepolia-rollup.arbitrum.io/rpc",
   },
 };
 
-// Helper function to get the correct Infura URL
-export const getInfuraUrl = (network: string = "sepolia") => {
+// Helper function to get the correct Network URL
+export const getInfuraUrl = (network: string = "arbitrumSepolia") => {
   return (
-    API_CONFIG.INFURA_URLS[network as keyof typeof API_CONFIG.INFURA_URLS] ||
-    API_CONFIG.INFURA_URLS.sepolia
+    API_CONFIG.NETWORK_URLS[network as keyof typeof API_CONFIG.NETWORK_URLS] ||
+    API_CONFIG.NETWORK_URLS.arbitrumSepolia
   );
 };
 

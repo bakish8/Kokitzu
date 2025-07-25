@@ -8,7 +8,13 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "build": "cd client && npm run build"
+    "build": "cd client && npm run build",
+    "switch:testnet": "node scripts/switch-network.js testnet",
+    "switch:mainnet": "node scripts/switch-network.js mainnet",
+    "deploy:testnet": "npm run switch:testnet && cd contracts && npx hardhat run deploy.js --network arbitrumSepolia",
+    "deploy:mainnet": "npm run switch:mainnet && cd contracts && npx hardhat run deploy.js --network arbitrumOne",
+    "update-wallet": "node scripts/update-wallet.js",
+    "update-contract": "node scripts/update-contract.js"
   },
   "keywords": [
     "graphql",

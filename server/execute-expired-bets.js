@@ -20,7 +20,11 @@ const betSchema = new mongoose.Schema({
     enum: ["ACTIVE", "WON", "LOST", "EXPIRED"],
     default: "ACTIVE",
   },
-  result: { type: String, enum: ["WIN", "LOSS", "DRAW", null], default: null },
+  result: {
+    type: String,
+    enum: ["WIN", "LOSS", "PUSH", "DRAW", null],
+    default: null,
+  },
   exitPrice: { type: Number, default: null },
   payout: { type: Number, default: null },
   createdAt: { type: Date, default: Date.now },

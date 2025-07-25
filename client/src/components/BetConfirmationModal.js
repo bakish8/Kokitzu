@@ -4,7 +4,7 @@ import { useMutation } from "@apollo/client";
 import { RECORD_BLOCKCHAIN_BET } from "../graphql/queries";
 
 // Contract configuration
-const CONTRACT_ADDRESS = "0x569b1c7dA5ec9E57A33BBe99CC2E2Bfbb1b819C4";
+const CONTRACT_ADDRESS = "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
 const CONTRACT_ABI = [
   "function createOption(string memory asset, uint256 amount, uint256 expiryTime, bool isCall) external payable",
   "function getCurrentPrice(string memory asset) external view returns (uint256)",
