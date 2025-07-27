@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 // Configuration
-const NEW_WALLET_ADDRESS = "0x55bd5862DEa6311d0ac3853B5b451426B42F9236";
+const NEW_WALLET_ADDRESS = "0x840b1F3A7B8cAf98A44fB60aDaE934AEf2d4364b";
 
 function updateContractsEnv(privateKey) {
   const envPath = path.join(__dirname, "../contracts/.env");

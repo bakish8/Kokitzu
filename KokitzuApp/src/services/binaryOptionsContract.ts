@@ -35,7 +35,7 @@ const BINARY_OPTIONS_ABI = [
 ];
 
 // Contract address on Arbitrum Sepolia (updated after deployment)
-const CONTRACT_ADDRESS = "0x44877E23864A0959292c10bee2C4cba49Caaf3Ed";
+const CONTRACT_ADDRESS = "0xe769031CA9Bb44bb22C77970d791e14F1a8a2210";
 
 export class BinaryOptionsContract {
   private contract: ethers.Contract | null = null;
