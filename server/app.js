@@ -623,15 +623,18 @@ async function checkExpiredBets() {
           continue;
         }
 
-        // Execute the option on blockchain
-        console.log(`🎯 Executing option ${bet.optionId} for bet ${bet.id}`);
+        // Execute the option on blockchain using FIXED method
+        console.log(
+          `🎯 Executing option ${bet.optionId} for bet ${bet.id} using FIXED payout method`
+        );
         console.log(`   └─ Wallet address: ${bet.walletAddress}`);
 
         try {
-          const executionResult = await contractService.executeOption(
-            bet.optionId,
-            bet.walletAddress
-          );
+          const executionResult =
+            await contractService.executeOptionWithManualPayout(
+              bet.optionId,
+              bet.walletAddress
+            );
           console.log(`✅ Option execution successful:`, executionResult);
         } catch (executionError) {
           console.error(`❌ Option execution failed:`, executionError.message);
@@ -810,13 +813,14 @@ async function startServer() {
                 `💾 [AUTO-EXECUTOR] Updated bet ${bet.id}: ${bet.status}`
               );
             } else {
-              // Execute option on blockchain
+              // Execute option on blockchain using FIXED method
               console.log(
-                `⚡ [AUTO-EXECUTOR] Executing option ${bet.optionId} on blockchain...`
+                `⚡ [AUTO-EXECUTOR] Executing option ${bet.optionId} using FIXED payout method...`
               );
-              const executionResult = await contractService.executeOption(
-                bet.optionId
-              );
+              const executionResult =
+                await contractService.executeOptionWithManualPayout(
+                  bet.optionId
+                );
 
               console.log(
                 `✅ [AUTO-EXECUTOR] Option executed! TX: ${executionResult.transactionHash}`

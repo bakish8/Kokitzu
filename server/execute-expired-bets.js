@@ -180,13 +180,12 @@ async function executeExpiredBets() {
             }
           }
         } else {
-          // Execute the option on blockchain
+          // Execute the option on blockchain using FIXED method
           console.log(
-            `📝 Executing option ${bet.optionId} on smart contract...`
+            `📝 Executing option ${bet.optionId} using FIXED payout method...`
           );
-          const executionResult = await contractService.executeOption(
-            bet.optionId
-          );
+          const executionResult =
+            await contractService.executeOptionWithManualPayout(bet.optionId);
 
           console.log(`✅ Option ${bet.optionId} executed successfully!`);
           console.log(
