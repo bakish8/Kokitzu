@@ -17,7 +17,8 @@ interface SmartContractInfoProps {
 }
 
 const SmartContractInfo: React.FC<SmartContractInfoProps> = ({
-  contractAddress = "0x1234567890123456789012345678901234567890",
+  contractAddress = process.env.EXPO_PUBLIC_CONTRACT_ADDRESS ||
+    "0x1234567890123456789012345678901234567890",
 }) => {
   const { isConnected, walletAddress, sendTransaction } = useWallet();
   const { currentNetwork, networkConfig } = useNetwork();

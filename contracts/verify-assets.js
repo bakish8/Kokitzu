@@ -1,7 +1,9 @@
 const hre = require("hardhat");
 
 async function main() {
-  const CONTRACT_ADDRESS = "0x10d9B9123833b42Edefd03dd43D7BA03cfA73951";
+  const CONTRACT_ADDRESS =
+    process.env.CONTRACT_ADDRESS ||
+    "0x10d9B9123833b42Edefd03dd43D7BA03cfA73951";
 
   console.log("🔍 Verifying asset configurations in deployed contract...");
   console.log(`📄 Contract Address: ${CONTRACT_ADDRESS}`);

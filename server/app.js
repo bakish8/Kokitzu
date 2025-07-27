@@ -759,6 +759,128 @@ async function startServer() {
     await contractService.init();
     console.log("✅ Contract service initialized successfully");
 
+    // 🤖 AUTOMATIC BET EXECUTION SYSTEM
+    // This runs every 60 seconds to automatically execute expired bets
+    // No manual intervention needed - fully automated!
+    const executeExpiredBets = async () => {
+      try {
+        console.log("🔍 [AUTO-EXECUTOR] Checking for expired bets...");
+
+        const now = new Date();
+        const expiredBets = await Bet.find({
+          isBlockchainBet: true,
+          status: "ACTIVE",
+          expiresAt: { $lte: now },
+        });
+
+        if (expiredBets.length === 0) {
+          console.log("✅ [AUTO-EXECUTOR] No expired bets found");
+          return;
+        }
+
+        console.log(
+          `⚡ [AUTO-EXECUTOR] Found ${expiredBets.length} expired bets to execute`
+        );
+
+        for (const bet of expiredBets) {
+          try {
+            console.log(
+              `🎯 [AUTO-EXECUTOR] Processing bet ${bet.id} (option ${bet.optionId})`
+            );
+
+            // Check if already executed on blockchain
+            const currentOption = await contractService.getOption(bet.optionId);
+
+            if (currentOption.executed) {
+              console.log(
+                `✅ [AUTO-EXECUTOR] Option ${bet.optionId} already executed`
+              );
+
+              // Update database with results
+              const isWon = currentOption.won;
+              const isPush = currentOption.exitPrice === bet.entryPrice;
+
+              bet.status = isPush ? "EXPIRED" : isWon ? "WON" : "LOST";
+              bet.result = isPush ? "DRAW" : isWon ? "WIN" : "LOSS";
+              bet.exitPrice = currentOption.exitPrice;
+              bet.payout = isPush ? bet.amount : isWon ? bet.amount * 0.8 : 0;
+              await bet.save();
+
+              console.log(
+                `💾 [AUTO-EXECUTOR] Updated bet ${bet.id}: ${bet.status}`
+              );
+            } else {
+              // Execute option on blockchain
+              console.log(
+                `⚡ [AUTO-EXECUTOR] Executing option ${bet.optionId} on blockchain...`
+              );
+              const executionResult = await contractService.executeOption(
+                bet.optionId
+              );
+
+              console.log(
+                `✅ [AUTO-EXECUTOR] Option executed! TX: ${executionResult.transactionHash}`
+              );
+
+              // Get final results and update database
+              const option = await contractService.getOption(bet.optionId);
+              const isWon = option.won;
+              const isPush = option.exitPrice === bet.entryPrice;
+
+              bet.status = isPush ? "EXPIRED" : isWon ? "WON" : "LOST";
+              bet.result = isPush ? "DRAW" : isWon ? "WIN" : "LOSS";
+              bet.exitPrice = option.exitPrice;
+              bet.payout = isPush ? bet.amount : isWon ? bet.amount * 0.8 : 0;
+              await bet.save();
+
+              console.log(
+                `🎉 [AUTO-EXECUTOR] Bet ${bet.id} completed: ${bet.status}`
+              );
+            }
+          } catch (error) {
+            console.error(
+              `❌ [AUTO-EXECUTOR] Failed to process bet ${bet.id}:`,
+              error.message
+            );
+          }
+        }
+
+        console.log(
+          `✅ [AUTO-EXECUTOR] Processed ${expiredBets.length} expired bets`
+        );
+      } catch (error) {
+        console.error("❌ [AUTO-EXECUTOR] System error:", error.message);
+      }
+    };
+
+    // Start the automatic execution system
+    let autoExecutorInterval;
+    const startAutoExecutor = () => {
+      console.log(
+        "🤖 [AUTO-EXECUTOR] Starting automatic bet execution system..."
+      );
+
+      // Run immediately on server start
+      setTimeout(executeExpiredBets, 10000); // Wait 10 seconds for server to fully initialize
+
+      // Then run every 60 seconds
+      autoExecutorInterval = setInterval(executeExpiredBets, 60000);
+
+      console.log(
+        "✅ [AUTO-EXECUTOR] System activated - checking every 60 seconds"
+      );
+    };
+
+    // Graceful shutdown
+    process.on("SIGINT", () => {
+      console.log("\n🛑 [AUTO-EXECUTOR] Shutting down...");
+      if (autoExecutorInterval) {
+        clearInterval(autoExecutorInterval);
+        console.log("✅ [AUTO-EXECUTOR] Stopped");
+      }
+      process.exit(0);
+    });
+
     // Start server
     app.listen(PORT, () => {
       console.log(`🚀 DECENTRALIZED API SERVER RUNNING ON PORT ${PORT}`);
@@ -766,6 +888,9 @@ async function startServer() {
       console.log(`🌐 No GraphQL, No CoinGecko - Pure Decentralized!`);
       console.log(`📍 Health Check: http://localhost:${PORT}/health`);
       console.log(`💰 Prices: http://localhost:${PORT}/api/prices`);
+
+      // Start the automatic executor
+      startAutoExecutor();
     });
   } catch (error) {
     console.error("❌ Failed to initialize contract service:", error.message);

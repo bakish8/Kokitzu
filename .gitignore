@@ -1,0 +1,98 @@
+# Environment variables - NEVER commit these files!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# Dependencies
+node_modules/
+**/node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+build/
+dist/
+**/build/
+**/dist/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+server-logs.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Blockchain/Hardhat specific
+cache/
+artifacts/
+coverage/
+coverage.json
+typechain/
+typechain-types/
+
+# React/Client specific
+client/build/
+client/.eslintcache
+
+# Server specific
+server/uploads/
+server/temp/
+
+# Database
+*.sqlite
+*.db
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
+tmp/
+
+# Testing
+.nyc_output/
+coverage/
+
+# Misc
+.cache/
+.parcel-cache/
+
+# Additional sensitive files
+*.env.backup
+*.env.testnet.backup
+*.env.production.backup
+
+# Lock files that can be regenerated
+package-lock.json
+yarn.lock

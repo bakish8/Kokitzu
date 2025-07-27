@@ -73,12 +73,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   useEffect(() => {
     if (wcConnected && wcAddress) {
       console.log("✅ WalletConnect connected:", wcAddress);
-      // Save connection state to prevent auto-reconnect issues
-      saveConnectionState(wcAddress);
+      // Don't save connection state - let WalletConnect handle persistence
       refreshBalance();
     } else {
       console.log("❌ WalletConnect disconnected");
-      clearConnectionState();
+      // Don't clear connection state automatically - let user disconnect manually
       setBalance(null);
     }
   }, [wcConnected, wcAddress]);
@@ -87,8 +86,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Clear any stored connection state on app start to prevent auto-reconnect
-        await clearConnectionState();
+        // Don't clear connection state on app start - let WalletConnect handle persistence
+        // This prevents MetaMask from opening repeatedly
+        console.log(
+          "🔧 WalletContext initialized - preserving connection state"
+        );
         setIsInitialized(true);
       } catch (error) {
         console.error("Error initializing WalletContext:", error);
@@ -149,13 +151,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     try {
       console.log("🔌 Disconnecting wallet...");
 
-      // Clear WalletConnect storage
-      clearWalletConnectStorage();
-
-      // Clear AsyncStorage
-      await clearConnectionState();
-
-      // Close the modal connection
+      // Close the modal connection first
       if (wcProvider && typeof wcProvider.disconnect === "function") {
         try {
           await wcProvider.disconnect();
@@ -174,7 +170,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     } catch (error) {
       console.error("❌ Error disconnecting wallet:", error);
       // Still clear local state even if there's an error
-      await clearConnectionState();
       setBalance(null);
     }
   };

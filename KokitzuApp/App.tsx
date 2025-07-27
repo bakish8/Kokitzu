@@ -48,7 +48,7 @@ if (typeof global.crypto === "undefined") {
 
 const Tab = createBottomTabNavigator();
 
-// WalletConnect configuration
+// WalletConnect configuration with Arbitrum Sepolia support
 const projectId = "7f511967202c5d90747168fd9f2e8c3c";
 const providerMetadata = {
   name: "KokitzuApp",
@@ -58,6 +58,23 @@ const providerMetadata = {
   redirect: {
     native: "kokitzuapp://",
     universal: "https://kokitzu.app",
+  },
+};
+
+// 🔥 CRITICAL: Session parameters to force Arbitrum Sepolia network
+const sessionParams = {
+  namespaces: {
+    eip155: {
+      methods: [
+        "eth_sendTransaction",
+        "eth_signTransaction",
+        "eth_sign",
+        "personal_sign",
+        "eth_signTypedData",
+      ],
+      chains: ["eip155:421614"], // Force Arbitrum Sepolia (chainId: 421614)
+      events: ["chainChanged", "accountsChanged"],
+    },
   },
 };
 
@@ -216,6 +233,7 @@ export default function App() {
                     <WalletConnectModal
                       projectId={projectId}
                       providerMetadata={providerMetadata}
+                      sessionParams={sessionParams}
                     />
                   </TradingProvider>
                 </EthPriceProvider>

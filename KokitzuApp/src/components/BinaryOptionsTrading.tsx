@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useWallet } from "../contexts/WalletContext";
-import binaryOptionsContract, {
+import {
+  binaryOptionsContract,
   Option,
   CreateOptionParams,
 } from "../services/binaryOptionsContract";
@@ -80,8 +81,8 @@ const BinaryOptionsTrading: React.FC<BinaryOptionsTradingProps> = ({
         throw new Error("Wallet not connected");
       }
 
-      const signer = provider.getSigner();
-      await binaryOptionsContract.connectWallet(signer);
+      // Initialize contract with WalletConnect provider (one-time setup)
+      await binaryOptionsContract.init(provider, walletAddress);
       console.log("✅ Connected to BinaryOptions contract");
     } catch (error) {
       console.error("Failed to connect to contract:", error);
@@ -97,13 +98,12 @@ const BinaryOptionsTrading: React.FC<BinaryOptionsTradingProps> = ({
         throw new Error("Wallet not connected");
       }
 
-      // Connect to contract if not already connected
+      // Initialize contract if not already connected
       if (!provider) {
         throw new Error("Provider not available");
       }
 
-      const signer = provider.getSigner();
-      await binaryOptionsContract.connectWallet(signer);
+      await binaryOptionsContract.init(provider, walletAddress);
 
       const params: CreateOptionParams = {
         asset,
@@ -156,8 +156,7 @@ const BinaryOptionsTrading: React.FC<BinaryOptionsTradingProps> = ({
         throw new Error("Provider not available");
       }
 
-      const signer = provider.getSigner();
-      await binaryOptionsContract.connectWallet(signer);
+      await binaryOptionsContract.init(provider, walletAddress);
 
       const tx = await binaryOptionsContract.executeOption(optionId);
 

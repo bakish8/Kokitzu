@@ -38,11 +38,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useTrading } from "../contexts/TradingContext";
 import { useWallet } from "../contexts/WalletContext";
 import { useNetwork } from "../contexts/NetworkContext";
-import { useWalletConnectModal } from "@walletconnect/modal-react-native";
 
 import UnifiedHeader from "../components/UnifiedHeader";
 import SmartContractInfo from "../components/SmartContractInfo";
 import SimpleCryptoModal from "../components/SimpleCryptoModal";
+import NetworkStatus from "../components/NetworkStatus";
 import {
   formatEthWithUsd,
   formatUsd,
@@ -103,48 +103,33 @@ const BinaryOptionsScreen: React.FC = () => {
   // 🚀 NEW: Crypto selector modal state
   const [isCryptoSelectorVisible, setIsCryptoSelectorVisible] = useState(false);
 
-  // Use the WalletConnect modal hook (same as header)
-  const {
-    isConnected: wcConnected,
-    address: wcAddress,
-    provider: wcProvider,
-  } = useWalletConnectModal();
-
-  // Debug connection status (same logic as header)
-  const isWalletConnected = wcConnected || isConnected;
+  // Use only our WalletContext - don't use WalletConnect modal directly
+  const isWalletConnected = isConnected;
 
   // Debug wallet connection status and initialize contract
   useEffect(() => {
     console.log("🔍 WALLET CONNECTION DEBUG:");
-    console.log(`   └─ wcConnected: ${wcConnected}`);
     console.log(`   └─ isConnected: ${isConnected}`);
-    console.log(`   └─ wcAddress: ${wcAddress}`);
     console.log(`   └─ walletAddress: ${walletAddress}`);
     console.log(`   └─ isWalletConnected: ${isWalletConnected}`);
     console.log(`   └─ balance: ${balance}`);
 
     // Initialize contract when wallet connects
-    if (wcConnected && wcProvider) {
+    if (isConnected && provider) {
       console.log("🔧 Initializing contract with connected wallet...");
-      binaryOptionsContract.init(wcProvider).catch((error) => {
-        console.error(
-          "❌ Failed to initialize contract on wallet connect:",
-          error
-        );
-      });
-    } else if (!wcConnected) {
+      binaryOptionsContract
+        .init(provider, walletAddress || "")
+        .catch((error) => {
+          console.error(
+            "❌ Failed to initialize contract on wallet connect:",
+            error
+          );
+        });
+    } else if (!isConnected) {
       // Reset contract when wallet disconnects
       binaryOptionsContract.reset();
     }
-  }, [
-    wcConnected,
-    isConnected,
-    wcAddress,
-    walletAddress,
-    isWalletConnected,
-    balance,
-    wcProvider,
-  ]);
+  }, [isConnected, walletAddress, isWalletConnected, balance, provider]);
 
   // Get ETH price for USD conversion (CoinGecko price, Sepolia ETH treated as regular ETH)
   const { ethPrice } = useEthPrice();
@@ -624,59 +609,12 @@ const BinaryOptionsScreen: React.FC = () => {
         `🔍 Checking results for bet ${betId} (option ${optionId})...`
       );
 
-      // First try to execute the option directly from the client if it's expired
-      if (optionId && wcConnected) {
-        try {
-          // Contract should already be initialized from wallet connection
-          // Check if option is expired and needs execution
-          const isExpired = await binaryOptionsContract.isOptionExpired(
-            optionId
-          );
+      // 🛑 REMOVED AUTOMATIC CLIENT-SIDE EXECUTION:
+      // Previously, the app would automatically execute expired options from the client,
+      // which triggered unwanted MetaMask popups. Now we rely only on server-side execution.
+      console.log(`📡 Checking server-side results for bet ${betId}...`);
 
-          if (isExpired) {
-            console.log(
-              `⏰ Option ${optionId} is expired, executing from client...`
-            );
-
-            // Execute the option directly from client
-            const executedOption = await binaryOptionsContract.executeOption(
-              optionId
-            );
-
-            console.log(`✅ Client-side execution successful:`, executedOption);
-
-            // Show result immediately
-            Alert.alert(
-              executedOption.won
-                ? "🎉 You Won!"
-                : executedOption.isPush
-                ? "🤝 Push/Tie - Refunded"
-                : "😔 You Lost",
-              `${selectedCrypto} ${betType} bet result:\n\n` +
-                `Status: ${
-                  executedOption.won
-                    ? "WON"
-                    : executedOption.isPush
-                    ? "PUSH"
-                    : "LOST"
-                }\n` +
-                `Entry: $${executedOption.entryPrice}\n` +
-                `Exit: $${executedOption.exitPrice}\n` +
-                `Payout: ${executedOption.payout} ETH`,
-              [{ text: "View in Portfolio" }]
-            );
-
-            // Stop tracking this bet
-            stopBetTracking(betId);
-            return;
-          }
-        } catch (contractError) {
-          console.error(`❌ Client-side execution failed:`, contractError);
-          // Fall back to server-side checking
-        }
-      }
-
-      // Fallback: Use REST API to check server-side results
+      // Use REST API to check server-side results
       const apiUrl = await getApiUrl();
       const response = await fetch(`${apiUrl}/api/bets/${betId}`, {
         method: "GET",
@@ -893,17 +831,17 @@ const BinaryOptionsScreen: React.FC = () => {
     // Same validation as regular handlePlaceBet
     // Only check WalletConnect connection
     console.log("🔍 WALLET VALIDATION DEBUG:");
-    console.log(`   └─ wcConnected: ${wcConnected}`);
-    console.log(`   └─ wcAddress: ${wcAddress}`);
-    console.log(`   └─ wcProvider: ${!!wcProvider}`);
+    console.log(`   └─ isConnected: ${isConnected}`);
+    console.log(`   └─ walletAddress: ${walletAddress}`);
+    console.log(`   └─ provider: ${!!provider}`);
 
-    if (!wcConnected || !wcAddress) {
+    if (!isConnected || !walletAddress) {
       Alert.alert(
-        "WalletConnect Not Connected",
-        "Please connect your wallet via WalletConnect to place blockchain bets.\n\n" +
+        "Wallet Not Connected",
+        "Please connect your wallet to place blockchain bets.\n\n" +
           `Debug Info:\n` +
-          `WalletConnect: ${wcConnected ? "Connected" : "Not Connected"}\n` +
-          `Address: ${wcAddress || "None"}`
+          `Wallet: ${isConnected ? "Connected" : "Not Connected"}\n` +
+          `Address: ${walletAddress || "None"}`
       );
       return;
     }
@@ -957,7 +895,7 @@ const BinaryOptionsScreen: React.FC = () => {
           betType: betType,
           amount: betAmountEth,
           timeframe: selectedTimeframe,
-          walletAddress: wcAddress || "",
+          walletAddress: walletAddress || "",
         });
       } catch (prepError: any) {
         console.error("❌ Error preparing transaction:", prepError);
@@ -997,18 +935,16 @@ const BinaryOptionsScreen: React.FC = () => {
 
       // 🔥 MOBILE APP: All wallets (including MetaMask mobile) use WalletConnect
       console.log("🔍 PROVIDER DEBUG:");
-      console.log(`   └─ wcProvider exists: ${!!wcProvider}`);
+      console.log(`   └─ provider exists: ${!!provider}`);
       console.log(
-        `   └─ wcProvider type: ${wcProvider ? typeof wcProvider : "undefined"}`
+        `   └─ provider type: ${provider ? typeof provider : "undefined"}`
       );
       console.log(
-        `   └─ wcProvider.request: ${
-          wcProvider ? typeof wcProvider.request : "undefined"
+        `   └─ provider.request: ${
+          provider ? typeof provider.request : "undefined"
         }`
       );
-      console.log(`   └─ wcConnected: ${wcConnected}`);
       console.log(`   └─ isConnected: ${isConnected}`);
-      console.log(`   └─ provider exists: ${!!provider}`);
       console.log(
         `   └─ provider type: ${provider ? typeof provider : "undefined"}`
       );
@@ -1023,7 +959,7 @@ const BinaryOptionsScreen: React.FC = () => {
         }`
       );
 
-      if (wcProvider && wcConnected) {
+      if (provider && isConnected) {
         console.log("📱 Using Mobile Wallet (WalletConnect protocol)");
         console.log(
           `   └─ MetaMask Mobile, Trust Wallet, etc. all use WalletConnect`
@@ -1032,9 +968,7 @@ const BinaryOptionsScreen: React.FC = () => {
 
         // 🔍 WALLET CONNECTION DEBUGGING
         console.log("🔍 WALLET CONNECTION STATUS:");
-        console.log(`   └─ wcConnected: ${wcConnected}`);
         console.log(`   └─ isConnected: ${isConnected}`);
-        console.log(`   └─ wcAddress: ${wcAddress}`);
         console.log(`   └─ walletAddress: ${walletAddress}`);
         console.log(`   └─ balance: ${balance} ETH`);
 
@@ -1087,7 +1021,7 @@ const BinaryOptionsScreen: React.FC = () => {
         console.log(`   └─ Reason: Previous tx failed with 'out of gas'`);
 
         const transaction = {
-          from: wcAddress || "",
+          from: walletAddress || "",
           to: txData.to,
           data: txData.data,
           value: valueInHex, // 🔧 FIX: Use hex format for wallet
@@ -1154,9 +1088,8 @@ const BinaryOptionsScreen: React.FC = () => {
         } else {
           console.log("✅ USD amounts match perfectly!");
         }
-        console.log("🔍 About to call wcProvider.request...");
-        console.log("🔍 wcProvider exists:", !!wcProvider);
-        console.log("🔍 wcConnected:", wcConnected);
+        console.log("🔍 About to call provider.request...");
+        console.log("🔍 provider exists:", !!provider);
         console.log("🔍 isConnected:", isConnected);
 
         try {
@@ -1219,21 +1152,21 @@ const BinaryOptionsScreen: React.FC = () => {
             ]
           );
 
-          // Only use WalletConnect - ensure it's connected
-          if (!wcProvider || typeof wcProvider.request !== "function") {
+          // Use provider from WalletContext - this prevents MetaMask from opening repeatedly
+          if (!provider || typeof provider.request !== "function") {
             throw new Error(
-              "WalletConnect provider not available. Please connect via WalletConnect."
+              "Wallet provider not available. Please connect your wallet first."
             );
           }
 
-          if (!wcConnected) {
+          if (!isConnected) {
             throw new Error(
-              "WalletConnect not connected. Please connect your wallet first."
+              "Wallet not connected. Please connect your wallet first."
             );
           }
 
-          console.log("🔧 Using WalletConnect provider.request()");
-          txHash = await wcProvider.request({
+          console.log("🔧 Using WalletContext provider.request()");
+          txHash = await provider.request({
             method: "eth_sendTransaction",
             params: [transaction],
           });
@@ -1338,7 +1271,7 @@ const BinaryOptionsScreen: React.FC = () => {
             amount: betAmountEth,
             timeframe: selectedTimeframe,
             transactionHash: String(txHash),
-            walletAddress: wcAddress || "",
+            walletAddress: walletAddress || "",
             entryPrice: entryPrice, // ✅ FIX: Include entry price
           });
 
@@ -1568,6 +1501,7 @@ const BinaryOptionsScreen: React.FC = () => {
           style={[styles.header, headerAnimatedStyle, headerBgAnimatedStyle]}
         >
           <UnifiedHeader />
+          <NetworkStatus />
         </Animated.View>
         {/* Content */}
         <Animated.ScrollView
@@ -2009,22 +1943,20 @@ const BinaryOptionsScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.placeBetButton,
-                  ((!wcConnected && !isConnected) ||
+                  (!isConnected ||
                     hasInsufficientBalance ||
                     shouldShowLoading) &&
                     styles.placeBetButtonDisabled,
                 ]}
                 onPress={() => setTradeSummaryModalVisible(true)}
                 disabled={
-                  (!wcConnected && !isConnected) ||
-                  hasInsufficientBalance ||
-                  shouldShowLoading
+                  !isConnected || hasInsufficientBalance || shouldShowLoading
                 }
               >
                 <Text
                   style={[
                     styles.placeBetButtonText,
-                    ((!wcConnected && !isConnected) ||
+                    (!isConnected ||
                       hasInsufficientBalance ||
                       shouldShowLoading) &&
                       styles.placeBetButtonTextDisabled,

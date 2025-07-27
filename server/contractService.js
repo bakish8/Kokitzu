@@ -113,10 +113,15 @@ class ContractService {
         }`
       );
       console.log(
-        `🔧 DEBUG: Expected NEW contract: 0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE`
+        `🔧 DEBUG: Using contract: ${CONTRACT_ADDRESS.slice(
+          0,
+          8
+        )}...${CONTRACT_ADDRESS.slice(-6)}`
       );
       console.log(
-        `🔧 DEBUG: Expected OLD contract: 0x7aC3058352cc4360dd12fD592BF33baBEE55dBdc`
+        `🔧 DEBUG: Contract source: ${
+          process.env.CONTRACT_ADDRESS ? "ENV" : "DEFAULT"
+        }`
       );
       this.contract = new ethers.Contract(
         CONTRACT_ADDRESS,
@@ -313,10 +318,12 @@ class ContractService {
       console.log(`   └─ amountInWei (hex): 0x${amountInWei.toString(16)}`);
       console.log(`   └─ Back to ETH: ${ethers.formatEther(amountInWei)} ETH`);
 
-      // Convert entry price to contract format (USD with 2 decimals)
+      // Convert entry price to contract format (USD * 100)
+      // Contract expects: $1183.48 -> 118348 (USD * 100)
+      // Contract converts Chainlink price: 118348000000 -> 11834800 (USD * 100)
       const strikePriceForContract = Math.round(entryPrice * 100);
       console.log(
-        `📊 Entry price: $${entryPrice} -> ${strikePriceForContract} (contract format)`
+        `📊 Entry price: $${entryPrice} -> ${strikePriceForContract} (USD * 100 format)`
       );
 
       // Prepare transaction data (don't send yet) - use createOptionFor with entry price
@@ -860,7 +867,8 @@ class ContractService {
       let traderBalanceAfter;
       try {
         traderBalanceAfter = await this.provider.getBalance(trader);
-        const balanceChange = traderBalanceAfter.sub(traderBalanceBefore);
+        // Fix: Use BigInt arithmetic instead of .sub() method
+        const balanceChange = traderBalanceAfter - traderBalanceBefore;
         console.log(
           `👤 Trader balance after: ${ethers.formatEther(
             traderBalanceAfter

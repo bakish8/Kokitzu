@@ -1,7 +1,9 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  const OLD_CONTRACT_ADDRESS = "0x5656455F5d03b68C56d64f9A009ed0BB8c868a6b";
+  const OLD_CONTRACT_ADDRESS =
+    process.env.OLD_CONTRACT_ADDRESS ||
+    "0x5656455F5d03b68C56d64f9A009ed0BB8c868a6b";
   const [signer] = await ethers.getSigners();
   console.log(`👤 Owner: ${signer.address}`);
 

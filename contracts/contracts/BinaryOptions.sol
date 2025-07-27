@@ -215,12 +215,12 @@ contract BinaryOptions is ReentrancyGuard, Ownable {
         uint256 finalPrice = chainlinkPrice / 1e6; // Convert 8 decimals to USD*100 format
 
         // Allow for small price differences due to timing/precision
-        // Only treat as push if prices are within 0.01% (very tight threshold)
+        // Only treat as push if prices are within 0.001% (very tight threshold)
         bool isWon;
         bool isPush;
         
-        // Calculate 0.01% threshold for push detection
-        uint256 pushThreshold = (option.strikePrice * 1) / 10000; // 0.01% = 1/10000
+        // Calculate 0.001% threshold for push detection (much tighter)
+        uint256 pushThreshold = (option.strikePrice * 1) / 100000; // 0.001% = 1/100000
         uint256 priceDifference = option.strikePrice > finalPrice ? 
             option.strikePrice - finalPrice : 
             finalPrice - option.strikePrice;

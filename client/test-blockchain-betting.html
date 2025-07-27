@@ -40,7 +40,8 @@
       <h2>Test Configuration</h2>
       <p><strong>GraphQL Endpoint:</strong> http://localhost:4000/graphql</p>
       <p>
-        <strong>Test Wallet:</strong> 0x742d35Cc6634C0532925a3b8D72Dc1E9C8b4c4C6
+        <strong>Test Wallet:</strong>
+        <span id="test-wallet-address">Loading...</span>
       </p>
       <p><strong>Network:</strong> Sepolia Testnet</p>
     </div>
@@ -203,7 +204,9 @@
                 amount: 0.001, // ETH amount for blockchain
                 timeframe: "FIVE_MINUTES",
                 useBlockchain: true,
-                walletAddress: "0x742d35Cc6634C0532925a3b8D72Dc1E9C8b4c4C6",
+                walletAddress:
+                  process.env.REACT_APP_TEST_WALLET_ADDRESS ||
+                  "0x742d35Cc6634C0532925a3b8D72Dc1E9C8b4c4C6",
               },
             }
           );

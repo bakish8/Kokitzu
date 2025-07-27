@@ -92,7 +92,9 @@ ARBITRUM_SEPOLIA_RPC_URL=${NETWORKS.testnet.rpc}
 PRIVATE_KEY=${existingPrivateKey}
 
 # Contract Address (${config.name} - יתעדכן אחרי פריסה)
-CONTRACT_ADDRESS=0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE
+CONTRACT_ADDRESS=${
+    process.env.CONTRACT_ADDRESS || "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE"
+  }
 
 # Database
 MONGO_URI=mongodb+srv://BAKISH:HbLErnUQnbKppcPI@kokitzu.rqazpbf.mongodb.net/?retryWrites=true&w=majority

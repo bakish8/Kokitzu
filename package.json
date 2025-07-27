@@ -4,6 +4,7 @@
   "description": "Real-time cryptocurrency prices with GraphQL",
   "main": "index.js",
   "scripts": {
+    "start": "npm run server",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",

@@ -1,5 +1,28 @@
 import { ethers } from "ethers";
 
+// Types for binary options
+export interface Option {
+  id: string;
+  trader: string;
+  asset: string;
+  amount: string;
+  expiry: string;
+  isCall: boolean;
+  executed: boolean;
+  entryPrice: string;
+  exitPrice: string;
+  won: boolean;
+  isPush: boolean;
+  payout: string;
+}
+
+export interface CreateOptionParams {
+  asset: string;
+  amount: string;
+  expiryTime: number;
+  isCall: boolean;
+}
+
 // Contract ABI for the binary options contract
 const BINARY_OPTIONS_ABI = [
   // Allowance-based trading functions
@@ -34,8 +57,10 @@ const BINARY_OPTIONS_ABI = [
   "event AllowanceWithdrawn(address indexed user, uint256 amount)",
 ];
 
-// Contract address on Arbitrum Sepolia (updated after deployment)
-const CONTRACT_ADDRESS = "0xe769031CA9Bb44bb22C77970d791e14F1a8a2210";
+// Contract address from environment variable with fallback
+const CONTRACT_ADDRESS =
+  process.env.EXPO_PUBLIC_CONTRACT_ADDRESS ||
+  "0xeBe0b7d82c5CE2E9Ef181051fFaA482051508d73";
 
 export class BinaryOptionsContract {
   private contract: ethers.Contract | null = null;

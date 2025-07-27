@@ -3,7 +3,9 @@ const { ethers } = require("hardhat");
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  const OLD_CONTRACT_ADDRESS = "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
+  const OLD_CONTRACT_ADDRESS =
+    process.env.OLD_CONTRACT_ADDRESS ||
+    "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
 
   console.log("💰 Withdrawing funds from old contract...");
   console.log("📍 Old Contract:", OLD_CONTRACT_ADDRESS);

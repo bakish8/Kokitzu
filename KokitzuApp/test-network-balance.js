@@ -2,7 +2,9 @@
 const { getWalletBalance } = require("./src/services/walletconnect");
 
 // Test address (replace with your actual address)
-const testAddress = "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6";
+const testAddress =
+  process.env.EXPO_PUBLIC_TEST_WALLET_ADDRESS ||
+  "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6";
 
 async function testNetworkBalance() {
   console.log("🧪 Testing network balance fetching...");

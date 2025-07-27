@@ -13,7 +13,8 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
-const CONTRACT_ADDRESS = "0x0F93acd0ea7b9919C902695185B189C2630a73Df";
+const CONTRACT_ADDRESS =
+  process.env.CONTRACT_ADDRESS || "0x0F93acd0ea7b9919C902695185B189C2630a73Df";
 const SEPOLIA_RPC_URL =
   process.env.SEPOLIA_RPC_URL ||
   "https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY";
