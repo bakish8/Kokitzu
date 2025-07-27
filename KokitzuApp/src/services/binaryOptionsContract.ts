@@ -57,10 +57,10 @@ const BINARY_OPTIONS_ABI = [
   "event AllowanceWithdrawn(address indexed user, uint256 amount)",
 ];
 
-// Contract address from environment variable with fallback
+// Contract address from environment variable with fallback - FIXED CONTRACT
 const CONTRACT_ADDRESS =
   process.env.EXPO_PUBLIC_CONTRACT_ADDRESS ||
-  "0xeBe0b7d82c5CE2E9Ef181051fFaA482051508d73";
+  "0x30265Dbe06D37fE77359E74B732B3Bb4e7B07D5A";
 
 export class BinaryOptionsContract {
   private contract: ethers.Contract | null = null;

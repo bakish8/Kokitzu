@@ -186,6 +186,46 @@
       "artifacts": [
         "Context"
       ]
+    },
+    "/Users/omribakish/Desktop/CryptoGraphQL/contracts/contracts/BinaryOptionsFixed.sol": {
+      "lastModificationDate": 1753651416329,
+      "contentHash": "2e4728b4e546d88607b3d812fa642361",
+      "sourceName": "contracts/BinaryOptionsFixed.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "BinaryOptionsFixed"
+      ]
     }
   }
 }

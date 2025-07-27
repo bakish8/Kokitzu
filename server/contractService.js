@@ -4,18 +4,24 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Contract configuration
-// ✅ UPDATED: New contract with individual getter functions (deployed 2025-01-23)
+// 🚀 FIXED CONTRACT: Fixed ETH transfer issues (deployed 2025-01-27)
 const CONTRACT_ADDRESS =
-  process.env.CONTRACT_ADDRESS || "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
+  process.env.CONTRACT_ADDRESS || "0x30265Dbe06D37fE77359E74B732B3Bb4e7B07D5A";
 const SEPOLIA_RPC_URL =
   process.env.SEPOLIA_RPC_URL || "https://eth-sepolia.g.alchemy.com/v2/demo";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
-// Contract ABI - you'll need to get this from your compiled contract
+// Contract ABI - FIXED CONTRACT with proper payout system
 const CONTRACT_ABI = [
   // Event signatures
   "event OptionCreated(uint256 indexed optionId, address indexed trader, string asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall)",
-  "event OptionExecuted(uint256 indexed optionId, bool won, bool isPush, uint256 payout, uint256 finalPrice)",
+  "event OptionExecuted(uint256 indexed optionId, bool isWon, bool isPush, uint256 payout, uint256 finalPrice)",
+
+  // NEW: Fixed contract events
+  "event PayoutMadeClaimable(address indexed trader, uint256 amount)",
+  "event PayoutClaimed(address indexed trader, uint256 amount)",
+  "event DirectPayoutSucceeded(address indexed trader, uint256 amount)",
+  "event DirectPayoutFailed(address indexed trader, uint256 amount)",
 
   // Main functions
   "function createOption(string memory asset, uint256 amount, uint256 expiryTime, bool isCall) external payable",
@@ -24,21 +30,18 @@ const CONTRACT_ABI = [
   "function getCurrentPrice(string memory asset) external view returns (uint256)",
   "function assetConfigs(string) external view returns (address priceFeed, uint256 minAmount, uint256 maxAmount, uint256 feePercentage, bool isActive)",
   "function getUserOptions(address user) external view returns (uint256[])",
-  "function getContractStats() external view returns (uint256 totalOptions, uint256 totalVolume, uint256 contractBalance)",
 
-  // Individual option getter functions
-  "function getOptionId(uint256 optionId) external view returns (uint256)",
-  "function getOptionTrader(uint256 optionId) external view returns (address)",
-  "function getOptionAsset(uint256 optionId) external view returns (string)",
-  "function getOptionAmount(uint256 optionId) external view returns (uint256)",
-  "function getOptionStrikePrice(uint256 optionId) external view returns (uint256)",
-  "function getOptionExpiryTime(uint256 optionId) external view returns (uint256)",
-  "function getOptionIsCall(uint256 optionId) external view returns (bool)",
-  "function getOptionIsExecuted(uint256 optionId) external view returns (bool)",
-  "function getOptionIsWon(uint256 optionId) external view returns (bool)",
-  "function getOptionPayout(uint256 optionId) external view returns (uint256)",
-  "function getOptionTimestamp(uint256 optionId) external view returns (uint256)",
-  "function getOptionFinalPrice(uint256 optionId) external view returns (uint256)",
+  // FIXED: Updated getContractStats with 4 return values
+  "function getContractStats() external view returns (uint256 totalOptions, uint256 totalVolume, uint256 contractBalance, uint256 totalClaimablePayouts)",
+
+  // FIXED: Single getOption function instead of individual getters
+  "function getOption(uint256 optionId) external view returns (tuple(uint256 id, address trader, string asset, uint256 amount, uint256 strikePrice, uint256 expiryTime, bool isCall, bool isExecuted, bool isWon, uint256 payout, uint256 timestamp, uint256 finalPrice))",
+
+  // NEW: Fixed contract functions
+  "function claimPayout() external",
+  "function getClaimablePayout(address user) external view returns (uint256)",
+  "function emergencyRescuePayout(address trader, uint256 amount) external",
+  "function fundContract() external payable",
 
   // Owner functions
   "function updateAssetConfig(string memory asset, address priceFeed, uint256 minAmount, uint256 maxAmount, uint256 feePercentage) external",
@@ -572,13 +575,16 @@ class ContractService {
     }
   }
 
-  // Get option details from blockchain
+  // Get option details from blockchain - FIXED for new contract
   async getOption(optionId) {
     await this.ensureInitialized();
     return this.withRetry(async () => {
       console.log(`🔍 Getting option details for ID: ${optionId}`);
 
-      // Use individual getter functions to avoid struct decoding issues
+      // Use the single getOption function from the FIXED contract
+      const optionData = await this.contract.getOption(optionId);
+
+      // Destructure the tuple response
       const [
         id,
         trader,
@@ -592,20 +598,7 @@ class ContractService {
         payout,
         timestamp,
         finalPrice,
-      ] = await Promise.all([
-        this.contract.getOptionId(optionId),
-        this.contract.getOptionTrader(optionId),
-        this.contract.getOptionAsset(optionId),
-        this.contract.getOptionAmount(optionId),
-        this.contract.getOptionStrikePrice(optionId),
-        this.contract.getOptionExpiryTime(optionId),
-        this.contract.getOptionIsCall(optionId),
-        this.contract.getOptionIsExecuted(optionId),
-        this.contract.getOptionIsWon(optionId),
-        this.contract.getOptionPayout(optionId),
-        this.contract.getOptionTimestamp(optionId),
-        this.contract.getOptionFinalPrice(optionId),
-      ]);
+      ] = optionData;
 
       console.log(`📊 Raw option data:`, {
         id: id?.toString(),
@@ -1165,7 +1158,7 @@ class ContractService {
     }
   }
 
-  // Get contract statistics
+  // Get contract statistics - FIXED for new contract
   async getContractStats() {
     await this.ensureInitialized();
     try {
@@ -1174,6 +1167,7 @@ class ContractService {
         totalOptions: stats[0].toString(),
         totalVolume: ethers.formatEther(stats[1]),
         contractBalance: ethers.formatEther(stats[2]),
+        totalClaimablePayouts: ethers.formatEther(stats[3]), // NEW: Fourth return value
       };
     } catch (error) {
       console.error("❌ Failed to get contract stats:", error);

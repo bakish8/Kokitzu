@@ -3,10 +3,10 @@ import { ethers } from "ethers";
 import { useMutation } from "@apollo/client";
 import { RECORD_BLOCKCHAIN_BET } from "../graphql/queries";
 
-// Contract configuration - use environment variable
+// Contract configuration - use environment variable - FIXED CONTRACT
 const CONTRACT_ADDRESS =
   process.env.REACT_APP_CONTRACT_ADDRESS ||
-  "0xd7230Aa2524AF5863F3FA45C3a21280E5E1970AE";
+  "0x30265Dbe06D37fE77359E74B732B3Bb4e7B07D5A";
 const CONTRACT_ABI = [
   "function createOption(string memory asset, uint256 amount, uint256 expiryTime, bool isCall) external payable",
   "function getCurrentPrice(string memory asset) external view returns (uint256)",
